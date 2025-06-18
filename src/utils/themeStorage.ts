@@ -1,7 +1,17 @@
 export const saveTheme = (theme: string) => {
-    localStorage.setItem('preferred-theme', theme);
+    try {
+        localStorage.setItem('preferred-theme', theme);
+    } catch (error) {
+        console.error('Failed to save theme to localStorage:', error);
+    }
 };
 
 export const loadTheme = (): string => {
-    return localStorage.getItem('preferred-theme') || 'cupcake';
+    try {
+        const savedTheme = localStorage.getItem('preferred-theme');
+        return savedTheme || 'cupcake'; // Default theme if none is saved
+    } catch (error) {
+        console.error('Failed to load theme from localStorage:', error);
+        return 'cupcake'; // Fallback to default theme
+    }
 };

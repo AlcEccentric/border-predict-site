@@ -31,8 +31,9 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     };
 
     useEffect(() => {
-        // Apply theme on mount
-        setTheme(currentTheme);
+        // Apply theme on mount and ensure it's loaded from localStorage
+        const savedTheme = loadTheme();
+        setTheme(savedTheme);
     }, []);
 
     return (
