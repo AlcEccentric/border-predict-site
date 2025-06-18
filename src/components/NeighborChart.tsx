@@ -22,6 +22,7 @@ interface NeighborChartProps {
         [key: string]: {
             name: string;
             id: number;
+            length: number;
         };
     };
 }
@@ -31,8 +32,6 @@ const NeighborChart: React.FC<NeighborChartProps> = ({
     lastKnownIndex,
     neighborMetadata,
 }) => {
-    console.log('normalizedData:', normalizedData);
-    console.log('neighborMetadata:', neighborMetadata);
     const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300'];
     
     // Prepare chart data

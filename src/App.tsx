@@ -14,15 +14,12 @@ const App: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('100');
     const [showNeighbors, setShowNeighbors] = useState(false);
-    const [theme, setTheme] = useState('cupcake');
-
-    const toggleTheme = () => {
-        const newTheme = theme === 'cupcake' ? 'dim' : 'cupcake';
-        setTheme(newTheme);
-        document.documentElement.setAttribute('data-theme', newTheme);
-    };
+    const themes = ['nord', 'cupcake', 'dim', 'aqua', 'sunset'];
+    const [theme, setTheme] = useState(() => localStorage.getItem('theme') || themes[0]);
 
     useEffect(() => {
+        const savedTheme = localStorage.getItem('theme') || themes[0];
+        document.documentElement.setAttribute('data-theme', savedTheme);
         const loadData = async () => {
             try {
                 // Load event info
@@ -44,7 +41,7 @@ const App: React.FC = () => {
         };
 
         loadData();
-    }, []);
+    }, [theme]);
 
     if (loading) {
         return <div>Loading... (｀・ω・´)</div>;
@@ -62,12 +59,9 @@ const App: React.FC = () => {
                         <span>ミリシタ・ボーダー予想</span>
                         <span className="text-2xl text-gray-500">{eventInfo?.Name}</span>
                     </h1>
-                    <button
-                        className="btn btn-circle"
-                        onClick={toggleTheme}
-                    >
-                        {theme === 'cupcake' ? '🌙' : '☀️'}
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <ThemeSelector theme={theme} setTheme={setTheme} />
+                    </div>
                 </div>
             </CardContainer>
 

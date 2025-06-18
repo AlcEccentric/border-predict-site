@@ -4,9 +4,10 @@ export interface EventInfo {
     EndAt: string;
 }
 
-export interface NeighborMetadata {
+export interface EventMetadata {
     name: string;
     id: number;
+    length: number;
 }
 
 export interface PredictionData {
@@ -18,11 +19,12 @@ export interface PredictionData {
             sla: {
                 [key: number]: string
             };
+            basic: EventMetadata
         };
         normalized: {
             last_known_step_index: number;
             neighbors: {
-                [key: string]: NeighborMetadata;
+                [key: string]: EventMetadata;
             };
         };
     };

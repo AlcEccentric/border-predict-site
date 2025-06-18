@@ -4,6 +4,8 @@ import { Line } from 'react-chartjs-2';
 import annotationPlugin from 'chartjs-plugin-annotation';
 import { LineElement, CategoryScale, LinearScale, PointElement, Legend, Tooltip } from 'chart.js';
 import CardContainer from './CardContainer';
+import { EventMetadata } from '../types';
+import { AlertTriangle } from 'lucide-react';
 
 interface NeighborSectionProps {
     normalizedData: {
@@ -17,9 +19,10 @@ interface NeighborSectionProps {
         [key: string]: {
             name: string;
             id: number;
+            length: number;
         };
     };
-    currentEventId: number;
+    currentEventMetadata: EventMetadata;
 }
 
 const COLORS = {
@@ -61,12 +64,15 @@ type ExtendedChartOptions = ChartOptions<'line'> & {
     };
 };
 
+
+
 const NeighborSection: React.FC<NeighborSectionProps> = ({
     normalizedData,
     lastKnownIndex,
     neighborMetadata,
-    currentEventId
+    currentEventMetadata
 }) => {
+    const [popoverIndex, setPopoverIndex] = useState<number | null>(null);
     const [visibleNeighbors, setVisibleNeighbors] = useState<{[key: string]: boolean}>(
         Object.keys(normalizedData.neighbors).reduce((acc, key) => ({
             ...acc,
@@ -195,64 +201,87 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                     <h3 className="text-lg font-bold mb-4">近傍イベント</h3>
                     <ul className="w-full p-0 gap-2">
                         <li>
-                            <div className="flex items-center gap-4 p-2 bg-base-200 rounded-lg hover:bg-base-200">
-                                <div 
-                                    className="w-12 h-12 rounded flex-shrink-0" 
-                                    style={{ backgroundColor: COLORS.target }}
-                                />
-                                <div className="flex-1 flex flex-col min-w-0">
-                                    <span className="font-medium">現在のイベント</span>
-                                    <span className="text-sm text-base-content/70">
-                                        予想最終スコア: {formatScore(normalizedData.target[normalizedData.target.length - 1])}
-                                    </span>
+                            <div className="flex items-center gap-2 p-2 bg-base-200 rounded-lg hover:bg-base-200">
+                                <div className="w-12 h-12 rounded flex-shrink-0" style={{ backgroundColor: COLORS.target }} />
+                                <div className="w-80">
+                                    <span className="font-medium truncate block">現在のイベント</span>
+                                    <div className="flex gap-4 mt-1 text-sm text-base-content/70">
+                                        <span>
+                                            開催日数: {currentEventMetadata.length}日
+                                        </span>
+                                        <span>
+                                            最終スコア: {formatScore(normalizedData.target[normalizedData.target.length - 1])}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="flex-none flex items-center gap-4">
+                                <span className="flex-1" />
+                                <input
+                                    type="checkbox"
+                                    className="toggle toggle-primary toggle-md"
+                                    checked={visibleNeighbors.target}
+                                    onChange={() => toggleNeighbor('target')}
+                                />
+                                <a
+                                    href={`https://mltd.matsurihi.me/events/${currentEventMetadata.id}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="btn btn-sm btn-outline btn-primary"
+                                >
+                                    実ボーダーを見る
+                                </a>
+                            </div>
+                        </li>
+                        {Object.entries(neighborMetadata).map(([key, neighbor], index) => (
+                            <li key={key}>
+                                <div className="flex items-center gap-2 p-2 bg-base-200 rounded-lg hover:bg-base-200">
+                                    <div className="w-12 h-12 rounded flex-shrink-0" style={{ backgroundColor: COLORS.neighbors[index] }} />
+                                    <div className="w-80">
+                                        <span className="w-40 font-medium truncate">近傍{key}：{neighbor.name}</span>
+                                        <div className="flex gap-4 mt-1 text-sm text-base-content/70">
+                                            <span>
+                                                開催日数: {neighbor.length}日
+                                            </span>
+                                            <span>
+                                                最終スコア: {formatScore(normalizedData.neighbors[key][normalizedData.neighbors[key].length - 1])}
+                                                {neighbor.length !== currentEventMetadata.length && (
+                                                    <span
+                                                        className="relative inline-flex items-center cursor-pointer select-none ml-2"
+                                                        onMouseEnter={() => setPopoverIndex(index)}
+                                                        onMouseLeave={() => setPopoverIndex(null)}
+                                                        onClick={() => setPopoverIndex(popoverIndex === index ? null : index)}
+                                                    >
+                                                        <AlertTriangle size={16} className="text-warning" />
+                                                        <span className="ml-1 text-xs text-warning font-bold">注意</span>
+                                                        {popoverIndex === index && (
+                                                            <span className="absolute left-0 top-full z-50 mt-2 w-96 rounded bg-base-200 p-2 text-xs text-base-content shadow-lg border border-base-300">
+                                                                このスコアは <b>正規化</b> されています。<br />
+                                                                <span className="text-error font-bold">比較する場合は、同じ開催日数のイベントのデータがより参考になります。</span><br />
+                                                                詳しくはページ下部の「解説」内「スコアの正規化方法について」をご覧ください。
+                                                            </span>
+                                                        )}
+                                                    </span>
+                                                )}
+                                            
+                                            </span>
+                                        </div>
+                                        
+                                    </div>
+                                    
+                                    <span className="flex-1" /> {/* Spacer */}
                                     <input
                                         type="checkbox"
                                         className="toggle toggle-primary toggle-md"
-                                        checked={visibleNeighbors.target}
-                                        onChange={() => toggleNeighbor('target')}
+                                        checked={visibleNeighbors[key]}
+                                        onChange={() => toggleNeighbor(key)}
                                     />
                                     <a
-                                        href={`https://mltd.matsurihi.me/events/${currentEventId}`}
+                                        href={`https://mltd.matsurihi.me/events/${neighbor.id}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="btn btn-sm btn-outline btn-primary"
                                     >
                                         実ボーダーを見る
                                     </a>
-                                </div>
-                            </div>
-                        </li>
-                        {Object.entries(neighborMetadata).map(([key, neighbor], index) => (
-                            <li key={key}>
-                                <div className="flex items-center gap-4 p-2 bg-base-200 rounded-lg hover:bg-base-200">
-                                    <div 
-                                        className="w-12 h-12 rounded flex-shrink-0" 
-                                        style={{ backgroundColor: COLORS.neighbors[index] }}
-                                    />
-                                    <div className="flex-1 flex flex-col min-w-0">
-                                        <span className="font-medium">近傍{key}：{neighbor.name}</span>
-                                        <span className="text-sm text-base-content/70">
-                                            最終スコア: {formatScore(normalizedData.neighbors[key][normalizedData.neighbors[key].length - 1])}
-                                        </span>
-                                    </div>
-                                    <div className="flex-none flex items-center gap-4">
-                                        <input
-                                            type="checkbox"
-                                            className="toggle toggle-primary toggle-md"
-                                            checked={visibleNeighbors[key]}
-                                            onChange={() => toggleNeighbor(key)}
-                                        />
-                                        <a
-                                            href={`https://mltd.matsurihi.me/events/${neighbor.id}`}  // Fixed: use neighbor.id instead of currentEventId
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="btn btn-sm btn-outline btn-primary"
-                                        >
-                                            実ボーダーを見る
-                                        </a>
-                                    </div>
                                 </div>
                             </li>
                         ))}
