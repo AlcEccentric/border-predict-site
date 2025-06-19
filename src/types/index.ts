@@ -1,5 +1,5 @@
 export interface EventInfo {
-    Name: string;
+    EventName: string;
     StartAt: string;
     EndAt: string;
 }
