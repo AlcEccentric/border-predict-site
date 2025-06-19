@@ -8,7 +8,9 @@ import CardContainer from './components/CardContainer';
 import ThemeSelector from './components/ThemeSelector';
 
 const App: React.FC = () => {
-    if (true) { // TODO: remove once development is complete
+    const releaseDate = new Date('2025-08-01T00:00:00+09:00'); // TODO: update once development is complete
+    const now = new Date();
+    if (now < releaseDate) { 
         return <EventModal />;
     }
     const [eventInfo, setEventInfo] = useState<EventInfo | null>(null);
