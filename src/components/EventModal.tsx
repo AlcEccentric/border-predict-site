@@ -2,16 +2,25 @@ import React from 'react';
 
 const EventModal: React.FC = () => {
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-            <div className="bg-white p-8 rounded-lg shadow-xl max-w-2xl w-full text-center">
-                <p className="text-gray-800">
-                    プロデューサー、いまは、開催中のイベントがないようです……
-                </p>
-                <p className="text-gray-800">
-                    少々、静かすぎる気もしますが……それも、悪くありません。
-                </p>
+        <div className="flex flex-col items-center justify-center min-h-screen space-y-4">
+            {/* Mizuki */}
+            <div className="chat chat-start max-w-lg">
+                <div className="chat-bubble" style={{ backgroundColor: '#c8dcee', color: '#1f2937' }}>
+                ……どうやら、いまはイベントが開催されていないようです。  
+                それか……まだ対応していないのかもしれませんね。 
+                </div>
+            </div>
+
+            {/* Haruka */}
+            <div className="chat chat-end max-w-lg">
+                <div className="chat-bubble" style={{ backgroundColor: '#f79a9c', color: 'white' }}>
+                    そっか〜。じゃあ、次を楽しみにしよっ♪
+                    始まったら、また一緒にがんばろうねっ！
+                </div>
             </div>
         </div>
+
+
     );
 };
 
