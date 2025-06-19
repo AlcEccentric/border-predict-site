@@ -15,6 +15,7 @@ const App: React.FC = () => {
     const [activeTab, setActiveTab] = useState('100');
     const [showNeighbors, setShowNeighbors] = useState(false);
     const themes = ['nord', 'cupcake', 'dim', 'aqua', 'sunset'];
+    const baseUrl = 'https://cdn.yuenimillion.live/normal';
     const [theme, setTheme] = useState(() => localStorage.getItem('theme') || themes[0]);
 
     useEffect(() => {
@@ -23,13 +24,13 @@ const App: React.FC = () => {
         const loadData = async () => {
             try {
                 // Load event info
-                const eventInfoResponse = await fetch('/metadata/latest_event_border_info.json');
+                const eventInfoResponse = await fetch(`${baseUrl}/metadata/latest_event_border_info.json`);
                 const eventInfoData = await eventInfoResponse.json();
                 setEventInfo(eventInfoData);
 
                 // Load predictions
-                const pred100Response = await fetch('/prediction/100/predictions.json');
-                const pred2500Response = await fetch('/prediction/2500/predictions.json');
+                const pred100Response = await fetch(`${baseUrl}/prediction/100/predictions.json`);
+                const pred2500Response = await fetch(`${baseUrl}/prediction/2500/predictions.json`);
                 
                 setPrediction100(await pred100Response.json());
                 setPrediction2500(await pred2500Response.json());
@@ -57,7 +58,7 @@ const App: React.FC = () => {
                 <div className="flex justify-between items-center">
                     <h1 className="text-3xl font-bold flex flex-col gap-2">
                         <span>ミリシタ・ボーダー予想</span>
-                        <span className="text-2xl text-gray-500">{eventInfo?.Name}</span>
+                        <span className="text-2xl text-gray-500">{eventInfo?.EventName}</span>
                     </h1>
                     <div className="flex items-center gap-2">
                         <ThemeSelector theme={theme} setTheme={setTheme} />
