@@ -8,6 +8,9 @@ import CardContainer from './components/CardContainer';
 import ThemeSelector from './components/ThemeSelector';
 
 const App: React.FC = () => {
+    if (true) { // TODO: remove once development is complete
+        return <EventModal />;
+    }
     const [eventInfo, setEventInfo] = useState<EventInfo | null>(null);
     const [prediction100, setPrediction100] = useState<PredictionData | null>(null);
     const [prediction2500, setPrediction2500] = useState<PredictionData | null>(null);
