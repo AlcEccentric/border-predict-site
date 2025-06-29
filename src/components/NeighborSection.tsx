@@ -72,6 +72,13 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
     neighborMetadata,
     currentEventMetadata
 }) => {
+    // Create default event metadata if it's not provided
+    const eventMetadata = currentEventMetadata || {
+        name: "現在のイベント",
+        id: 0,
+        length: normalizedData.target.length,
+    };
+    
     const [popoverIndex, setPopoverIndex] = useState<number | null>(null);
     const [visibleNeighbors, setVisibleNeighbors] = useState<{[key: string]: boolean}>(
         Object.keys(normalizedData.neighbors).reduce((acc, key) => ({
@@ -118,6 +125,28 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
         ]
     };
 
+    // Get theme-appropriate text color
+    const textColor = React.useMemo(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                const tempElement = document.createElement('div');
+                tempElement.className = 'text-base-content';
+                tempElement.style.position = 'absolute';
+                tempElement.style.visibility = 'hidden';
+                document.body.appendChild(tempElement);
+                
+                const computedStyle = getComputedStyle(tempElement);
+                const color = computedStyle.color;
+                
+                document.body.removeChild(tempElement);
+                return color;
+            } catch (e) {
+                return 'rgb(75, 85, 99)'; // Default color as fallback
+            }
+        }
+        return 'rgb(75, 85, 99)'; // Default color for SSR
+    }, []);
+    
     const options: ExtendedChartOptions = {
         responsive: true,
         maintainAspectRatio: false,
@@ -154,19 +183,30 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
         },
         scales: {
             y: {
-                beginAtZero: false
+                beginAtZero: false,
+                grid: {
+                    color: 'rgba(200, 200, 200, 0.2)',
+                },
+                ticks: {
+                    color: textColor,
+                }
             },
             x: {
                 type: 'category',
                 title: {
                     display: true,
-                    text: 'イベント進行度 (%)'
+                    text: 'イベント進行度 (%)',
+                    color: textColor,
+                },
+                grid: {
+                    color: 'rgba(200, 200, 200, 0.2)',
                 },
                 ticks: {
                     callback: (value: number | string) => {
                         const index = typeof value === 'string' ? parseInt(value) : value;
                         return `${percentagePoints[index]}%`;
-                    }
+                    },
+                    color: textColor,
                 }
             }
         },
@@ -180,15 +220,20 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                         ...options,
                         plugins: {
                             ...options.plugins,
+                            title: {
+                                ...options.plugins.title,
+                                color: textColor,
+                            },
                             legend: {
                                 display: true,
                                 position: 'bottom',
                                 labels: {
+                                    color: textColor,
                                     generateLabels: () => [{
                                         text: '予測範囲',
                                         fillStyle: 'rgba(103, 220, 209, 0.1)',
                                         strokeStyle: 'rgba(69, 120, 129, 1)',
-                                        fontColor: 'rgba(69, 120, 129, 1)',
+                                        fontColor: textColor,
                                         lineWidth: 1,
                                     }]
                                 }
@@ -207,7 +252,7 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                                     <span className="font-medium truncate block">現在のイベント</span>
                                     <div className="flex gap-4 mt-1 text-sm text-base-content/70">
                                         <span>
-                                            開催日数: {currentEventMetadata.length}日
+                                            開催日数: {eventMetadata.length}日
                                         </span>
                                         <span>
                                             最終スコア: {formatScore(normalizedData.target[normalizedData.target.length - 1])}
@@ -222,7 +267,7 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                                     onChange={() => toggleNeighbor('target')}
                                 />
                                 <a
-                                    href={`https://mltd.matsurihi.me/events/${currentEventMetadata.id}`}
+                                    href={`https://mltd.matsurihi.me/events/${eventMetadata.id}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="btn btn-sm btn-outline btn-primary"
@@ -243,7 +288,7 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                                             </span>
                                             <span>
                                                 最終スコア: {formatScore(normalizedData.neighbors[key][normalizedData.neighbors[key].length - 1])}
-                                                {neighbor.length !== currentEventMetadata.length && (
+                                                {neighbor.length !== eventMetadata.length && (
                                                     <span
                                                         className="relative inline-flex items-center cursor-pointer select-none ml-2"
                                                         onMouseEnter={() => setPopoverIndex(index)}

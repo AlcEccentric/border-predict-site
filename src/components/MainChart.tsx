@@ -102,6 +102,28 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt }) => {
     }]
   };
 
+  // Get theme-appropriate text color
+  const textColor = React.useMemo(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const tempElement = document.createElement('div');
+        tempElement.className = 'text-base-content';
+        tempElement.style.position = 'absolute';
+        tempElement.style.visibility = 'hidden';
+        document.body.appendChild(tempElement);
+        
+        const computedStyle = getComputedStyle(tempElement);
+        const color = computedStyle.color;
+        
+        document.body.removeChild(tempElement);
+        return color;
+      } catch (e) {
+        return 'rgb(75, 85, 99)'; // Default color as fallback
+      }
+    }
+    return 'rgb(75, 85, 99)'; // Default color for SSR
+  }, []);
+
   const options: ChartOptions<'line'> = {
     responsive: true,
     maintainAspectRatio: false,
@@ -111,11 +133,12 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt }) => {
           display: true,
           position: 'bottom',
           labels: {
+              color: textColor,
               generateLabels: () => [{
                   text: '予測範囲',
                   fillStyle: 'rgba(103, 220, 209, 0.1)',
                   strokeStyle: 'rgba(69, 120, 129, 1)',
-                  fontColor: 'rgba(69, 120, 129, 1)',
+                  fontColor: textColor,
                   lineWidth: 1,
               }]
           }
@@ -142,6 +165,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt }) => {
       title: {
         display: true,
         text: 'スコア推移',
+        color: textColor,
         padding: {
           bottom: 10
         }
@@ -154,14 +178,28 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt }) => {
       x: {
         title: {
           display: true,
-          text: '時間'
+          text: '時間',
+          color: textColor
+        },
+        grid: {
+          color: 'rgba(200, 200, 200, 0.2)',
+        },
+        ticks: {
+          color: textColor,
         }
       },
       y: {
         beginAtZero: false,
         title: {
           display: true,
-          text: 'スコア'
+          text: 'スコア',
+          color: textColor
+        },
+        grid: {
+          color: 'rgba(200, 200, 200, 0.2)',
+        },
+        ticks: {
+          color: textColor,
         }
       }
     },
@@ -194,7 +232,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt }) => {
             
             {/* Custom tooltip */}
             <div
-              className="absolute pointer-events-none bg-base-100 border border-base-300 rounded-lg shadow-lg p-3 z-20"
+              className="absolute pointer-events-none bg-base-100 border border-base-300 text-base-content rounded-lg shadow-lg p-3 z-20"
               style={{
                 left: Math.min(crosshairPosition.x + 10, window.innerWidth - 200),
                 top: Math.max(crosshairPosition.y - 60, 10)
