@@ -6,6 +6,23 @@ const FAQ: React.FC = () => {
             <h2 className="text-2xl font-bold mb-4">解説</h2>
             <div className="space-y-4">
                 <div className="collapse collapse-plus bg-base-200">
+                    <input type="checkbox" />
+                    <div className="collapse-title text-xl font-medium">
+                        予測について
+                    </div>
+                    <div className="collapse-content">
+                        <p>
+                            予測値は過去の類似イベントデータを基に算出されており、実際の結果とは異なる場合があります。
+                            参考程度にご利用ください。
+                        </p>
+                        <p className="mt-2">
+                            <strong>近傍イベント:</strong> 近傍イベント表示を有効にすると、選択したアイドルの過去の類似イベントとの比較ができます。
+                            アイドルとボーダーを選択して、個別の近傍データを確認できます。
+                        </p>
+                    </div>
+                </div>
+
+                <div className="collapse collapse-plus bg-base-200">
                     <input type="checkbox" /> 
                     <div className="collapse-title text-xl font-medium">
                         近傍イベントとは？

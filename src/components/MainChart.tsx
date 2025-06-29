@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useState } from 'react';
 import { Line } from 'react-chartjs-2';
 import annotationPlugin from 'chartjs-plugin-annotation';
 import {
@@ -11,7 +11,8 @@ import {
   Tooltip,
   Legend,
   ChartData,
-  ChartOptions
+  ChartOptions,
+  InteractionItem
 } from 'chart.js';
 
 // Register ChartJS components
@@ -44,6 +45,10 @@ interface MainChartProps {
 }
 
 const MainChart: React.FC<MainChartProps> = ({ data, startAt }) => {
+  const chartRef = useRef<ChartJS<'line'>>(null);
+  const [crosshairPosition, setCrosshairPosition] = useState<{ x: number; y: number } | null>(null);
+  const [hoveredData, setHoveredData] = useState<{ timePoint: string; value: number } | null>(null);
+
   const timePoints = Array.from(
     { length: data.data.raw.target.length },
     (_, i) => {
@@ -57,6 +62,34 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt }) => {
       });
     }
   );
+
+  const handleChartHover = (event: any, _elements: InteractionItem[]) => {
+    const chart = chartRef.current;
+    if (!chart || !event.native) return;
+
+    const rect = chart.canvas.getBoundingClientRect();
+    const x = event.native.clientX - rect.left;
+    const y = event.native.clientY - rect.top;
+
+    // Get the data index at this x position
+    const dataIndex = Math.round((x - chart.chartArea.left) / (chart.chartArea.width) * (timePoints.length - 1));
+    
+    if (dataIndex >= 0 && dataIndex < timePoints.length) {
+      setCrosshairPosition({ x: x, y: y });
+      setHoveredData({
+        timePoint: timePoints[dataIndex],
+        value: data.data.raw.target[dataIndex]
+      });
+    } else {
+      setCrosshairPosition(null);
+      setHoveredData(null);
+    }
+  };
+
+  const handleChartLeave = () => {
+    setCrosshairPosition(null);
+    setHoveredData(null);
+  };
 
   const chartData: ChartData<'line'> = {
     labels: timePoints,
@@ -72,6 +105,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt }) => {
   const options: ChartOptions<'line'> = {
     responsive: true,
     maintainAspectRatio: false,
+    onHover: handleChartHover,
     plugins: {
       legend: {
           display: true,
@@ -111,6 +145,9 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt }) => {
         padding: {
           bottom: 10
         }
+      },
+      tooltip: {
+        enabled: false // Disable default tooltip since we're using custom crosshair
       }
     },
     scales: {
@@ -127,12 +164,52 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt }) => {
           text: 'スコア'
         }
       }
+    },
+    interaction: {
+      mode: 'index',
+      intersect: false
     }
   };
 
   return (
-    <div className="relative w-full aspect-[2/1]">
-      <Line data={chartData} options={options} />
+    <div className="relative w-full">
+      <div className="relative w-full aspect-[2/1]" onMouseLeave={handleChartLeave}>
+        <Line ref={chartRef} data={chartData} options={options} />
+        
+        {/* Custom crosshair and tooltip */}
+        {crosshairPosition && hoveredData && (
+          <>
+            {/* Vertical crosshair line */}
+            <div
+              className="absolute pointer-events-none"
+              style={{
+                left: crosshairPosition.x,
+                top: 0,
+                bottom: 0,
+                width: 1,
+                backgroundColor: 'rgba(255, 99, 132, 0.8)',
+                zIndex: 10
+              }}
+            />
+            
+            {/* Custom tooltip */}
+            <div
+              className="absolute pointer-events-none bg-base-100 border border-base-300 rounded-lg shadow-lg p-3 z-20"
+              style={{
+                left: Math.min(crosshairPosition.x + 10, window.innerWidth - 200),
+                top: Math.max(crosshairPosition.y - 60, 10)
+              }}
+            >
+              <div className="text-sm font-semibold mb-1">
+                {hoveredData.timePoint}
+              </div>
+              <div className="text-xs">
+                スコア: {hoveredData.value.toLocaleString()}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 };
