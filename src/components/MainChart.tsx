@@ -42,9 +42,10 @@ interface MainChartProps {
     };
   };
   startAt: string;
+  theme?: string; // Add theme prop to trigger re-renders when theme changes
 }
 
-const MainChart: React.FC<MainChartProps> = ({ data, startAt }) => {
+const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
   const chartRef = useRef<ChartJS<'line'>>(null);
   const [crosshairPosition, setCrosshairPosition] = useState<{ x: number; y: number } | null>(null);
   const [hoveredData, setHoveredData] = useState<{ timePoint: string; value: number } | null>(null);
@@ -63,28 +64,61 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt }) => {
     }
   );
 
-  const handleChartHover = (event: any, _elements: InteractionItem[]) => {
+  const handleChartHover = (event: any) => {
     const chart = chartRef.current;
     if (!chart || !event.native) return;
 
     const rect = chart.canvas.getBoundingClientRect();
     const x = event.native.clientX - rect.left;
-    const y = event.native.clientY - rect.top;
 
-    // Get the data index at this x position
-    const dataIndex = Math.round((x - chart.chartArea.left) / (chart.chartArea.width) * (timePoints.length - 1));
-    
-    if (dataIndex >= 0 && dataIndex < timePoints.length) {
-      setCrosshairPosition({ x: x, y: y });
+    const meta = chart.getDatasetMeta(0);
+    const dataPoints = meta.data;
+
+    if (!dataPoints || dataPoints.length === 0) return;
+
+    // Find the closest point by X distance
+    let closestIndex = -1;
+    let minDistance = Infinity;
+
+    dataPoints.forEach((point, index) => {
+      const distance = Math.abs(point.x - x);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestIndex = index;
+      }
+    });
+
+    // Compute dynamic threshold: half of the distance to neighbor
+    const threshold = (() => {
+      if (closestIndex === 0 && dataPoints.length > 1) {
+        return Math.abs(dataPoints[1].x - dataPoints[0].x) / 2;
+      }
+      if (closestIndex === dataPoints.length - 1 && dataPoints.length > 1) {
+        return Math.abs(dataPoints[dataPoints.length - 1].x - dataPoints[dataPoints.length - 2].x) / 2;
+      }
+      if (closestIndex > 0) {
+        const prevX = dataPoints[closestIndex - 1].x;
+        const currX = dataPoints[closestIndex].x;
+        return Math.abs(currX - prevX) / 2;
+      }
+      return 20; // Fallback default
+    })();
+
+    if (minDistance <= threshold) {
+      setCrosshairPosition({
+        x: dataPoints[closestIndex].x,
+        y: dataPoints[closestIndex].y,
+      });
       setHoveredData({
-        timePoint: timePoints[dataIndex],
-        value: data.data.raw.target[dataIndex]
+        timePoint: timePoints[closestIndex],
+        value: data.data.raw.target[closestIndex],
       });
     } else {
       setCrosshairPosition(null);
       setHoveredData(null);
     }
   };
+
 
   const handleChartLeave = () => {
     setCrosshairPosition(null);
@@ -122,7 +156,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt }) => {
       }
     }
     return 'rgb(75, 85, 99)'; // Default color for SSR
-  }, []);
+  }, [theme]); // Add theme as dependency
 
   const options: ChartOptions<'line'> = {
     responsive: true,
@@ -222,8 +256,8 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt }) => {
               className="absolute pointer-events-none"
               style={{
                 left: crosshairPosition.x,
-                top: 0,
-                bottom: 0,
+                top: 26,
+                bottom: 80,
                 width: 1,
                 backgroundColor: 'rgba(255, 99, 132, 0.8)',
                 zIndex: 10
@@ -234,7 +268,9 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt }) => {
             <div
               className="absolute pointer-events-none bg-base-100 border border-base-300 text-base-content rounded-lg shadow-lg p-3 z-20"
               style={{
-                left: Math.min(crosshairPosition.x + 10, window.innerWidth - 200),
+                left: crosshairPosition.x > window.innerWidth * 0.7 
+                  ? crosshairPosition.x - 130 
+                  : crosshairPosition.x + 10,
                 top: Math.max(crosshairPosition.y - 60, 10)
               }}
             >

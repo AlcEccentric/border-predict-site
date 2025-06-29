@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import MainChart from './MainChart';
 import { PredictionData } from '../types';
@@ -14,6 +14,7 @@ interface BorderTabsProps {
     startAt: string;
     activeTab: string;
     setActiveTab: (tab: string) => void;
+    theme: string;
 }
 
 const BorderTabs: React.FC<BorderTabsProps> = ({
@@ -23,8 +24,10 @@ const BorderTabs: React.FC<BorderTabsProps> = ({
     toggleNeighbors,
     startAt,
     activeTab,
-    setActiveTab
+    setActiveTab,
+    theme
 }) => {
+    const neighborSectionRef = useRef<HTMLDivElement>(null);
 
     const getFinalScore = (prediction: PredictionData) => {
         const scores = prediction.data.raw.target;
@@ -34,6 +37,20 @@ const BorderTabs: React.FC<BorderTabsProps> = ({
 
     const getSLAInfo = (prediction: PredictionData, errorRange: number) => {
         return prediction.metadata.raw.sla[errorRange];
+    };
+
+    const handleNeighborToggle = () => {
+        toggleNeighbors();
+        
+        // If turning on, scroll to neighbor section after animation
+        if (!showNeighbors) {
+            setTimeout(() => {
+                neighborSectionRef.current?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center'
+                });
+            }, 200);
+        }
     };
 
     return (
@@ -89,7 +106,23 @@ const BorderTabs: React.FC<BorderTabsProps> = ({
                         </div>
                     </div>
                 </div>
-                
+
+                {/* Main Chart */}
+                <div className="relative w-full">
+                    <AnimatePresence mode="popLayout">
+                        <motion.div
+                            layout
+                            transition={{ type: "spring", stiffness: 100, damping: 20, duration: 0.5 }}
+                            className="w-full"
+                        >
+                            <MainChart
+                                data={activeTab === '100' ? prediction100 : prediction2500}
+                                startAt={startAt}
+                                theme={theme}
+                            />
+                        </motion.div>
+                    </AnimatePresence>
+                </div>
 
                 {/* Neighbors Toggle */}
                 <div className="flex justify-end">
@@ -107,22 +140,29 @@ const BorderTabs: React.FC<BorderTabsProps> = ({
                             type="checkbox"
                             className="toggle toggle-primary"
                             checked={showNeighbors}
-                            onChange={toggleNeighbors}
+                            onChange={handleNeighborToggle}
                         />
                     </label>
                 </div>
 
-                {/* Charts */}
+                {/* Neighbor Section */}
                 <div className="relative w-full">
-                    <AnimatePresence mode="popLayout">
+                    <AnimatePresence>
                         {showNeighbors && (
                             <motion.div
                                 key="neighbors"
-                                initial={{ opacity: 0, x: 100 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: 100 }}
-                                transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                                className="mb-6 w-full"
+                                ref={neighborSectionRef}
+                                initial={{ opacity: 0, height: 0, y: -20 }}
+                                animate={{ opacity: 1, height: "auto", y: 0 }}
+                                exit={{ opacity: 0, height: 0, y: -20 }}
+                                transition={{ 
+                                    type: "spring", 
+                                    stiffness: 300, 
+                                    damping: 30,
+                                    height: { duration: 0.4 },
+                                    opacity: { duration: 0.3 }
+                                }}
+                                className="w-full overflow-hidden"
                             >
                                 <NeighborSection
                                     normalizedData={activeTab === '100' 
@@ -134,23 +174,17 @@ const BorderTabs: React.FC<BorderTabsProps> = ({
                                     neighborMetadata={activeTab === '100'
                                         ? prediction100.metadata.normalized.neighbors
                                         : prediction2500.metadata.normalized.neighbors}
-                                    currentEventMetadata={activeTab === '100'
-                                        ? prediction100.metadata.raw.basic
-                                        : prediction2500.metadata.raw.basic}
+                                    currentEventMetadata={{
+                                        name: activeTab === '100' ? prediction100.metadata.raw.name : prediction2500.metadata.raw.name,
+                                        id: activeTab === '100' ? prediction100.metadata.raw.id : prediction2500.metadata.raw.id,
+                                        length: activeTab === '100' 
+                                            ? prediction100.data.raw.target.length 
+                                            : prediction2500.data.raw.target.length
+                                    }}
+                                    theme={theme}
                                 />
                             </motion.div>
                         )}
-
-                        <motion.div
-                            layout
-                            transition={{ type: "spring", stiffness: 100, damping: 20, duration: 0.5 }}
-                            className="w-full"
-                        >
-                            <MainChart
-                                data={activeTab === '100' ? prediction100 : prediction2500}
-                                startAt={startAt}
-                            />
-                        </motion.div>
                     </AnimatePresence>
                 </div>
             </div>

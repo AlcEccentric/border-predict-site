@@ -153,6 +153,7 @@ const App: React.FC = () => {
                         startAt={eventInfo.StartAt}
                         activeTab={activeTab} 
                         setActiveTab={setActiveTab} 
+                        theme={theme}
                     />
                 </>
             )}

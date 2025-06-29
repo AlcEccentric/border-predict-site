@@ -1,8 +1,8 @@
 import { Chart as ChartJS, ChartOptions } from 'chart.js';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Line } from 'react-chartjs-2';
 import annotationPlugin from 'chartjs-plugin-annotation';
-import { LineElement, CategoryScale, LinearScale, PointElement, Legend, Tooltip } from 'chart.js';
+import { LineElement, CategoryScale, LinearScale, PointElement, Legend, Tooltip, InteractionItem } from 'chart.js';
 import CardContainer from './CardContainer';
 import { EventMetadata } from '../types';
 import { AlertTriangle } from 'lucide-react';
@@ -23,6 +23,7 @@ interface NeighborSectionProps {
         };
     };
     currentEventMetadata: EventMetadata;
+    theme?: string;
 }
 
 const COLORS = {
@@ -70,8 +71,21 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
     normalizedData,
     lastKnownIndex,
     neighborMetadata,
-    currentEventMetadata
+    currentEventMetadata,
+    theme
 }) => {
+    const chartRef = useRef<ChartJS<'line'>>(null);
+    const [crosshairPosition, setCrosshairPosition] = useState<{ x: number; y: number } | null>(null);
+    const [hoveredData, setHoveredData] = useState<{ 
+        percentagePoint: number; 
+        values: Array<{ 
+            name: string; 
+            value: number; 
+            color: string; 
+            isTarget?: boolean;
+        }> 
+    } | null>(null);
+    
     // Create default event metadata if it's not provided
     const eventMetadata = currentEventMetadata || {
         name: "現在のイベント",
@@ -92,6 +106,61 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
             ...prev,
             [key]: !prev[key]
         }));
+    };
+
+    const handleChartHover = (event: any, _elements: InteractionItem[]) => {
+        const chart = chartRef.current;
+        if (!chart || !event.native) return;
+
+        const rect = chart.canvas.getBoundingClientRect();
+        const x = event.native.clientX - rect.left;
+
+        // Get the data index at this x position (snap to nearest data point)
+        const dataIndex = Math.round((x - chart.chartArea.left) / (chart.chartArea.width) * (percentagePoints.length - 1));
+        
+        if (dataIndex >= 0 && dataIndex < percentagePoints.length) {
+            // Calculate the actual x position for the data point (snapped position)
+            const snappedX = chart.chartArea.left + (dataIndex / (percentagePoints.length - 1)) * chart.chartArea.width;
+            
+            setCrosshairPosition({ x: snappedX, y: event.native.clientY - rect.top });
+            
+            // Collect all values at this point
+            const values: Array<{ name: string; value: number; color: string; isTarget?: boolean }> = [];
+            
+            // Add target (current event) value
+            if (visibleNeighbors.target && normalizedData.target[dataIndex] !== undefined) {
+                values.push({
+                    name: '現在のイベント',
+                    value: normalizedData.target[dataIndex],
+                    color: COLORS.target,
+                    isTarget: true
+                });
+            }
+            
+            // Add neighbor values
+            Object.entries(normalizedData.neighbors).forEach(([key, data], index) => {
+                if (visibleNeighbors[key] && data[dataIndex] !== undefined) {
+                    values.push({
+                        name: `近傍${key}`,
+                        value: data[dataIndex],
+                        color: COLORS.neighbors[index]
+                    });
+                }
+            });
+            
+            setHoveredData({
+                percentagePoint: percentagePoints[dataIndex],
+                values
+            });
+        } else {
+            setCrosshairPosition(null);
+            setHoveredData(null);
+        }
+    };
+
+    const handleChartLeave = () => {
+        setCrosshairPosition(null);
+        setHoveredData(null);
     };
 
     const formatScore = (score: number): string => {
@@ -125,31 +194,29 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
         ]
     };
 
-    // Get theme-appropriate text color
-    const textColor = React.useMemo(() => {
+    const [textColor, setTextColor] = useState('rgb(75, 85, 99)');
+
+    React.useEffect(() => {
         if (typeof window !== 'undefined') {
-            try {
-                const tempElement = document.createElement('div');
-                tempElement.className = 'text-base-content';
-                tempElement.style.position = 'absolute';
-                tempElement.style.visibility = 'hidden';
-                document.body.appendChild(tempElement);
-                
-                const computedStyle = getComputedStyle(tempElement);
-                const color = computedStyle.color;
-                
-                document.body.removeChild(tempElement);
-                return color;
-            } catch (e) {
-                return 'rgb(75, 85, 99)'; // Default color as fallback
-            }
+            const tempElement = document.createElement('div');
+            tempElement.className = 'text-base-content';
+            tempElement.style.position = 'absolute';
+            tempElement.style.visibility = 'hidden';
+            document.body.appendChild(tempElement);
+
+            const computedStyle = getComputedStyle(tempElement);
+            const color = computedStyle.color;
+
+            document.body.removeChild(tempElement);
+            setTextColor(color);
         }
-        return 'rgb(75, 85, 99)'; // Default color for SSR
-    }, []);
+    }, [theme]);
+
     
     const options: ExtendedChartOptions = {
         responsive: true,
         maintainAspectRatio: false,
+        onHover: handleChartHover,
         plugins: {
             legend: {
                 display: false
@@ -216,30 +283,87 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
         <CardContainer className="mb-4">
             <div className="flex flex-col gap-4">
                 <div className="h-[400px] w-full">
-                    <Line data={chartData} options={{
-                        ...options,
-                        plugins: {
-                            ...options.plugins,
-                            title: {
-                                ...options.plugins.title,
-                                color: textColor,
-                            },
-                            legend: {
-                                display: true,
-                                position: 'bottom',
-                                labels: {
-                                    color: textColor,
-                                    generateLabels: () => [{
-                                        text: '予測範囲',
-                                        fillStyle: 'rgba(103, 220, 209, 0.1)',
-                                        strokeStyle: 'rgba(69, 120, 129, 1)',
-                                        fontColor: textColor,
-                                        lineWidth: 1,
-                                    }]
+                    <div className="relative w-full h-full" onMouseLeave={handleChartLeave}>
+                        <Line 
+                            ref={chartRef}
+                            data={chartData} 
+                            options={{
+                                ...options,
+                                plugins: {
+                                    ...options.plugins,
+                                    title: {
+                                        ...options.plugins.title,
+                                        color: textColor,
+                                    },
+                                    legend: {
+                                        display: true,
+                                        position: 'bottom',
+                                        labels: {
+                                            color: textColor,
+                                            generateLabels: () => [{
+                                                text: '予測範囲',
+                                                fillStyle: 'rgba(103, 220, 209, 0.1)',
+                                                strokeStyle: 'rgba(69, 120, 129, 1)',
+                                                fontColor: textColor,
+                                                lineWidth: 1,
+                                            }]
+                                        }
+                                    }
                                 }
-                            }
-                        }
-                    }} />
+                            }} 
+                        />
+                        
+                        {/* Custom crosshair and tooltip */}
+                        {crosshairPosition && hoveredData && (
+                            <>
+                                {/* Vertical crosshair line */}
+                                <div
+                                    className="absolute pointer-events-none"
+                                    style={{
+                                        left: crosshairPosition.x,
+                                        top: 26,
+                                        bottom: 80,
+                                        width: 1,
+                                        backgroundColor: 'rgba(255, 99, 132, 0.8)',
+                                        zIndex: 10
+                                    }}
+                                />
+                                
+                                {/* Custom tooltip */}
+                                <div
+                                    className="absolute pointer-events-none bg-base-100 border border-base-300 text-base-content rounded-lg shadow-lg p-3 z-20"
+                                    style={{
+                                        left: crosshairPosition.x > window.innerWidth * 0.7 
+                                            ? crosshairPosition.x - 210 
+                                            : crosshairPosition.x + 10,
+                                        top: Math.max(crosshairPosition.y - 60, 10)
+                                    }}
+                                >
+                                    <div className="text-sm font-semibold mb-2">
+                                        {hoveredData.percentagePoint}%
+                                    </div>
+                                    <div className="space-y-1">
+                                        {hoveredData.values.map((item, index) => (
+                                            <div key={index} className="flex items-center justify-between text-xs">
+                                                <div className="flex items-center gap-2">
+                                                    <div
+                                                        className="w-2 h-2 rounded-full"
+                                                        style={{ backgroundColor: item.color }}
+                                                    />
+                                                    <span className={item.isTarget ? 'font-semibold' : ''}>
+                                                        {item.name}
+                                                    </span>
+                                                </div>
+                                                <span className="font-mono">
+                                                    {item.value.toLocaleString()}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
                 </div>
                 
                 <div className="bg-base-100 rounded-xl p-4">
