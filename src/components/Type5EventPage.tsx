@@ -167,7 +167,7 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
 
                     {/* Main Chart Section */}
                     <div ref={chartSectionRef}>
-                        <CardContainer className="mb-8">
+                        <CardContainer className="mb-4">
                         <div className="space-y-4">
                             {/* Main Chart */}
                             <div className="relative w-full">
@@ -187,47 +187,49 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                                     </motion.div>
                                 </AnimatePresence>
                             </div>
+                        </div>
+                        </CardContainer>
+                        
+                        {/* Neighbors Toggle */}
+                        <div className="flex justify-end mb-4">
+                            <label className="cursor-pointer label gap-2">
+                                <span className="label-text">近傍イベント表示</span>
+                                <div
+                                    className="tooltip"
+                                    data-tip="近傍イベントは現在のイベントと傾向が似ているイベントです。詳細はページ下部の「解説」内「近傍イベントとは」をご覧ください"
+                                >
+                                    <span className="cursor-pointer text-info">
+                                        <Info className="w-4 h-4 text-info cursor-pointer" />
+                                    </span>
+                                </div>
+                                <input
+                                    type="checkbox"
+                                    className="toggle toggle-primary"
+                                    checked={!!showNeighbors} // Ensure boolean value
+                                    onChange={handleNeighborToggle}
+                                />
+                            </label>
+                        </div>
 
-                            {/* Neighbors Toggle */}
-                            <div className="flex justify-end">
-                                <label className="cursor-pointer label gap-2">
-                                    <span className="label-text">近傍イベント表示</span>
-                                    <div
-                                        className="tooltip"
-                                        data-tip="近傍イベントは現在のイベントと傾向が似ているイベントです。詳細はページ下部の「解説」内「近傍イベントとは」をご覧ください"
+                        {/* Neighbor Section */}
+                        <div className="relative w-full">
+                            <AnimatePresence>
+                                {showNeighbors && (
+                                    <motion.div
+                                        key="neighbors"
+                                        ref={neighborSectionRef}
+                                        initial={{ opacity: 0, height: 0, y: -20 }}
+                                        animate={{ opacity: 1, height: "auto", y: 0 }}
+                                        exit={{ opacity: 0, height: 0, y: -20 }}
+                                        transition={{ 
+                                            type: "spring", 
+                                            stiffness: 300, 
+                                            damping: 30,
+                                            height: { duration: 0.4 },
+                                            opacity: { duration: 0.3 }
+                                        }}
+                                        className="w-full overflow-hidden"
                                     >
-                                        <span className="cursor-pointer text-info">
-                                            <Info className="w-4 h-4 text-info cursor-pointer" />
-                                        </span>
-                                    </div>
-                                    <input
-                                        type="checkbox"
-                                        className="toggle toggle-primary"
-                                        checked={!!showNeighbors} // Ensure boolean value
-                                        onChange={handleNeighborToggle}
-                                    />
-                                </label>
-                            </div>
-
-                            {/* Neighbor Section */}
-                            <div className="relative w-full">
-                                <AnimatePresence>
-                                    {showNeighbors && (
-                                        <motion.div
-                                            key="neighbors"
-                                            ref={neighborSectionRef}
-                                            initial={{ opacity: 0, height: 0, y: -20 }}
-                                            animate={{ opacity: 1, height: "auto", y: 0 }}
-                                            exit={{ opacity: 0, height: 0, y: -20 }}
-                                            transition={{ 
-                                                type: "spring", 
-                                                stiffness: 300, 
-                                                damping: 30,
-                                                height: { duration: 0.4 },
-                                                opacity: { duration: 0.3 }
-                                            }}
-                                            className="w-full overflow-hidden"
-                                        >
                                             <Type5NeighborSection
                                                 idolPredictions={idolPredictions}
                                                 selectedIdol={selectedIdol}
@@ -237,8 +239,6 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                                     )}
                                 </AnimatePresence>
                             </div>
-                        </div>
-                    </CardContainer>
                     </div>
                 </>
             )}
