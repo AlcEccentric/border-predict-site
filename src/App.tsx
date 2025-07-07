@@ -9,7 +9,7 @@ import CardContainer from './components/CardContainer';
 import ThemeSelector from './components/ThemeSelector';
 
 const App: React.FC = () => {
-    const releaseDate = new Date('2025-06-01T00:00:00+09:00'); // TODO: update once development is complete
+    const releaseDate = new Date('2025-09-01T00:00:00+09:00'); // TODO: update once development is complete
     const now = new Date();
     if (now < releaseDate) { 
         return <EventModal />;
