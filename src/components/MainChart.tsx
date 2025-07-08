@@ -12,7 +12,6 @@ import {
   Legend,
   ChartData,
   ChartOptions,
-  InteractionItem
 } from 'chart.js';
 
 // Register ChartJS components
@@ -37,7 +36,8 @@ interface MainChartProps {
     metadata: {
       raw: {
         last_known_step_index: number;
-        id: number;  // Added this for the event ID
+        id: number;
+        name: string;  // Add name property
       };
     };
   };
@@ -133,6 +133,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
       borderColor: 'rgb(75, 192, 192)',
       tension: 0.1,
       pointRadius: 0,
+      borderWidth: 1.5, // Make line thinner
     }]
   };
 
@@ -198,7 +199,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
       },
       title: {
         display: true,
-        text: 'スコア推移',
+        text: data.metadata.raw.name ? `${data.metadata.raw.name} - スコア推移` : 'スコア推移',
         color: textColor,
         padding: {
           bottom: 10
@@ -266,10 +267,10 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
             
             {/* Custom tooltip */}
             <div
-              className="absolute pointer-events-none bg-base-100 border border-base-300 text-base-content rounded-lg shadow-lg p-3 z-20"
+              className="absolute pointer-events-none bg-base-100 border border-base-300 text-base-content rounded-lg shadow-lg p-4 z-20 min-w-[300px] max-w-lg"
               style={{
                 left: crosshairPosition.x > window.innerWidth * 0.7 
-                  ? crosshairPosition.x - 130 
+                  ? crosshairPosition.x - 220  // Move further left when near right edge
                   : crosshairPosition.x + 10,
                 top: Math.max(crosshairPosition.y - 60, 10)
               }}
@@ -278,7 +279,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
                 {hoveredData.timePoint}
               </div>
               <div className="text-xs">
-                スコア: {hoveredData.value.toLocaleString()}
+                スコア: {Math.round(hoveredData.value).toLocaleString()}
               </div>
             </div>
           </>

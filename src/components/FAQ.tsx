@@ -16,6 +16,20 @@ const FAQ: React.FC = () => {
                             参考程度にご利用ください。
                         </p>
                         <p className="mt-2">
+                            <strong>予測プロセス:</strong> 
+                            <br />1. 現在のイベントと類似する過去のイベントを「近傍イベント」として特定
+                            <br />2. 近傍イベントのスコア推移を現在のイベントの既知データに合わせて調整（アライメント）
+                            <br />3. 距離に基づく重み付けを行い、複数の近傍イベントから最終予測を算出
+                        </p>
+                        <p className="mt-2">
+                            <strong>アライメント方法:</strong> 線形回帰、アフィン変換、比例調整の3つの方法を用いて、
+                            近傍イベントのスコア推移を現在のイベントの直近数時間のトレンドに最適に合わせます。
+                        </p>
+                        <p className="mt-2">
+                            <strong>重み付け計算:</strong> アライメント後、各近傍イベントと現在のイベントとの距離を計算し、
+                            距離が近いほど高い重みを与えて最終的な予測スコアを算出します。
+                        </p>
+                        <p className="mt-2">
                             <strong>近傍イベント:</strong> 近傍イベント表示を有効にすると、選択したアイドルの過去の類似イベントとの比較ができます。
                             アイドルとボーダーを選択して、個別の近傍データを確認できます。
                         </p>
@@ -62,7 +76,34 @@ const FAQ: React.FC = () => {
                             <b>異なる長さの近傍イベント</b>は、ブースト開始位置を同じ比率に合わせ、スコアも長さの比率でスケーリングしています。<br />
                             そのため、<b>正規化後のスコアは実際のスコアと異なる場合があります</b>。<br />
                             <span className="text-error font-bold">実際のボーダー推移を比較したい場合は、同じ開催日数のイベントを参照するのがおすすめです。</span>
+                        </p>
+                        <p className="mt-2">
+                            <strong>補足:</strong> アニバーサリーイベントは全て同じ開催日数のため、正規化後も最終スコアは実際のスコアと一致します。
+                        </p>
+                    </div>
+                </div>
 
+                <div className="collapse collapse-plus bg-base-200">
+                    <input type="checkbox" />
+                    <div className="collapse-title text-xl font-medium">
+                        データソース・不具合報告
+                    </div>
+                    <div className="collapse-content">
+                        <p>
+                            <strong>データソース:</strong>
+                            <br />ボーダーデータおよびアイドル画像は、
+                            <a href="https://www.matsurihi.me/" target="_blank" rel="noopener noreferrer" className="link link-primary">
+                                https://www.matsurihi.me/
+                            </a>
+                            から提供されています。
+                        </p>
+                        <p className="mt-2">
+                            <strong>お問い合わせ:</strong>
+                            <br />不具合報告や質問等は、
+                            <a href="mailto:yuenimillionlive@gmail.com" className="link link-primary">
+                                yuenimillionlive@gmail.com
+                            </a>
+                            までご連絡ください。
                         </p>
                     </div>
                 </div>

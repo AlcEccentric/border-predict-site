@@ -6,11 +6,13 @@ import { getIdolName, getIdolColor } from '../utils/idolData';
 interface IdolSelectorProps {
     selectedIdol: number;
     onIdolSelect: (idolId: number) => void;
+    availableIdols?: Set<number>; // Add available idols prop
 }
 
 const IdolSelector: React.FC<IdolSelectorProps> = ({
     selectedIdol,
-    onIdolSelect
+    onIdolSelect,
+    availableIdols
 }) => {
     const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
 
@@ -26,6 +28,7 @@ const IdolSelector: React.FC<IdolSelectorProps> = ({
     };
 
     const isSelected = (idolId: number) => selectedIdol === idolId;
+    const hasData = (idolId: number) => availableIdols ? availableIdols.has(idolId) : true;
 
     const handleIdolClick = (idolId: number) => {
         onIdolSelect(idolId);
@@ -43,33 +46,41 @@ const IdolSelector: React.FC<IdolSelectorProps> = ({
                 
                 <div className="text-sm text-base-content/70">
                     表示したいアイドルを選択してください
+                    {availableIdols && availableIdols.size < allIdols.length && (
+                        <div className="mt-2 p-2 bg-warning/10 border border-warning/20 rounded text-warning text-xs">
+                            ⚠️ 一部のアイドルは予測データが不足しているため選択できません
+                        </div>
+                    )}
                 </div>
 
                 <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 2xl:grid-cols-13 gap-2">
                     {allIdols.map(idolId => (
                         <motion.div
                             key={idolId}
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
+                            whileHover={{ scale: hasData(idolId) ? 1.05 : 1.02 }}
+                            whileTap={{ scale: hasData(idolId) ? 0.95 : 1.0 }}
                             className={`
-                                relative cursor-pointer rounded-lg overflow-hidden border-2 transition-all duration-200
-                                ${isSelected(idolId) 
-                                    ? 'border-primary shadow-lg ring-2 ring-primary/30' 
-                                    : 'border-base-300 hover:border-primary/50'
+                                relative rounded-lg overflow-hidden border-2 transition-all duration-200
+                                ${!hasData(idolId) 
+                                    ? 'cursor-not-allowed opacity-50 border-base-300 bg-base-200' 
+                                    : `cursor-pointer ${isSelected(idolId) 
+                                        ? 'border-primary shadow-lg ring-2 ring-primary/30' 
+                                        : 'border-base-300 hover:border-primary/50'
+                                    }`
                                 }
                             `}
-                            onClick={() => handleIdolClick(idolId)}
+                            onClick={() => hasData(idolId) && handleIdolClick(idolId)}
                             style={{
-                                borderColor: isSelected(idolId) ? getIdolColor(idolId) : undefined,
+                                borderColor: isSelected(idolId) && hasData(idolId) ? getIdolColor(idolId) : undefined,
                                 '--hover-border-color': getIdolColor(idolId)
                             } as React.CSSProperties & { '--hover-border-color': string }}
                             onMouseEnter={(e) => {
-                                if (!isSelected(idolId)) {
+                                if (!isSelected(idolId) && hasData(idolId)) {
                                     e.currentTarget.style.borderColor = getIdolColor(idolId);
                                 }
                             }}
                             onMouseLeave={(e) => {
-                                if (!isSelected(idolId)) {
+                                if (!isSelected(idolId) && hasData(idolId)) {
                                     e.currentTarget.style.borderColor = '';
                                 }
                             }}
@@ -91,7 +102,7 @@ const IdolSelector: React.FC<IdolSelectorProps> = ({
                                     </div>
                                 )}
                                 
-                                {isSelected(idolId) && (
+                                {isSelected(idolId) && hasData(idolId) && (
                                     <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
                                         <div 
                                             className="rounded-full p-1"
@@ -108,6 +119,17 @@ const IdolSelector: React.FC<IdolSelectorProps> = ({
                                                     clipRule="evenodd" 
                                                 />
                                             </svg>
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {!hasData(idolId) && (
+                                    <div className="absolute inset-0 bg-base-300/80 flex items-center justify-center">
+                                        <div className="text-center">
+                                            <div className="text-lg">📊</div>
+                                            <div className="text-xs text-base-content/70 font-semibold">
+                                                データ不足
+                                            </div>
                                         </div>
                                     </div>
                                 )}

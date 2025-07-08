@@ -164,7 +164,7 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
     };
 
     const formatScore = (score: number): string => {
-        return score.toLocaleString();
+        return Math.round(score).toLocaleString();
     };
 
     const percentagePoints = normalizedData.target.map((_, index) => 
@@ -179,7 +179,8 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                 data: visibleNeighbors.target ? normalizedData.target : [],
                 borderColor: COLORS.target,
                 tension: 0.1,
-                pointRadius: 3,
+                pointRadius: 0, // Remove dots
+                borderWidth: 1.5, // Make line thinner
                 fill: false,
             },
             ...Object.entries(normalizedData.neighbors)
@@ -188,7 +189,8 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                     data: visibleNeighbors[key] ? data : [],
                     borderColor: COLORS.neighbors[index],
                     tension: 0.1,
-                    pointRadius: 3,
+                    pointRadius: 0, // Remove dots
+                    borderWidth: 1.5, // Make line thinner
                     fill: false,
                 }))
         ]
@@ -282,7 +284,7 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
     return (
         <CardContainer className="mb-4">
             <div className="flex flex-col gap-4">
-                <div className="h-[400px] w-full">
+                <div className="h-[600px] w-full">
                     <div className="relative w-full h-full" onMouseLeave={handleChartLeave}>
                         <Line 
                             ref={chartRef}
@@ -321,8 +323,8 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                                     className="absolute pointer-events-none"
                                     style={{
                                         left: crosshairPosition.x,
-                                        top: 26,
-                                        bottom: 80,
+                                        top: 0,
+                                        bottom: 90,
                                         width: 1,
                                         backgroundColor: 'rgba(255, 99, 132, 0.8)',
                                         zIndex: 10
@@ -355,7 +357,7 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                                                     </span>
                                                 </div>
                                                 <span className="font-mono">
-                                                    {item.value.toLocaleString()}
+                                                    {Math.round(item.value).toLocaleString()}
                                                 </span>
                                             </div>
                                         ))}

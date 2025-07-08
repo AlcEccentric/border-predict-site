@@ -9,7 +9,7 @@ import CardContainer from './components/CardContainer';
 import ThemeSelector from './components/ThemeSelector';
 
 const App: React.FC = () => {
-    const releaseDate = new Date('2025-09-01T00:00:00+09:00'); // TODO: update once development is complete
+    const releaseDate = new Date('2025-06-01T00:00:00+09:00'); // TODO: update once development is complete
     const now = new Date();
     if (now < releaseDate) { 
         return <EventModal />;
@@ -24,8 +24,8 @@ const App: React.FC = () => {
     const themes = ['nord', 'cupcake', 'dim', 'aqua', 'sunset'];
     // Configuration for data source - set to local for development, remote for production
     const baseUrl = window.location.hostname === 'localhost' 
-        ? '/public/normal' // Local testing - reads from public/normal directory
-        : 'https://cdn.yuenimillion.live/normal'; // Production URL
+        ? '/normal' // Local testing - reads from public/normal directory
+        : 'https://cdn.yuenimillion.live'; // Production URL
     const [theme, setTheme] = useState(() => {
         const savedTheme = localStorage.getItem('theme') || themes[0];
         // Set initial theme immediately
@@ -59,11 +59,15 @@ const App: React.FC = () => {
 
                 if (isNormalEvent(eventInfoData.EventType)) {
                     // Load normal event predictions (idol 0)
-                    const pred100Response = await fetch(`${baseUrl}/prediction/0/100/predictions.json`);
-                    const pred2500Response = await fetch(`${baseUrl}/prediction/0/2500/predictions.json`);
+                    const pred100Response = await fetch(`${baseUrl}/prediction/0/100.0/predictions.json`);
+                    const pred2500Response = await fetch(`${baseUrl}/prediction/0/2500.0/predictions.json`);
                     
-                    setPrediction100(await pred100Response.json());
-                    setPrediction2500(await pred2500Response.json());
+                    if (pred100Response.ok && pred2500Response.ok) {
+                        setPrediction100(await pred100Response.json());
+                        setPrediction2500(await pred2500Response.json());
+                    } else {
+                        console.warn('Failed to load normal event predictions');
+                    }
                 } else if (isType5Event(eventInfoData.EventType)) {
                     // Load Type 5 event predictions for all idols
                     const idolPredictionsMap = new Map<number, IdolPredictionData>();
@@ -72,15 +76,40 @@ const App: React.FC = () => {
                     const loadPromises = [];
                     for (let idolId = 1; idolId <= 52; idolId++) {
                         loadPromises.push(
-                            Promise.all([
-                                fetch(`${baseUrl}/prediction/${idolId}/100/predictions.json`).then(res => res.json()),
-                                fetch(`${baseUrl}/prediction/${idolId}/1000/predictions.json`).then(res => res.json())
-                            ]).then(([pred100, pred1000]) => {
-                                idolPredictionsMap.set(idolId, {
-                                    idolId,
-                                    prediction100: pred100,
-                                    prediction1000: pred1000
-                                });
+                            Promise.allSettled([
+                                fetch(`${baseUrl}/prediction/${idolId}/100.0/predictions.json`).then(res => {
+                                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                                    return res.json();
+                                }),
+                                fetch(`${baseUrl}/prediction/${idolId}/1000.0/predictions.json`).then(res => {
+                                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                                    return res.json();
+                                })
+                            ]).then((results) => {
+                                const [pred100Result, pred1000Result] = results;
+                                
+                                // Extract successful predictions or null for failed ones
+                                const pred100 = pred100Result.status === 'fulfilled' ? pred100Result.value : null;
+                                const pred1000 = pred1000Result.status === 'fulfilled' ? pred1000Result.value : null;
+                                
+                                // Only add to map if at least one prediction exists
+                                if (pred100 || pred1000) {
+                                    idolPredictionsMap.set(idolId, {
+                                        idolId,
+                                        prediction100: pred100,
+                                        prediction1000: pred1000
+                                    });
+                                }
+                                
+                                // Log what data we have for debugging
+                                const available = [];
+                                if (pred100) available.push('100');
+                                if (pred1000) available.push('1000');
+                                if (available.length > 0) {
+                                    console.log(`Idol ${idolId}: available borders [${available.join(', ')}]`);
+                                } else {
+                                    console.warn(`Idol ${idolId}: no prediction data available`);
+                                }
                             }).catch(error => {
                                 console.warn(`Failed to load predictions for idol ${idolId}:`, error);
                             })
@@ -135,7 +164,7 @@ const App: React.FC = () => {
                 <div className="flex justify-between items-center">
                     <h1 className="text-3xl font-bold flex flex-col gap-2">
                         <span>ミリシタ・ボーダー予想</span>
-                        <span className="text-2xl text-gray-500">{eventInfo?.Name}</span>
+                        <span className="text-2xl text-gray-500">{eventInfo?.EventName}</span>
                     </h1>
                     <div className="flex items-center gap-2">
                         <ThemeSelector theme={theme} setTheme={setTheme} />
