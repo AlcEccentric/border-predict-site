@@ -93,15 +93,15 @@ const FAQ: React.FC = () => {
                             <strong>データソース:</strong>
                             <br />ボーダーデータおよびアイドル画像は、
                             <a href="https://www.matsurihi.me/" target="_blank" rel="noopener noreferrer" className="link link-primary">
-                                https://www.matsurihi.me/
+                                https://www.matsurihi.me
                             </a>
                             から提供されています。
                         </p>
                         <p className="mt-2">
                             <strong>お問い合わせ:</strong>
                             <br />不具合報告や質問等は、
-                            <a href="mailto:yuenimillionlive@gmail.com" className="link link-primary">
-                                yuenimillionlive@gmail.com
+                            <a href="mailto:yuenimillionlive@proton.me" className="link link-primary">
+                                yuenimillionlive@proton.me
                             </a>
                             までご連絡ください。
                         </p>
