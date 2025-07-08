@@ -250,7 +250,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
 
   return (
     <div className="relative w-full">
-      <div className="relative w-full h-[300px] sm:h-[400px] md:h-[500px]" onMouseLeave={handleChartLeave}>
+      <div className="relative w-full h-[300px] sm:h-[400px] md:h-[600px]" onMouseLeave={handleChartLeave}>
         <Line ref={chartRef} data={chartData} options={options} />
         
         {/* Custom crosshair and tooltip */}
@@ -261,8 +261,8 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
               className="absolute pointer-events-none"
               style={{
                 left: crosshairPosition.x,
-                top: 26,
-                bottom: 80,
+                top: window.innerWidth < 768 ? 20 : 26,
+                bottom: window.innerWidth < 768 ? 60 : 80,
                 width: 1,
                 backgroundColor: 'rgba(255, 99, 132, 0.8)',
                 zIndex: 10

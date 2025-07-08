@@ -344,8 +344,8 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                                 className="absolute pointer-events-none"
                                 style={{
                                     left: crosshairPosition.x,
-                                    top: '4%', // Adjusted to better align with chart area
-                                    height: '85.5%', // Adjusted height to cover chart area properly
+                                    top: window.innerWidth < 640 ? '12%' : '4%', // Higher percentage for mobile due to smaller chart
+                                    height: window.innerWidth < 640 ? '56%' : '85.5%', // Shorter height for mobile
                                     width: 1,
                                     backgroundColor: 'rgba(255, 99, 132, 0.8)',
                                     zIndex: 10
@@ -387,21 +387,35 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                                     left: (() => {
                                         const tooltipWidth = window.innerWidth < 640 ? 120 : 280;
                                         
-                                        // Always prefer left positioning in neighbor view
+                                        // Create more space between crosshair and tooltip
                                         if (window.innerWidth < 640) {
-                                            // On mobile, always show to the left if possible
-                                            if (crosshairPosition.x > tooltipWidth + 20) {
-                                                return crosshairPosition.x - tooltipWidth - 10;
-                                            } else {
-                                                return Math.max(10, crosshairPosition.x - tooltipWidth - 10);
+                                            // On mobile, be more aggressive about positioning
+                                            const containerWidth = window.innerWidth;
+                                            const spaceOnLeft = crosshairPosition.x;
+                                            const spaceOnRight = containerWidth - crosshairPosition.x;
+                                            
+                                            // If there's enough space on the left, use it
+                                            if (spaceOnLeft > tooltipWidth + 40) {
+                                                return crosshairPosition.x - tooltipWidth - 30;
+                                            }
+                                            // If there's enough space on the right, use it
+                                            else if (spaceOnRight > tooltipWidth + 40) {
+                                                return crosshairPosition.x + 30;
+                                            }
+                                            // Otherwise, center it away from edges
+                                            else {
+                                                return Math.max(10, Math.min(
+                                                    containerWidth - tooltipWidth - 10,
+                                                    crosshairPosition.x - tooltipWidth / 2
+                                                ));
                                             }
                                         }
                                         
-                                        // On desktop, strongly prefer left positioning
-                                        if (crosshairPosition.x > tooltipWidth + 20) {
-                                            return crosshairPosition.x - tooltipWidth - 10;
+                                        // On desktop, create more space between crosshair and tooltip
+                                        if (crosshairPosition.x > tooltipWidth + 40) {
+                                            return crosshairPosition.x - tooltipWidth - 25; // More space on left
                                         } else {
-                                            return crosshairPosition.x + 10;
+                                            return crosshairPosition.x + 25; // More space on right
                                         }
                                     })(),
                                     top: 50
@@ -421,12 +435,12 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                                                 <span className={`${item.isTarget ? 'font-semibold' : ''} truncate`}>
                                                     <span className="hidden sm:inline">{item.name}</span>
                                                     <span className="sm:hidden">
-                                                        {item.isTarget ? '現在' : `近傍${item.name.match(/近傍(\d+)/)?.[1] || ''}`}
+                                                        {item.isTarget ? '進行中' : `近傍${item.name.match(/近傍(\d+)/)?.[1] || ''}`}
                                                     </span>
                                                 </span>
                                             </div>
                                             <span className="font-mono text-xs">
-                                                {item.value.toFixed(2)}
+                                                {Math.round(item.value).toLocaleString()}
                                             </span>
                                         </div>
                                     ))}
