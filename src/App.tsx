@@ -25,7 +25,7 @@ const App: React.FC = () => {
     // Configuration for data source - set to local for development, remote for production
     const baseUrl = 'https://cdn.yuenimillion.live'; // Production URL
     const [theme, setTheme] = useState(() => {
-        const savedTheme = localStorage.getItem('theme') || themes[0];
+        const savedTheme = localStorage.getItem('theme') || themes[1];
         // Set initial theme immediately
         document.documentElement.setAttribute('data-theme', savedTheme);
         return savedTheme;
