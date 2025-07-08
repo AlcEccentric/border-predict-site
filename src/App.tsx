@@ -154,7 +154,7 @@ const App: React.FC = () => {
             <CardContainer className="mb-8">
                 <div className="flex justify-between items-center">
                     <h1 className="text-3xl font-bold flex flex-col gap-2">
-                        <span>ミリシタ・ボーダー予想</span>
+                        <span>ミリシタ・ボーダー予想 (ベータ版)</span>
                         <span className="text-2xl text-gray-500">{eventInfo?.EventName}</span>
                     </h1>
                     <div className="flex items-center gap-2">

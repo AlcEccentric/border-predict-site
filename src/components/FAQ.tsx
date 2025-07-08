@@ -103,6 +103,12 @@ const FAQ: React.FC = () => {
                             から提供されています。
                         </p>
                         <p className="mt-2">
+                            <strong>ベータ版について:</strong>
+                            <br />このサイトは現在ベータ版として公開されており、テスト段階にあります。
+                            予測精度の向上や機能の改善を継続的に行っています。
+                            不具合や改善点にお気づきの場合は、お気軽にご連絡ください。
+                        </p>
+                        <p className="mt-2">
                             <strong>お問い合わせ:</strong>
                             <br />不具合報告や質問等は、
                             <a href="mailto:yuenimillionlive@proton.me" className="link link-primary">
