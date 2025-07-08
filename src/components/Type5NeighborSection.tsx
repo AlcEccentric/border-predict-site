@@ -412,8 +412,8 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                                         }
                                         
                                         // On desktop, create more space between crosshair and tooltip
-                                        if (crosshairPosition.x > tooltipWidth + 40) {
-                                            return crosshairPosition.x - tooltipWidth - 25; // More space on left
+                                        if (crosshairPosition.x > tooltipWidth + 60) {
+                                            return crosshairPosition.x - tooltipWidth - 40; // More space on left
                                         } else {
                                             return crosshairPosition.x + 25; // More space on right
                                         }

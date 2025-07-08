@@ -44,7 +44,7 @@ const App: React.FC = () => {
     useEffect(() => {
         const loadData = async () => {
             try {
-                // Load event info
+                // Load event info (CDN will cache for 24 hours based on Cache-Control header)
                 const eventInfoResponse = await fetch(`${baseUrl}/metadata/latest_event_border_info.json`);
                 if (!eventInfoResponse.ok) {
                     throw new Error(`Failed to fetch event info: ${eventInfoResponse.status} ${eventInfoResponse.statusText}`);
@@ -53,7 +53,7 @@ const App: React.FC = () => {
                 setEventInfo(eventInfoData);
 
                 if (isNormalEvent(eventInfoData.EventType)) {
-                    // Load normal event predictions (idol 0)
+                    // Load normal event predictions (idol 0) - CDN will cache for 1 hour
                     const pred100Response = await fetch(`${baseUrl}/prediction/0/100.0/predictions.json`);
                     const pred2500Response = await fetch(`${baseUrl}/prediction/0/2500.0/predictions.json`);
                     
@@ -67,26 +67,28 @@ const App: React.FC = () => {
                     // Load Type 5 event predictions for all idols
                     const idolPredictionsMap = new Map<number, IdolPredictionData>();
                     
+                    // Helper function to safely fetch prediction data
+                    const fetchPrediction = async (idolId: number, border: string) => {
+                        try {
+                            const response = await fetch(`${baseUrl}/prediction/${idolId}/${border}/predictions.json`);
+                            if (!response.ok) {
+                                return null; // Return null for 404s and other errors
+                            }
+                            return await response.json();
+                        } catch (error) {
+                            // Silently handle network errors (CORS, 404, etc.)
+                            return null;
+                        }
+                    };
+                    
                     // Load predictions for idols 1-52
                     const loadPromises = [];
                     for (let idolId = 1; idolId <= 52; idolId++) {
                         loadPromises.push(
-                            Promise.allSettled([
-                                fetch(`${baseUrl}/prediction/${idolId}/100.0/predictions.json`).then(res => {
-                                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                                    return res.json();
-                                }),
-                                fetch(`${baseUrl}/prediction/${idolId}/1000.0/predictions.json`).then(res => {
-                                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                                    return res.json();
-                                })
-                            ]).then((results) => {
-                                const [pred100Result, pred1000Result] = results;
-                                
-                                // Extract successful predictions or null for failed ones
-                                const pred100 = pred100Result.status === 'fulfilled' ? pred100Result.value : null;
-                                const pred1000 = pred1000Result.status === 'fulfilled' ? pred1000Result.value : null;
-                                
+                            Promise.all([
+                                fetchPrediction(idolId, '100.0'),
+                                fetchPrediction(idolId, '1000.0')
+                            ]).then(([pred100, pred1000]) => {
                                 // Only add to map if at least one prediction exists
                                 if (pred100 || pred1000) {
                                     idolPredictionsMap.set(idolId, {
@@ -94,15 +96,16 @@ const App: React.FC = () => {
                                         prediction100: pred100,
                                         prediction1000: pred1000
                                     });
+                                    
+                                    // Optional: Log successful loads (can be removed in production)
+                                    // const available = [];
+                                    // if (pred100) available.push('100');
+                                    // if (pred1000) available.push('1000');
+                                    // console.log(`Loaded predictions for idol ${idolId}: ${available.join(', ')}`);
                                 }
-                                
-                                // Log what data we have for debugging
-                                const available = [];
-                                if (pred100) available.push('100');
-                                if (pred1000) available.push('1000');
-                                
                             }).catch(error => {
-                                console.warn(`Failed to load predictions for idol ${idolId}:`, error);
+                                // This should rarely happen since we handle errors in fetchPrediction
+                                console.warn(`Unexpected error loading predictions for idol ${idolId}:`, error);
                             })
                         );
                     }
@@ -117,6 +120,7 @@ const App: React.FC = () => {
             }
         };
 
+        // Initial load
         loadData();
     }, []); // Only run once on mount
 

@@ -72,6 +72,29 @@ const FAQ: React.FC = () => {
                 <div className="collapse collapse-plus bg-base-200">
                     <input type="checkbox" />
                     <div className="collapse-title text-xl font-medium">
+                        データ更新頻度と古いデータについて
+                    </div>
+                    <div className="collapse-content">
+                        <p>
+                            <strong>データ更新頻度:</strong>
+                            <br />予測データは通常1時間ごとに更新されます。
+                        </p>
+                        <p className="mt-2">
+                            <strong>古いデータが表示される場合:</strong>
+                            <br />ブラウザのキャッシュが原因で古いデータが表示される場合があります。
+                            以下の方法で最新データを取得できます：
+                        </p>
+                        <ul className="mt-2 ml-4 list-disc">
+                            <li><strong>ページをリロード:</strong> Ctrl+F5 (Windows) / Cmd+Shift+R (Mac) で強制リロード</li>
+                            <li><strong>ブラウザキャッシュをクリア:</strong> 設定からブラウザキャッシュを削除</li>
+                            <li><strong>プライベートブラウジング:</strong> シークレットモードで開き直し</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div className="collapse collapse-plus bg-base-200">
+                    <input type="checkbox" />
+                    <div className="collapse-title text-xl font-medium">
                         スコアの正規化方法について
                     </div>
                     <div className="collapse-content">
