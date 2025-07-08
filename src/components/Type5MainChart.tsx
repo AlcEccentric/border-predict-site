@@ -425,7 +425,7 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
 
   return (
     <div className="relative w-full">
-      <div className="relative w-full h-[300px] sm:h-[400px] md:h-[500px]" onMouseLeave={handleChartLeave}>
+      <div className="relative w-full h-[300px] sm:h-[400px] md:h-[600px]" onMouseLeave={handleChartLeave}>
         <Line ref={chartRef} data={chartData} options={options} />
         
         {/* Custom crosshair and tooltip */}
@@ -436,8 +436,8 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
               className="absolute pointer-events-none"
               style={{
                 left: crosshairPosition.x,
-                top: '4.6%',
-                height: '79%',
+                top: window.innerWidth < 768 ? '11%' : '5.5%', // Higher percentage for mobile due to smaller chart
+                height: window.innerWidth < 768 ? '41%' : '74.5%',
                 width: 1,
                 backgroundColor: 'rgba(255, 99, 132, 0.8)',
                 zIndex: 10
