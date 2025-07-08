@@ -103,6 +103,10 @@ const FAQ: React.FC = () => {
                             <a href="mailto:yuenimillionlive@proton.me" className="link link-primary">
                                 yuenimillionlive@proton.me
                             </a>
+                            または
+                            <a href="https://twitter.com/amakabeP" target="_blank" rel="noopener noreferrer" className="link link-primary">
+                                @amakabeP
+                            </a>
                             までご連絡ください。
                         </p>
                     </div>
