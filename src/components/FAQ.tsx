@@ -91,6 +91,54 @@ const FAQ: React.FC = () => {
                 <div className="collapse collapse-plus bg-base-200">
                     <input type="checkbox" />
                     <div className="collapse-title text-xl font-medium">
+                        予測精度について
+                    </div>
+                    <div className="collapse-content">
+                        <p>
+                            予測精度はイベント形式によって異なります。以下は検証結果に基づく精度の目安です。
+                        </p>
+                        
+                        <div className="mt-4">
+                            <h4 className="text-lg font-semibold mb-2">アニバーサリーイベント（7thアニバーサリーでの検証結果）</h4>
+                            <p className="text-sm mb-2">
+                                7thアニバーサリーイベントのデータを用いた検証結果に基づく予測精度の目安です。
+                                イベントの進行度に応じて精度が向上する傾向があります。
+                            </p>
+                            
+                            <div className="ml-4">
+                                <p className="mt-2">
+                                    <strong>100位ボーダー:</strong>
+                                    <br />• イベント序盤（10-30%）: ±10%誤差範囲の的中率 48-69%、±5%誤差範囲 19-35%
+                                    <br />• イベント中盤（33-67%）: ±10%誤差範囲の的中率 75-85%、±5%誤差範囲 38-54%
+                                    <br />• イベント後半（70-77%）: ±10%誤差範囲の的中率 79-92%、±5%誤差範囲 50%
+                                    <br />• イベント終盤（80-90%）: ±10%誤差範囲の的中率 94-100%、±5%誤差範囲 58-75%
+                                    <br />• イベント最終盤（90-97%）: ±10%誤差範囲の的中率 100%、±5%誤差範囲 75-98%
+                                </p>
+                                <p className="mt-2">
+                                    <strong>1000位ボーダー:</strong>
+                                    <br />• ±10%誤差範囲の的中率は90%以前で約80%、90%以降で90%
+                                    <br />• ±5%誤差範囲の的中率は90%以前で60-70%、90%以降で80%
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div className="mt-4">
+                            <h4 className="text-lg font-semibold mb-2">通常イベント</h4>
+                            <p className="text-sm text-base-content/70">
+                                通常イベントの予測精度データは現在収集・検証中です。
+                            </p>
+                        </div>
+                        
+                        <p className="mt-4 text-sm">
+                            <strong>注意:</strong> 予測精度はイベント形式や参加者の行動パターンによって変動する可能性があります。
+                            参考程度にご利用ください。
+                        </p>
+                    </div>
+                </div>
+
+                <div className="collapse collapse-plus bg-base-200">
+                    <input type="checkbox" />
+                    <div className="collapse-title text-xl font-medium">
                         データソース・不具合報告
                     </div>
                     <div className="collapse-content">
