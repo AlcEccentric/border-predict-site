@@ -59,11 +59,19 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
 
     const getScoreForIdol = (idolId: number, border: '100' | '1000') => {
         const idolData = idolPredictions.get(idolId);
-        if (!idolData) return 0;
+        if (!idolData) return null;
         
         const prediction = border === '100' ? idolData.prediction100 : idolData.prediction1000;
+        if (!prediction) return null;
+        
         const scores = prediction.data.raw.target;
         return scores[scores.length - 1];
+    };
+
+    const hasDataForBorder = (idolId: number, border: '100' | '1000') => {
+        const idolData = idolPredictions.get(idolId);
+        if (!idolData) return false;
+        return border === '100' ? !!idolData.prediction100 : !!idolData.prediction1000;
     };
 
     if (loading) {
@@ -90,7 +98,7 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                             ミリシタ・ボーダー予想
                         </h1>
                         <h2 className="text-2xl font-bold mt-2">
-                            {eventInfo.Name}
+                            {eventInfo.EventName}
                         </h2>
                     </div>
                     <div className="flex items-center gap-2">
@@ -103,9 +111,13 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
             <IdolSelector
                 selectedIdol={selectedIdol}
                 onIdolSelect={handleIdolSelect}
+                availableIdols={new Set(Array.from(idolPredictions.keys()).filter(idolId => {
+                    const idolData = idolPredictions.get(idolId);
+                    return idolData && (idolData.prediction100 || idolData.prediction1000);
+                }))}
             />
 
-            {selectedIdol && (
+            {selectedIdol && idolPredictions.has(selectedIdol) && (
                 <>
                     {/* Summary Stats */}
                     <CardContainer className="mb-8">
@@ -116,51 +128,79 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                             {/* 100 Border Stats */}
                             <div className="text-center space-y-3">
                                 <h3 className="text-xl text-primary font-bold">100位ボーダー</h3>
-                                <div className="stats stats-vertical shadow">
-                                    <div className="stat">
-                                        <div className="stat-title font-bold text-primary">予測スコア</div>
-                                        <div className="stat-value text-primary">
-                                            {score100.toLocaleString()}
+                                {hasDataForBorder(selectedIdol, '100') ? (
+                                    <div className="stats stats-vertical shadow">
+                                        <div className="stat">
+                                            <div className="stat-title font-bold text-primary">予測スコア</div>
+                                            <div className="stat-value text-primary">
+                                                {Math.round(score100!).toLocaleString()}
+                                            </div>
+                                        </div>
+                                        <div className="stat">
+                                            <div className="stat-title font-bold text-primary">±5% 誤差区間</div>
+                                            <div className="stat-desc font-bold text-primary">
+                                                {Math.round(score100! * 0.95).toLocaleString()} ～ {Math.round(score100! * 1.05).toLocaleString()}
+                                            </div>
+                                        </div>
+                                        <div className="stat">
+                                            <div className="stat-title font-bold text-primary">±10% 誤差区間</div>
+                                            <div className="stat-desc font-bold text-primary">
+                                                {Math.round(score100! * 0.9).toLocaleString()} ～ {Math.round(score100! * 1.1).toLocaleString()}
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="stat">
-                                        <div className="stat-title font-bold text-primary">±5% 誤差区間</div>
-                                        <div className="stat-desc font-bold text-primary">
-                                            {Math.round(score100 * 0.95).toLocaleString()} ～ {Math.round(score100 * 1.05).toLocaleString()}
+                                ) : (
+                                    <div className="stats stats-vertical shadow">
+                                        <div className="stat">
+                                            <div className="stat-title font-bold text-error">データ不足</div>
+                                            <div className="stat-value text-error text-lg">
+                                                予測不可
+                                            </div>
+                                            <div className="stat-desc text-error">
+                                                十分な過去データがありません
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="stat">
-                                        <div className="stat-title font-bold text-primary">±10% 誤差区間</div>
-                                        <div className="stat-desc font-bold text-primary">
-                                            {Math.round(score100 * 0.9).toLocaleString()} ～ {Math.round(score100 * 1.1).toLocaleString()}
-                                        </div>
-                                    </div>
-                                </div>
+                                )}
                             </div>
 
                             {/* 1000 Border Stats */}
                             <div className="text-center space-y-3">
                                 <h3 className="text-xl font-bold text-secondary">1000位ボーダー</h3>
-                                <div className="stats stats-vertical shadow">
-                                    <div className="stat">
-                                        <div className="stat-title font-bold text-secondary">予測スコア</div>
-                                        <div className="stat-value text-secondary">
-                                            {score1000.toLocaleString()}
+                                {hasDataForBorder(selectedIdol, '1000') ? (
+                                    <div className="stats stats-vertical shadow">
+                                        <div className="stat">
+                                            <div className="stat-title font-bold text-secondary">予測スコア</div>
+                                            <div className="stat-value text-secondary">
+                                                {Math.round(score1000!).toLocaleString()}
+                                            </div>
+                                        </div>
+                                        <div className="stat">
+                                            <div className="stat-title font-bold text-secondary">±5% 誤差区間</div>
+                                            <div className="stat-desc font-bold text-secondary">
+                                                {Math.round(score1000! * 0.95).toLocaleString()} ～ {Math.round(score1000! * 1.05).toLocaleString()}
+                                            </div>
+                                        </div>
+                                        <div className="stat">
+                                            <div className="stat-title font-bold text-secondary">±10% 誤差区間</div>
+                                            <div className="stat-desc font-bold text-secondary">
+                                                {Math.round(score1000! * 0.9).toLocaleString()} ～ {Math.round(score1000! * 1.1).toLocaleString()}
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="stat">
-                                        <div className="stat-title font-bold text-secondary">±5% 誤差区間</div>
-                                        <div className="stat-desc font-bold text-secondary">
-                                            {Math.round(score1000 * 0.95).toLocaleString()} ～ {Math.round(score1000 * 1.05).toLocaleString()}
+                                ) : (
+                                    <div className="stats stats-vertical shadow">
+                                        <div className="stat">
+                                            <div className="stat-title font-bold text-error">データ不足</div>
+                                            <div className="stat-value text-error text-lg">
+                                                予測不可
+                                            </div>
+                                            <div className="stat-desc text-error">
+                                                十分な過去データがありません
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="stat">
-                                        <div className="stat-title font-bold text-secondary">±10% 誤差区間</div>
-                                        <div className="stat-desc font-bold text-secondary">
-                                            {Math.round(score1000 * 0.9).toLocaleString()} ～ {Math.round(score1000 * 1.1).toLocaleString()}
-                                        </div>
-                                    </div>
-                                </div>
+                                )}
                             </div>
                         </div>
                     </CardContainer>
@@ -168,26 +208,26 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                     {/* Main Chart Section */}
                     <div ref={chartSectionRef}>
                         <CardContainer className="mb-4">
-                        <div className="space-y-4">
-                            {/* Main Chart */}
-                            <div className="relative w-full">
-                                <AnimatePresence mode="popLayout">
-                                    <motion.div
-                                        layout
-                                        transition={{ type: "spring", stiffness: 100, damping: 20, duration: 0.5 }}
-                                        className="w-full"
-                                    >
-                                        <Type5MainChart
-                                            idolPredictions={idolPredictions}
-                                            selectedIdol={selectedIdol}
-                                            startAt={eventInfo.StartAt}
-                                            eventName={eventInfo.Name}
-                                            theme={theme}
-                                        />
-                                    </motion.div>
-                                </AnimatePresence>
+                            <div className="space-y-4">
+                                {/* Main Chart */}
+                                <div className="relative w-full">
+                                    <AnimatePresence mode="popLayout">
+                                        <motion.div
+                                            layout
+                                            transition={{ type: "spring", stiffness: 100, damping: 20, duration: 0.5 }}
+                                            className="w-full"
+                                        >
+                                            <Type5MainChart
+                                                idolPredictions={idolPredictions}
+                                                selectedIdol={selectedIdol}
+                                                startAt={eventInfo.StartAt}
+                                                eventName={eventInfo.EventName}
+                                                theme={theme}
+                                            />
+                                        </motion.div>
+                                    </AnimatePresence>
+                                </div>
                             </div>
-                        </div>
                         </CardContainer>
                         
                         {/* Neighbors Toggle */}
@@ -207,6 +247,7 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                                     className="toggle toggle-primary"
                                     checked={!!showNeighbors} // Ensure boolean value
                                     onChange={handleNeighborToggle}
+                                    disabled={!hasDataForBorder(selectedIdol, '100') && !hasDataForBorder(selectedIdol, '1000')}
                                 />
                             </label>
                         </div>
@@ -230,15 +271,16 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                                         }}
                                         className="w-full overflow-hidden"
                                     >
-                                            <Type5NeighborSection
-                                                idolPredictions={idolPredictions}
-                                                selectedIdol={selectedIdol}
-                                                theme={theme}
-                                            />
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
+                                        <Type5NeighborSection
+                                            idolPredictions={idolPredictions}
+                                            selectedIdol={selectedIdol}
+                                            theme={theme}
+                                            eventName={eventInfo.EventName}
+                                        />
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
                     </div>
                 </>
             )}

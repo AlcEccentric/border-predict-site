@@ -1,7 +1,7 @@
 export interface EventInfo {
     EventId: number;
     EventType: number;
-    Name: string;
+    EventName: string;
     StartAt: string;
     EndAt: string;
 }
@@ -20,8 +20,8 @@ export interface IdolInfo {
 
 export interface IdolPredictionData {
     idolId: number;
-    prediction100: PredictionData;
-    prediction1000: PredictionData;
+    prediction100: PredictionData | null;
+    prediction1000: PredictionData | null;
 }
 
 export interface Type5EventData {

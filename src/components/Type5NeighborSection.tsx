@@ -9,6 +9,7 @@ interface Type5NeighborSectionProps {
     idolPredictions: Map<number, IdolPredictionData>;
     selectedIdol: number;
     theme: string; // Add theme prop to trigger re-renders when theme changes
+    eventName: string; // Add event name for subtitle
 }
 
 const COLORS = {
@@ -43,7 +44,8 @@ type ExtendedChartOptions = ChartOptions<'line'> & {
 const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
     idolPredictions,
     selectedIdol,
-    theme
+    theme,
+    eventName
 }) => {
     const chartRef = useRef<any>(null);
     const [activeBorder, setActiveBorder] = useState<'100' | '1000'>('100');
@@ -65,12 +67,28 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
     const currentIdolData = idolPredictions.get(selectedIdol);
     if (!currentIdolData) return null;
 
+    // Check which borders have data
+    const hasBorder100 = !!currentIdolData.prediction100;
+    const hasBorder1000 = !!currentIdolData.prediction1000;
+    
+    // If no data for any border, return null
+    if (!hasBorder100 && !hasBorder1000) return null;
+    
+    // Set default active border to the first available one
+    React.useEffect(() => {
+        if (hasBorder100 && !hasBorder1000 && activeBorder === '1000') {
+            setActiveBorder('100');
+        } else if (!hasBorder100 && hasBorder1000 && activeBorder === '100') {
+            setActiveBorder('1000');
+        }
+    }, [hasBorder100, hasBorder1000, activeBorder]);
+
     const currentPrediction = activeBorder === '100' 
         ? currentIdolData.prediction100 
         : currentIdolData.prediction1000;
 
     const formatScore = (score: number): string => {
-        return score.toLocaleString();
+        return Math.round(score).toLocaleString();
     };
 
     if (!currentPrediction) return null;
@@ -168,7 +186,8 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                 data: visibleNeighbors.target ? currentPrediction.data.normalized.target : [],
                 borderColor: getIdolColor(selectedIdol),
                 tension: 0.1,
-                pointRadius: 3,
+                pointRadius: 0, // Remove dots
+                borderWidth: 1.5, // Make line thinner
                 fill: false,
             },
             ...Object.entries(currentPrediction.data.normalized.neighbors)
@@ -177,7 +196,8 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                     data: visibleNeighbors[key] ? data : [],
                     borderColor: COLORS.neighbors[index],
                     tension: 0.1,
-                    pointRadius: 3,
+                    pointRadius: 0, // Remove dots
+                    borderWidth: 1.5, // Make line thinner
                     fill: false,
                 }))
         ]
@@ -237,7 +257,7 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                 },
                 title: {
                     display: true,
-                    text: `${getIdolName(selectedIdol)} - ${activeBorder}位 正規化されたスコア推移`,
+                    text: `${eventName} - ${getIdolName(selectedIdol)} - ${activeBorder}位 正規化されたスコア推移`,
                     padding: {
                         bottom: 10
                     },
@@ -281,31 +301,35 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                 {/* Controls */}
                 <div className="flex flex-col gap-4">
                     <div className="flex flex-wrap gap-4">
-                        {/* Border Selector */}
+                        {/* Border Selector - Only show available borders */}
                         <div className="flex-1 min-w-0">
                             <label className="label">
                                 <span className="label-text">ボーダー選択</span>
                             </label>
                             <div className="join w-full">
-                                <button
-                                    className={`btn join-item flex-1 ${activeBorder === '100' ? 'btn-primary' : 'btn-outline'}`}
-                                    onClick={() => setActiveBorder('100')}
-                                >
-                                    100位
-                                </button>
-                                <button
-                                    className={`btn join-item flex-1 ${activeBorder === '1000' ? 'btn-primary' : 'btn-outline'}`}
-                                    onClick={() => setActiveBorder('1000')}
-                                >
-                                    1000位
-                                </button>
+                                {hasBorder100 && (
+                                    <button
+                                        className={`btn join-item ${hasBorder1000 ? 'flex-1' : 'w-full'} ${activeBorder === '100' ? 'btn-primary' : 'btn-outline'}`}
+                                        onClick={() => setActiveBorder('100')}
+                                    >
+                                        100位
+                                    </button>
+                                )}
+                                {hasBorder1000 && (
+                                    <button
+                                        className={`btn join-item ${hasBorder100 ? 'flex-1' : 'w-full'} ${activeBorder === '1000' ? 'btn-primary' : 'btn-outline'}`}
+                                        onClick={() => setActiveBorder('1000')}
+                                    >
+                                        1000位
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>
                 </div>
 
                 {/* Chart */}
-                <div className="relative h-[400px] w-full" onMouseLeave={handleChartLeave}>
+                <div className="relative h-[600px] w-full" onMouseLeave={handleChartLeave}>
                     <Line 
                         ref={chartRef}
                         data={chartData} 
@@ -320,13 +344,41 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                                 className="absolute pointer-events-none"
                                 style={{
                                     left: crosshairPosition.x,
-                                    top: '6%', // Adjusted to better align with chart area
-                                    height: '81.5%', // Adjusted height to cover chart area properly
+                                    top: '4%', // Adjusted to better align with chart area
+                                    height: '85.5%', // Adjusted height to cover chart area properly
                                     width: 1,
                                     backgroundColor: 'rgba(255, 99, 132, 0.8)',
                                     zIndex: 10
                                 }}
                             />
+                            
+                            {/* Intersection dots */}
+                            {hoveredData.values.map((item, index) => {
+                                const chart = chartRef.current;
+                                if (!chart) return null;
+                                
+                                // Calculate the y position for this data point
+                                const yValue = item.value;
+                                const yMin = chart.scales.y.min;
+                                const yMax = chart.scales.y.max;
+                                const yPixel = chart.chartArea.bottom - ((yValue - yMin) / (yMax - yMin)) * chart.chartArea.height;
+                                
+                                return (
+                                    <div
+                                        key={index}
+                                        className="absolute pointer-events-none rounded-full"
+                                        style={{
+                                            left: crosshairPosition.x - 8, // Center the 16px dot (larger than main chart)
+                                            top: yPixel - 8, // Center the 16px dot
+                                            width: 16, // Larger dot for neighbor view
+                                            height: 16,
+                                            backgroundColor: item.color,
+                                            border: '3px solid white', // Thicker border
+                                            zIndex: 15
+                                        }}
+                                    />
+                                );
+                            })}
                             
                             {/* Custom tooltip */}
                             <div

@@ -61,10 +61,17 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
     const idolData = idolPredictions.get(selectedIdol);
     if (!idolData) return [];
 
-    const maxLength = Math.max(
-      idolData.prediction100.data.raw.target.length,
-      idolData.prediction1000.data.raw.target.length
-    );
+    const lengths = [];
+    if (idolData.prediction100) {
+      lengths.push(idolData.prediction100.data.raw.target.length);
+    }
+    if (idolData.prediction1000) {
+      lengths.push(idolData.prediction1000.data.raw.target.length);
+    }
+    
+    if (lengths.length === 0) return [];
+    
+    const maxLength = Math.max(...lengths);
 
     return Array.from({ length: maxLength }, (_, i) => {
       const date = new Date(startAt);
@@ -80,7 +87,19 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
 
   // Get idol data
   const idolData = idolPredictions.get(selectedIdol);
-  if (!idolData) return <div>No data for selected idol</div>;
+  if (!idolData || (!idolData.prediction100 && !idolData.prediction1000)) {
+    return (
+      <div className="bg-base-200 rounded-lg p-8 text-center">
+        <div className="text-4xl mb-4">📊</div>
+        <h3 className="text-lg font-bold mb-2 text-warning">
+          予測データが不足しています
+        </h3>
+        <p className="text-sm text-base-content/70">
+          {getIdolName(selectedIdol)}の予測データがありません
+        </p>
+      </div>
+    );
+  }
 
   // Memoize chart data to prevent infinite re-renders
   const chartData = useMemo(() => {
@@ -117,30 +136,37 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
       '1000': getComputedThemeColor('--s')  // Secondary color for 1000位
     };
 
-    const datasets = [
-      {
+    const datasets = [];
+    
+    // Add 100位 dataset if data exists
+    if (idolData.prediction100) {
+      datasets.push({
         label: `${idolName} - 100位`,
         data: idolData.prediction100.data.raw.target,
         borderColor: BORDER_COLORS['100'],
         backgroundColor: BORDER_COLORS['100'] + '20',
         tension: 0.1,
         pointRadius: 0,
-        borderWidth: 2,
+        borderWidth: 1.5, // Make line thinner
         idolId: selectedIdol,
         borderType: '100'
-      },
-      {
+      });
+    }
+    
+    // Add 1000位 dataset if data exists
+    if (idolData.prediction1000) {
+      datasets.push({
         label: `${idolName} - 1000位`,
         data: idolData.prediction1000.data.raw.target,
         borderColor: BORDER_COLORS['1000'],
         backgroundColor: BORDER_COLORS['1000'] + '20',
         tension: 0.1,
         pointRadius: 0,
-        borderWidth: 2,
+        borderWidth: 1.5, // Make line thinner
         idolId: selectedIdol,
         borderType: '1000'
-      }
-    ];
+      });
+    }
 
     return {
       labels: timePoints,
@@ -180,11 +206,10 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
       chartData.datasets.forEach((dataset) => {
         if (dataset.data[dataIndex] !== undefined && dataset.idolId && dataset.borderType) {
           // Check if this data point is in the prediction range
-          const prediction100 = idolData.prediction100;
-          const prediction1000 = idolData.prediction1000;
-          const isPredicted = dataIndex >= (dataset.borderType === '100' 
-            ? prediction100.metadata.raw.last_known_step_index 
-            : prediction1000.metadata.raw.last_known_step_index);
+          const prediction = dataset.borderType === '100' ? idolData.prediction100 : idolData.prediction1000;
+          if (!prediction) return; // Skip if prediction data doesn't exist
+          
+          const isPredicted = dataIndex >= prediction.metadata.raw.last_known_step_index;
 
           values.push({
             idol: dataset.idolId,
@@ -281,22 +306,29 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
             pointStyle: 'line',
             color: getTextColor(), // Use theme-appropriate text color
             generateLabels: (_chart) => {
-              return [
-                {
+              const labels = [];
+              
+              if (idolData.prediction100) {
+                labels.push({
                   text: `${idolName} - 100位`,
                   fillStyle: BORDER_COLORS['100'],
                   strokeStyle: BORDER_COLORS['100'],
                   lineWidth: 2,
-                  fontColor: getTextColor() // Ensure text color is theme-appropriate
-                },
-                {
+                  fontColor: getTextColor()
+                });
+              }
+              
+              if (idolData.prediction1000) {
+                labels.push({
                   text: `${idolName} - 1000位`,
                   fillStyle: BORDER_COLORS['1000'],
                   strokeStyle: BORDER_COLORS['1000'],
                   lineWidth: 2,
-                  fontColor: getTextColor() // Ensure text color is theme-appropriate
-                }
-              ];
+                  fontColor: getTextColor()
+                });
+              }
+              
+              return labels;
             }
           }
         },
@@ -311,33 +343,42 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
         },
         annotation: {
           annotations: {
-            // Prediction range background
-            predictionRange: {
-              type: 'box',
-              xMin: Math.min(
-                idolData.prediction100.metadata.raw.last_known_step_index,
-                idolData.prediction1000.metadata.raw.last_known_step_index
-              ),
-              xMax: Math.max(timePoints.length - 1, 0),
-              backgroundColor: 'rgba(103, 220, 209, 0.1)',
-              borderColor: 'rgba(200, 200, 200, 0.2)',
-              borderWidth: 1
-            },
-            // Prediction start line
-            predictionLine: {
-              type: 'line',
-              xMin: Math.min(
-                idolData.prediction100.metadata.raw.last_known_step_index,
-                idolData.prediction1000.metadata.raw.last_known_step_index
-              ),
-              xMax: Math.min(
-                idolData.prediction100.metadata.raw.last_known_step_index,
-                idolData.prediction1000.metadata.raw.last_known_step_index
-              ),
-              borderColor: 'rgb(255, 99, 132)',
-              borderWidth: 2,
-              borderDash: [5, 5]
-            }
+            // Only add annotations if we have prediction data
+            ...(idolData.prediction100 || idolData.prediction1000 ? {
+              // Prediction range background
+              predictionRange: {
+                type: 'box',
+                xMin: Math.min(
+                  ...[
+                    idolData.prediction100?.metadata.raw.last_known_step_index,
+                    idolData.prediction1000?.metadata.raw.last_known_step_index
+                  ].filter(val => val !== undefined)
+                ),
+                xMax: Math.max(timePoints.length - 1, 0),
+                backgroundColor: 'rgba(103, 220, 209, 0.1)',
+                borderColor: 'rgba(200, 200, 200, 0.2)',
+                borderWidth: 1
+              },
+              // Prediction start line
+              predictionLine: {
+                type: 'line',
+                xMin: Math.min(
+                  ...[
+                    idolData.prediction100?.metadata.raw.last_known_step_index,
+                    idolData.prediction1000?.metadata.raw.last_known_step_index
+                  ].filter(val => val !== undefined)
+                ),
+                xMax: Math.min(
+                  ...[
+                    idolData.prediction100?.metadata.raw.last_known_step_index,
+                    idolData.prediction1000?.metadata.raw.last_known_step_index
+                  ].filter(val => val !== undefined)
+                ),
+                borderColor: 'rgb(255, 99, 132)',
+                borderWidth: 2,
+                borderDash: [5, 5]
+              }
+            } : {})
           }
         }
       },
@@ -385,7 +426,7 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
               style={{
                 left: crosshairPosition.x,
                 top: '4.6%',
-                height: '84.2%',
+                height: '79%',
                 width: 1,
                 backgroundColor: 'rgba(255, 99, 132, 0.8)',
                 zIndex: 10
@@ -444,7 +485,7 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
                       {item.predicted && <span className="text-yellow-600">（予測）</span>}
                     </div>
                     <span className="font-mono">
-                      {item.value.toLocaleString()}
+                      {Math.round(item.value).toLocaleString()}
                     </span>
                   </div>
                 ))}
