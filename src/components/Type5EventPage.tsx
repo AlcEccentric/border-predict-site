@@ -95,7 +95,7 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                 <div className="flex justify-between items-center">
                     <div className="text-center flex-1">
                         <h1 className="text-3xl font-bold">
-                            ミリシタ・ボーダー予想
+                            ミリシタ・ボーダー予想 (ベータ版)
                         </h1>
                         <h2 className="text-2xl font-bold mt-2">
                             {eventInfo.EventName}
