@@ -59,7 +59,8 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
         month: 'numeric',
         day: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
+        timeZone: 'Asia/Tokyo'
       });
     }
   );
@@ -172,9 +173,12 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
               generateLabels: () => [{
                   text: '予測範囲',
                   fillStyle: 'rgba(103, 220, 209, 0.1)',
-                  strokeStyle: 'rgba(69, 120, 129, 1)',
+                  strokeStyle: 'rgba(103, 220, 209, 0.6)',
                   fontColor: textColor,
-                  lineWidth: 1,
+                  lineWidth: 2,
+                  pointStyle: 'rect',
+                  pointStyleWidth: 15,
+                  pointStyleHeight: 15,
               }]
           }
       },
@@ -246,7 +250,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
 
   return (
     <div className="relative w-full">
-      <div className="relative w-full aspect-[2/1]" onMouseLeave={handleChartLeave}>
+      <div className="relative w-full h-[300px] sm:h-[400px] md:h-[500px]" onMouseLeave={handleChartLeave}>
         <Line ref={chartRef} data={chartData} options={options} />
         
         {/* Custom crosshair and tooltip */}
@@ -267,11 +271,26 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
             
             {/* Custom tooltip */}
             <div
-              className="absolute pointer-events-none bg-base-100 border border-base-300 text-base-content rounded-lg shadow-lg p-4 z-20 min-w-[300px] max-w-lg"
+              className="absolute pointer-events-none bg-base-100 border border-base-300 text-base-content rounded-lg shadow-lg p-3 z-20 min-w-[180px] sm:min-w-[320px] max-w-[90vw]"
               style={{
-                left: crosshairPosition.x > window.innerWidth * 0.7 
-                  ? crosshairPosition.x - 220  // Move further left when near right edge
-                  : crosshairPosition.x + 10,
+                left: (() => {
+                  const containerWidth = window.innerWidth;
+                  const tooltipWidth = window.innerWidth < 640 ? 180 : 320;
+                  
+                  // On mobile, prefer left positioning when clicking on right half
+                  if (window.innerWidth < 640) {
+                    if (crosshairPosition.x > containerWidth * 0.5) {
+                      return Math.max(10, crosshairPosition.x - tooltipWidth - 10);
+                    } else {
+                      return Math.min(crosshairPosition.x + 10, containerWidth - tooltipWidth - 10);
+                    }
+                  }
+                  
+                  // On desktop, use improved logic
+                  return crosshairPosition.x > containerWidth * 0.6 
+                    ? crosshairPosition.x - tooltipWidth - 10
+                    : crosshairPosition.x + 10;
+                })(),
                 top: Math.max(crosshairPosition.y - 60, 10)
               }}
             >
@@ -279,7 +298,10 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
                 {hoveredData.timePoint}
               </div>
               <div className="text-xs">
-                スコア: {Math.round(hoveredData.value).toLocaleString()}
+                <span className="hidden sm:inline">スコア: </span>
+                <span className="sm:hidden">スコア:</span>
+                <br className="sm:hidden" />
+                <span className="font-mono">{Math.round(hoveredData.value).toLocaleString()}</span>
               </div>
             </div>
           </>

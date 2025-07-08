@@ -80,7 +80,8 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
         month: 'numeric',
         day: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
+        timeZone: 'Asia/Tokyo'
       });
     });
   }, [idolPredictions, selectedIdol, startAt]);
@@ -328,6 +329,16 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
                 });
               }
               
+              // Add prediction range legend
+              labels.push({
+                text: '予測範囲',
+                fillStyle: 'rgba(103, 220, 209, 0.1)',
+                strokeStyle: 'rgba(103, 220, 209, 0.6)',
+                lineWidth: 2,
+                pointStyle: 'rect' as const,
+                fontColor: getTextColor()
+              });
+              
               return labels;
             }
           }
@@ -414,7 +425,7 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
 
   return (
     <div className="relative w-full">
-      <div className="relative w-full aspect-[2/1]" onMouseLeave={handleChartLeave}>
+      <div className="relative w-full h-[300px] sm:h-[400px] md:h-[500px]" onMouseLeave={handleChartLeave}>
         <Line ref={chartRef} data={chartData} options={options} />
         
         {/* Custom crosshair and tooltip */}
@@ -463,17 +474,33 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
             
             {/* Custom tooltip */}
             <div
-              className="absolute pointer-events-none bg-base-100 border border-base-300 rounded-lg shadow-lg p-3 z-20 min-w-[200px] max-w-xs"
+              className="absolute pointer-events-none bg-base-100 border border-base-300 rounded-lg shadow-lg p-3 z-20 min-w-[160px] sm:min-w-[320px] max-w-[90vw]"
               style={{
-                left: crosshairPosition.isNearRightEdge 
-                  ? crosshairPosition.x - 250  // Move further left when near right edge
-                  : crosshairPosition.x + 10,  // Show on right normally
+                left: (() => {
+                  const containerWidth = window.innerWidth;
+                  const tooltipWidth = window.innerWidth < 640 ? 160 : 320;
+                  
+                  // On mobile, prefer left positioning when clicking on right half
+                  if (window.innerWidth < 640) {
+                    if (crosshairPosition.x > containerWidth * 0.5) {
+                      return Math.max(10, crosshairPosition.x - tooltipWidth - 10);
+                    } else {
+                      return Math.min(crosshairPosition.x + 10, containerWidth - tooltipWidth - 10);
+                    }
+                  }
+                  
+                  // On desktop, use improved logic
+                  return crosshairPosition.isNearRightEdge 
+                    ? crosshairPosition.x - tooltipWidth - 10
+                    : crosshairPosition.x + 10;
+                })(),
                 top: 50
               }}
             >
               <div className="text-sm font-semibold mb-2 text-center border-b border-base-300 pb-1">
                 {hoveredData.timePoint}
-              </div>                  <div className="space-y-1">
+              </div>
+              <div className="space-y-1">
                 {hoveredData.values.map((item, index) => (
                   <div key={index} className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
@@ -481,10 +508,13 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
                         className="w-2 h-2 rounded-full"
                         style={{ backgroundColor: item.color }}
                       />
-                      <span>{getIdolName(item.idol)} - {item.border}位</span>
-                      {item.predicted && <span className="text-yellow-600">（予測）</span>}
+                      <span className="truncate">
+                        <span className="hidden sm:inline">{getIdolName(item.idol)} - </span>
+                        {item.border}位
+                      </span>
+                      {item.predicted && <span className="text-yellow-600 hidden sm:inline">（予測）</span>}
                     </div>
-                    <span className="font-mono">
+                    <span className="font-mono text-xs">
                       {Math.round(item.value).toLocaleString()}
                     </span>
                   </div>
