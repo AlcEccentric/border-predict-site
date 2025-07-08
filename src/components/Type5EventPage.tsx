@@ -29,13 +29,14 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
     const [showNeighbors, setShowNeighbors] = useState<boolean>(false); // Ensure boolean type for controlled input
     const chartSectionRef = useRef<HTMLDivElement>(null);
     const neighborSectionRef = useRef<HTMLDivElement>(null);
+    const summaryStatsRef = useRef<HTMLDivElement>(null);
 
     const handleIdolSelect = (idolId: number) => {
         setSelectedIdol(idolId);
         
-        // Scroll to chart section after a short delay to allow for state update
+        // Scroll to summary stats section after a short delay to allow for state update
         setTimeout(() => {
-            chartSectionRef.current?.scrollIntoView({
+            summaryStatsRef.current?.scrollIntoView({
                 behavior: 'smooth',
                 block: 'start'
             });
@@ -120,7 +121,7 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
             {selectedIdol && idolPredictions.has(selectedIdol) && (
                 <>
                     {/* Summary Stats */}
-                    <CardContainer className="mb-8">
+                    <CardContainer className="mb-8" ref={summaryStatsRef}>
                         <div className="text-center mb-4">
                             <h3 className="text-xl font-bold">{getIdolName(selectedIdol)}の予測スコア</h3>
                         </div>
@@ -235,7 +236,7 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                             <label className="cursor-pointer label gap-2">
                                 <span className="label-text">近傍イベント表示</span>
                                 <div
-                                    className="tooltip"
+                                    className="tooltip tooltip-left lg:tooltip-left"
                                     data-tip="近傍イベントは現在のイベントと傾向が似ているイベントです。詳細はページ下部の「解説」内「近傍イベントとは」をご覧ください"
                                 >
                                     <span className="cursor-pointer text-info">
