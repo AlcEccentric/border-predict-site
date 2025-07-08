@@ -23,9 +23,7 @@ const App: React.FC = () => {
     const [showNeighbors, setShowNeighbors] = useState(false);
     const themes = ['nord', 'cupcake', 'dim', 'aqua', 'sunset'];
     // Configuration for data source - set to local for development, remote for production
-    const baseUrl = window.location.hostname === 'localhost' 
-        ? '/normal' // Local testing - reads from public/normal directory
-        : 'https://cdn.yuenimillion.live'; // Production URL
+    const baseUrl = 'https://cdn.yuenimillion.live'; // Production URL
     const [theme, setTheme] = useState(() => {
         const savedTheme = localStorage.getItem('theme') || themes[0];
         // Set initial theme immediately
@@ -46,15 +44,12 @@ const App: React.FC = () => {
     useEffect(() => {
         const loadData = async () => {
             try {
-                console.log('Loading data from:', baseUrl); // Debug log
-                
                 // Load event info
                 const eventInfoResponse = await fetch(`${baseUrl}/metadata/latest_event_border_info.json`);
                 if (!eventInfoResponse.ok) {
                     throw new Error(`Failed to fetch event info: ${eventInfoResponse.status} ${eventInfoResponse.statusText}`);
                 }
                 const eventInfoData = await eventInfoResponse.json();
-                console.log('Event info loaded:', eventInfoData); // Debug log
                 setEventInfo(eventInfoData);
 
                 if (isNormalEvent(eventInfoData.EventType)) {
@@ -105,11 +100,7 @@ const App: React.FC = () => {
                                 const available = [];
                                 if (pred100) available.push('100');
                                 if (pred1000) available.push('1000');
-                                if (available.length > 0) {
-                                    console.log(`Idol ${idolId}: available borders [${available.join(', ')}]`);
-                                } else {
-                                    console.warn(`Idol ${idolId}: no prediction data available`);
-                                }
+                                
                             }).catch(error => {
                                 console.warn(`Failed to load predictions for idol ${idolId}:`, error);
                             })
