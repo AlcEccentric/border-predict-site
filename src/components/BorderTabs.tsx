@@ -82,13 +82,13 @@ const BorderTabs: React.FC<BorderTabsProps> = ({
 
                 <div className="text-center space-y-2">
                     {/* Final Score */}
-                    <h3 className="text-2xl font-bold">
+                    <h3 className="text-lg sm:text-2xl font-bold">
                         {activeTab}位の予想最終スコア: {finalScore.toLocaleString()}
                     </h3>
 
                     {/* ±5% Range */}
-                    <div className="flex justify-center items-center gap-2 text-sm">
-                        <span>±5% 誤差区間: {Math.round(finalScore * 0.95).toLocaleString()} ～ {Math.round(finalScore * 1.05).toLocaleString()}</span>
+                    <div className="flex flex-col sm:flex-row justify-center items-center gap-2 text-sm">
+                        <span className="text-center">±5% 誤差区間: {Math.round(finalScore * 0.95).toLocaleString()} ～ {Math.round(finalScore * 1.05).toLocaleString()}</span>
                         <div className="tooltip" data-tip={getSLAInfo(activeTab === '100' ? prediction100 : prediction2500, 5)}>
                             <span className="cursor-pointer text-info">
                                 <Info className="w-4 h-4 text-info cursor-pointer" />
@@ -97,8 +97,8 @@ const BorderTabs: React.FC<BorderTabsProps> = ({
                     </div>
 
                     {/* ±10% Range */}
-                    <div className="flex justify-center items-center gap-2 text-sm">
-                        <span>±10% 誤差区間: {Math.round(finalScore * 0.9).toLocaleString()} ～ {Math.round(finalScore * 1.1).toLocaleString()}</span>
+                    <div className="flex flex-col sm:flex-row justify-center items-center gap-2 text-sm">
+                        <span className="text-center">±10% 誤差区間: {Math.round(finalScore * 0.9).toLocaleString()} ～ {Math.round(finalScore * 1.1).toLocaleString()}</span>
                         <div className="tooltip" data-tip={getSLAInfo(activeTab === '100' ? prediction100 : prediction2500, 10)}>
                             <span className="cursor-pointer text-info">
                                 <Info className="w-4 h-4 text-info cursor-pointer" />
@@ -125,16 +125,18 @@ const BorderTabs: React.FC<BorderTabsProps> = ({
                 </div>
 
                 {/* Neighbors Toggle */}
-                <div className="flex justify-end">
-                    <label className="cursor-pointer label gap-2">
-                        <span className="label-text">近傍イベント表示</span>
-                        <div
-                            className="tooltip"
-                            data-tip="近傍イベントは現在のイベントと傾向が似ているイベントです。詳細はページ下部の「解説」内「近傍イベントとは」をご覧ください"
-                        >
-                            <span className="cursor-pointer text-info">
-                                <Info className="w-4 h-4 text-info cursor-pointer" />
-                            </span>
+                <div className="flex justify-center sm:justify-end">
+                    <label className="cursor-pointer label gap-2 flex-wrap justify-center sm:justify-end">
+                        <div className="flex items-center gap-2">
+                            <span className="label-text text-center sm:text-left">近傍イベント表示</span>
+                            <div
+                                className="tooltip"
+                                data-tip="近傍イベントは現在のイベントと傾向が似ているイベントです。詳細はページ下部の「解説」内「近傍イベントとは」をご覧ください"
+                            >
+                                <span className="cursor-pointer text-info">
+                                    <Info className="w-4 h-4 text-info cursor-pointer" />
+                                </span>
+                            </div>
                         </div>
                         <input
                             type="checkbox"

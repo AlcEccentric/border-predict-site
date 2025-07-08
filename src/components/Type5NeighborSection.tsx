@@ -329,7 +329,7 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                 </div>
 
                 {/* Chart */}
-                <div className="relative h-[600px] w-full" onMouseLeave={handleChartLeave}>
+                <div className="relative h-[200px] sm:h-[500px] md:h-[600px] w-full" onMouseLeave={handleChartLeave}>
                     <Line 
                         ref={chartRef}
                         data={chartData} 
@@ -382,11 +382,28 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                             
                             {/* Custom tooltip */}
                             <div
-                                className="absolute pointer-events-none bg-base-100 border border-base-300 rounded-lg shadow-lg p-3 z-20 min-w-[280px] max-w-sm" // Made wider
+                                className="absolute pointer-events-none bg-base-100 border border-base-300 rounded-lg shadow-lg p-3 z-20 min-w-[120px] sm:min-w-[280px] max-w-[90vw]"
                                 style={{
-                                    left: crosshairPosition.x > (chartRef.current?.canvas?.width || 800) * 0.75 // Adjusted threshold
-                                      ? crosshairPosition.x - 360  // Show further left when near right edge  
-                                      : crosshairPosition.x + 10,  // Show on right normally
+                                    left: (() => {
+                                        const tooltipWidth = window.innerWidth < 640 ? 120 : 280;
+                                        
+                                        // Always prefer left positioning in neighbor view
+                                        if (window.innerWidth < 640) {
+                                            // On mobile, always show to the left if possible
+                                            if (crosshairPosition.x > tooltipWidth + 20) {
+                                                return crosshairPosition.x - tooltipWidth - 10;
+                                            } else {
+                                                return Math.max(10, crosshairPosition.x - tooltipWidth - 10);
+                                            }
+                                        }
+                                        
+                                        // On desktop, strongly prefer left positioning
+                                        if (crosshairPosition.x > tooltipWidth + 20) {
+                                            return crosshairPosition.x - tooltipWidth - 10;
+                                        } else {
+                                            return crosshairPosition.x + 10;
+                                        }
+                                    })(),
                                     top: 50
                                 }}
                             >
@@ -396,16 +413,19 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                                 <div className="space-y-1">
                                     {hoveredData.values.map((item, index) => (
                                         <div key={index} className="flex items-center justify-between text-xs">
-                                            <div className="flex items-center gap-2">
+                                            <div className="flex items-center gap-2 min-w-0">
                                                 <div
                                                     className="w-2 h-2 rounded-full"
                                                     style={{ backgroundColor: item.color }}
                                                 />
-                                                <span className={item.isTarget ? 'font-semibold' : ''}>
-                                                    {item.name}
+                                                <span className={`${item.isTarget ? 'font-semibold' : ''} truncate`}>
+                                                    <span className="hidden sm:inline">{item.name}</span>
+                                                    <span className="sm:hidden">
+                                                        {item.isTarget ? '現在' : `近傍${item.name.match(/近傍(\d+)/)?.[1] || ''}`}
+                                                    </span>
                                                 </span>
                                             </div>
-                                            <span className="font-mono">
+                                            <span className="font-mono text-xs">
                                                 {item.value.toFixed(2)}
                                             </span>
                                         </div>
@@ -419,69 +439,73 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                 {/* Neighbors List */}
                 <div className="bg-base-100 rounded-xl p-4">
                     <h3 className="text-lg font-bold mb-4">近傍イベント</h3>
-                    <ul className="w-full p-0 gap-2">
+                    <ul className="w-full p-0 gap-2 space-y-2">
                         <li>
-                            <div className="flex items-center gap-2 p-2 bg-base-200 rounded-lg hover:bg-base-200">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-3 bg-base-200 rounded-lg hover:bg-base-200">
                                 <div className="w-12 h-12 rounded flex-shrink-0" style={{ backgroundColor: getIdolColor(selectedIdol) }} />
-                                <div className="w-80">
-                                    <span className="font-medium truncate block">進行中 - {currentPrediction.metadata.raw.name} - ({getIdolName(selectedIdol)})</span>
-                                    <div className="flex gap-4 mt-1 text-sm text-base-content/70">
-                                        <span>
-                                            イベントID: {currentPrediction.metadata.raw.id}
-                                        </span>
-                                        <span>
-                                            最終スコア: {formatScore(currentPrediction.data.normalized.target[currentPrediction.data.normalized.target.length - 1])}
-                                        </span>
+                                <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-sm">
+                                        <span className="sm:hidden">進行中 - {getIdolName(selectedIdol)}</span>
+                                        <span className="hidden sm:inline">進行中 - {currentPrediction.metadata.raw.name} ({getIdolName(selectedIdol)})</span>
+                                    </div>
+                                    <div className="text-xs text-base-content/70 truncate sm:hidden">{currentPrediction.metadata.raw.name}</div>
+                                    <div className="text-xs text-base-content/70 mt-1">
+                                        <div className="flex flex-wrap gap-2">
+                                            <span>最終スコア: {formatScore(currentPrediction.data.normalized.target[currentPrediction.data.normalized.target.length - 1])}</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <span className="flex-1" />
-                                <input
-                                    type="checkbox"
-                                    className="toggle toggle-primary toggle-md"
-                                    checked={visibleNeighbors.target}
-                                    onChange={() => toggleNeighbor('target')}
-                                />                                    
-                                <a
-                                    href={`https://mltd.matsurihi.me/events/${currentPrediction.metadata.raw.id}#chart-idol`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="btn btn-sm btn-outline btn-primary"
-                                >
-                                    実ボーダーを見る
-                                </a>
+                                <div className="flex items-center gap-2 w-full sm:w-auto">
+                                    <input
+                                        type="checkbox"
+                                        className="toggle toggle-primary toggle-sm"
+                                        checked={visibleNeighbors.target}
+                                        onChange={() => toggleNeighbor('target')}
+                                    />                                    
+                                    <a
+                                        href={`https://mltd.matsurihi.me/events/${currentPrediction.metadata.raw.id}#chart-idol`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="btn btn-xs btn-outline btn-primary"
+                                    >
+                                        実ボーダー
+                                    </a>
+                                </div>
                             </div>
                         </li>
                         {Object.entries(currentPrediction.metadata.normalized.neighbors).map(([key, neighbor], index) => (
                             <li key={key}>
-                                <div className="flex items-center gap-2 p-2 bg-base-200 rounded-lg hover:bg-base-200">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-3 bg-base-200 rounded-lg hover:bg-base-200">
                                     <div className="w-12 h-12 rounded flex-shrink-0" style={{ backgroundColor: COLORS.neighbors[index] }} />
-                                    <div className="w-80">
-                                        <span className="w-40 font-medium truncate">近傍{key} - {neighbor.name} ({neighbor.idol_id ? getIdolName(neighbor.idol_id) : 'Unknown'})</span>
-                                        <div className="flex gap-4 mt-1 text-sm text-base-content/70">
-                                            <span>
-                                                イベントID: {neighbor.id}
-                                            </span>
-                                            <span>
-                                                最終スコア: {formatScore(currentPrediction.data.normalized.neighbors[key][currentPrediction.data.normalized.neighbors[key].length - 1])}
-                                            </span>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="font-medium text-sm">
+                                            <span className="sm:hidden">近傍{key} - {neighbor.idol_id ? getIdolName(neighbor.idol_id) : 'Unknown'}</span>
+                                            <span className="hidden sm:inline">近傍{key} - {neighbor.name} ({neighbor.idol_id ? getIdolName(neighbor.idol_id) : 'Unknown'})</span>
+                                        </div>
+                                        <div className="text-xs text-base-content/70 truncate sm:hidden">{neighbor.name}</div>
+                                        <div className="text-xs text-base-content/70 mt-1">
+                                            <div className="flex flex-wrap gap-2">
+                                                <span>最終スコア: {formatScore(currentPrediction.data.normalized.neighbors[key][currentPrediction.data.normalized.neighbors[key].length - 1])}</span>
+                                            </div>
                                         </div>
                                     </div>
                                     
-                                    <span className="flex-1" />
-                                    <input
-                                        type="checkbox"
-                                        className="toggle toggle-primary toggle-md"
-                                        checked={visibleNeighbors[key] ?? true}
-                                        onChange={() => toggleNeighbor(key)}
-                                    />
-                                    <a
-                                        href={`https://mltd.matsurihi.me/events/${neighbor.id}#chart-idol`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="btn btn-sm btn-outline btn-primary"
-                                    >
-                                        実ボーダーを見る
-                                    </a>
+                                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                                        <input
+                                            type="checkbox"
+                                            className="toggle toggle-primary toggle-sm"
+                                            checked={visibleNeighbors[key] ?? true}
+                                            onChange={() => toggleNeighbor(key)}
+                                        />
+                                        <a
+                                            href={`https://mltd.matsurihi.me/events/${neighbor.id}#chart-idol`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="btn btn-xs btn-outline btn-primary"
+                                        >
+                                            実ボーダー
+                                        </a>
+                                    </div>
                                 </div>
                             </li>
                         ))}

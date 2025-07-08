@@ -284,7 +284,7 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
     return (
         <CardContainer className="mb-4">
             <div className="flex flex-col gap-4">
-                <div className="h-[600px] w-full">
+                <div className="h-[200px] sm:h-[500px] md:h-[600px] w-full">
                     <div className="relative w-full h-full" onMouseLeave={handleChartLeave}>
                         <Line 
                             ref={chartRef}
@@ -333,11 +333,28 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                                 
                                 {/* Custom tooltip */}
                                 <div
-                                    className="absolute pointer-events-none bg-base-100 border border-base-300 text-base-content rounded-lg shadow-lg p-3 z-20"
+                                    className="absolute pointer-events-none bg-base-100 border border-base-300 text-base-content rounded-lg shadow-lg p-3 z-20 min-w-[120px] sm:min-w-[200px] max-w-[90vw]"
                                     style={{
-                                        left: crosshairPosition.x > window.innerWidth * 0.7 
-                                            ? crosshairPosition.x - 210 
-                                            : crosshairPosition.x + 10,
+                                        left: (() => {
+                                            const tooltipWidth = window.innerWidth < 640 ? 120 : 200;
+                                            
+                                            // Always prefer left positioning in neighbor view
+                                            if (window.innerWidth < 640) {
+                                                // On mobile, always show to the left if possible
+                                                if (crosshairPosition.x > tooltipWidth + 20) {
+                                                    return crosshairPosition.x - tooltipWidth - 10;
+                                                } else {
+                                                    return Math.max(10, crosshairPosition.x - tooltipWidth - 10);
+                                                }
+                                            }
+                                            
+                                            // On desktop, strongly prefer left positioning
+                                            if (crosshairPosition.x > tooltipWidth + 20) {
+                                                return crosshairPosition.x - tooltipWidth - 10;
+                                            } else {
+                                                return crosshairPosition.x + 10;
+                                            }
+                                        })(),
                                         top: Math.max(crosshairPosition.y - 60, 10)
                                     }}
                                 >
@@ -352,11 +369,11 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                                                         className="w-2 h-2 rounded-full"
                                                         style={{ backgroundColor: item.color }}
                                                     />
-                                                    <span className={item.isTarget ? 'font-semibold' : ''}>
-                                                        {item.name}
+                                                    <span className={`${item.isTarget ? 'font-semibold' : ''} truncate`}>
+                                                        {item.isTarget ? '現在' : item.name}
                                                     </span>
                                                 </div>
-                                                <span className="font-mono">
+                                                <span className="font-mono text-xs">
                                                     {Math.round(item.value).toLocaleString()}
                                                 </span>
                                             </div>
@@ -370,89 +387,90 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                 
                 <div className="bg-base-100 rounded-xl p-4">
                     <h3 className="text-lg font-bold mb-4">近傍イベント</h3>
-                    <ul className="w-full p-0 gap-2">
+                    <ul className="w-full p-0 gap-2 space-y-2">
                         <li>
-                            <div className="flex items-center gap-2 p-2 bg-base-200 rounded-lg hover:bg-base-200">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-3 bg-base-200 rounded-lg hover:bg-base-200">
                                 <div className="w-12 h-12 rounded flex-shrink-0" style={{ backgroundColor: COLORS.target }} />
-                                <div className="w-80">
-                                    <span className="font-medium truncate block">現在のイベント</span>
-                                    <div className="flex gap-4 mt-1 text-sm text-base-content/70">
-                                        <span>
-                                            開催日数: {eventMetadata.length}日
-                                        </span>
-                                        <span>
-                                            最終スコア: {formatScore(normalizedData.target[normalizedData.target.length - 1])}
-                                        </span>
+                                <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-sm">現在のイベント</div>
+                                    <div className="text-xs text-base-content/70 mt-1">
+                                        <div className="flex flex-wrap gap-2">
+                                            <span>開催日数: {eventMetadata.length}日</span>
+                                            <span>最終スコア: {formatScore(normalizedData.target[normalizedData.target.length - 1])}</span>
+                                        </div>
                                     </div>
                                 </div>
-                                <span className="flex-1" />
-                                <input
-                                    type="checkbox"
-                                    className="toggle toggle-primary toggle-md"
-                                    checked={visibleNeighbors.target}
-                                    onChange={() => toggleNeighbor('target')}
-                                />
-                                <a
-                                    href={`https://mltd.matsurihi.me/events/${eventMetadata.id}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="btn btn-sm btn-outline btn-primary"
-                                >
-                                    実ボーダーを見る
-                                </a>
+                                <div className="flex items-center gap-2 w-full sm:w-auto">
+                                    <input
+                                        type="checkbox"
+                                        className="toggle toggle-primary toggle-sm"
+                                        checked={visibleNeighbors.target}
+                                        onChange={() => toggleNeighbor('target')}
+                                    />
+                                    <a
+                                        href={`https://mltd.matsurihi.me/events/${eventMetadata.id}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="btn btn-xs btn-outline btn-primary"
+                                    >
+                                        実ボーダー
+                                    </a>
+                                </div>
                             </div>
                         </li>
                         {Object.entries(neighborMetadata).map(([key, neighbor], index) => (
                             <li key={key}>
-                                <div className="flex items-center gap-2 p-2 bg-base-200 rounded-lg hover:bg-base-200">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-3 bg-base-200 rounded-lg hover:bg-base-200">
                                     <div className="w-12 h-12 rounded flex-shrink-0" style={{ backgroundColor: COLORS.neighbors[index] }} />
-                                    <div className="w-80">
-                                        <span className="w-40 font-medium truncate">近傍{key}：{neighbor.name}</span>
-                                        <div className="flex gap-4 mt-1 text-sm text-base-content/70">
-                                            <span>
-                                                開催日数: {neighbor.length}日
-                                            </span>
-                                            <span>
-                                                最終スコア: {formatScore(normalizedData.neighbors[key][normalizedData.neighbors[key].length - 1])}
-                                                {neighbor.length !== eventMetadata.length && (
-                                                    <span
-                                                        className="relative inline-flex items-center cursor-pointer select-none ml-2"
-                                                        onMouseEnter={() => setPopoverIndex(index)}
-                                                        onMouseLeave={() => setPopoverIndex(null)}
-                                                        onClick={() => setPopoverIndex(popoverIndex === index ? null : index)}
-                                                    >
-                                                        <AlertTriangle size={16} className="text-warning" />
-                                                        <span className="ml-1 text-xs text-warning font-bold">注意</span>
-                                                        {popoverIndex === index && (
-                                                            <span className="absolute left-0 top-full z-50 mt-2 w-96 rounded bg-base-200 p-2 text-xs text-base-content shadow-lg border border-base-300">
-                                                                このスコアは <b>正規化</b> されています。<br />
-                                                                <span className="text-error font-bold">比較する場合は、同じ開催日数のイベントのデータがより参考になります。</span><br />
-                                                                詳しくはページ下部の「解説」内「スコアの正規化方法について」をご覧ください。
-                                                            </span>
-                                                        )}
-                                                    </span>
-                                                )}
-                                            
-                                            </span>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="font-medium text-sm">
+                                            <span className="sm:hidden">近傍{key}</span>
+                                            <span className="hidden sm:inline">近傍{key}：{neighbor.name}</span>
                                         </div>
-                                        
+                                        <div className="text-xs text-base-content/70 truncate sm:hidden">{neighbor.name}</div>
+                                        <div className="text-xs text-base-content/70 mt-1">
+                                            <div className="flex flex-wrap gap-2">
+                                                <span>開催日数: {neighbor.length}日</span>
+                                                <span className="flex items-center gap-1">
+                                                    最終スコア: {formatScore(normalizedData.neighbors[key][normalizedData.neighbors[key].length - 1])}
+                                                    {neighbor.length !== eventMetadata.length && (
+                                                        <span
+                                                            className="relative inline-flex items-center cursor-pointer select-none"
+                                                            onMouseEnter={() => setPopoverIndex(index)}
+                                                            onMouseLeave={() => setPopoverIndex(null)}
+                                                            onClick={() => setPopoverIndex(popoverIndex === index ? null : index)}
+                                                        >
+                                                            <AlertTriangle size={12} className="text-warning" />
+                                                            <span className="ml-1 text-xs text-warning font-bold">注意</span>
+                                                            {popoverIndex === index && (
+                                                                <span className="absolute left-0 top-full z-50 mt-2 w-72 sm:w-96 rounded bg-base-200 p-2 text-xs text-base-content shadow-lg border border-base-300">
+                                                                    このスコアは <b>正規化</b> されています。<br />
+                                                                    <span className="text-error font-bold">比較する場合は、同じ開催日数のイベントのデータがより参考になります。</span><br />
+                                                                    詳しくはページ下部の「解説」内「スコアの正規化方法について」をご覧ください。
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                    )}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
-                                    
-                                    <span className="flex-1" /> {/* Spacer */}
-                                    <input
-                                        type="checkbox"
-                                        className="toggle toggle-primary toggle-md"
-                                        checked={visibleNeighbors[key]}
-                                        onChange={() => toggleNeighbor(key)}
-                                    />
-                                    <a
-                                        href={`https://mltd.matsurihi.me/events/${neighbor.id}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="btn btn-sm btn-outline btn-primary"
-                                    >
-                                        実ボーダーを見る
-                                    </a>
+                                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                                        <input
+                                            type="checkbox"
+                                            className="toggle toggle-primary toggle-sm"
+                                            checked={visibleNeighbors[key]}
+                                            onChange={() => toggleNeighbor(key)}
+                                        />
+                                        <a
+                                            href={`https://mltd.matsurihi.me/events/${neighbor.id}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="btn btn-xs btn-outline btn-primary"
+                                        >
+                                            実ボーダー
+                                        </a>
+                                    </div>
                                 </div>
                             </li>
                         ))}

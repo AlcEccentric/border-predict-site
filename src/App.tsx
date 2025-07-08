@@ -9,7 +9,7 @@ import CardContainer from './components/CardContainer';
 import ThemeSelector from './components/ThemeSelector';
 
 const App: React.FC = () => {
-    const releaseDate = new Date('2025-06-01T00:00:00+09:00'); // TODO: update once development is complete
+    const releaseDate = new Date('2025-06-01T00:00:00+09:00');
     const now = new Date();
     if (now < releaseDate) { 
         return <EventModal />;
@@ -152,12 +152,12 @@ const App: React.FC = () => {
     return (
         <div className="container mx-auto px-4 py-8">
             <CardContainer className="mb-8">
-                <div className="flex justify-between items-center">
-                    <h1 className="text-3xl font-bold flex flex-col gap-2">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <h1 className="text-2xl sm:text-3xl font-bold flex flex-col gap-2">
                         <span>ミリシタ・ボーダー予想 (ベータ版)</span>
-                        <span className="text-2xl text-gray-500">{eventInfo?.EventName}</span>
+                        <span className="text-xl sm:text-2xl text-gray-500 break-words">{eventInfo?.EventName}</span>
                     </h1>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
                         <ThemeSelector theme={theme} setTheme={setTheme} />
                     </div>
                 </div>
