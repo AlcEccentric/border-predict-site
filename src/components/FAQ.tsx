@@ -39,7 +39,7 @@ const FAQ: React.FC = () => {
                 <div className="collapse collapse-plus bg-base-200">
                     <input type="checkbox" /> 
                     <div className="collapse-title text-xl font-medium">
-                        近傍イベントとは？
+                        近傍イベントとは
                     </div>
                     <div className="collapse-content">
                         <p>
@@ -51,62 +51,6 @@ const FAQ: React.FC = () => {
                             <strong>近傍イベントの表示について:</strong><br />
                             「近傍1」は最も類似度の高い（距離が最も近い）イベント、「近傍2」は2番目に類似度の高いイベント、という順番で表示されます。<br />
                             数字が小さいほど現在のイベントとの類似度が高く、予測の精度により大きく影響します。
-                        </p>
-                    </div>
-                </div>
-
-                <div className="collapse collapse-plus bg-base-200">
-                    <input type="checkbox" />
-                    <div className="collapse-title text-xl font-medium">
-                        正規化された軌跡について
-                    </div>
-                    <div className="collapse-content">
-                        <p>
-                            イベントの開催日数が異なる場合でも比較できるように、
-                            データを標準化したものです。これにより、異なるイベント間での
-                            スコアの伸び方の比較が可能になります。
-                        </p>
-                    </div>
-                </div>
-
-                <div className="collapse collapse-plus bg-base-200">
-                    <input type="checkbox" />
-                    <div className="collapse-title text-xl font-medium">
-                        データ更新頻度と古いデータについて
-                    </div>
-                    <div className="collapse-content">
-                        <p>
-                            <strong>データ更新頻度:</strong>
-                            <br />予測データは通常1時間ごとに更新されます。
-                        </p>
-                        <p className="mt-2">
-                            <strong>古いデータが表示される場合:</strong>
-                            <br />ブラウザのキャッシュが原因で古いデータが表示される場合があります。
-                            以下の方法で最新データを取得できます：
-                        </p>
-                        <ul className="mt-2 ml-4 list-disc">
-                            <li><strong>ページをリロード:</strong> Ctrl+F5 (Windows) / Cmd+Shift+R (Mac) で強制リロード</li>
-                            <li><strong>ブラウザキャッシュをクリア:</strong> 設定からブラウザキャッシュを削除</li>
-                            <li><strong>プライベートブラウジング:</strong> シークレットモードで開き直し</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <div className="collapse collapse-plus bg-base-200">
-                    <input type="checkbox" />
-                    <div className="collapse-title text-xl font-medium">
-                        スコアの正規化方法について
-                    </div>
-                    <div className="collapse-content">
-                        <p>
-                            イベントごとに開催日数やブースト開始タイミングが異なるため、本サイトではスコア推移を比較しやすくするために正規化処理を行っています。<br />
-                            <b>現在のイベントと同じ長さの近傍イベント</b>はリサンプリングのみのため、表示スコアは実際の最終スコアと一致します。<br />
-                            <b>異なる長さの近傍イベント</b>は、ブースト開始位置を同じ比率に合わせ、スコアも長さの比率でスケーリングしています。<br />
-                            そのため、<b>正規化後のスコアは実際のスコアと異なる場合があります</b>。<br />
-                            <span className="text-error font-bold">実際のボーダー推移を比較したい場合は、同じ開催日数のイベントを参照するのがおすすめです。</span>
-                        </p>
-                        <p className="mt-2">
-                            <strong>補足:</strong> 周年イベントは全て同じ開催日数のため、正規化後も最終スコアは実際のスコアと一致します。
                         </p>
                     </div>
                 </div>
@@ -223,6 +167,64 @@ const FAQ: React.FC = () => {
                     </div>
                 </div>
 
+                <div className="collapse collapse-plus bg-base-200">
+                    <input type="checkbox" />
+                    <div className="collapse-title text-xl font-medium">
+                        正規化された軌跡について
+                    </div>
+                    <div className="collapse-content">
+                        <p>
+                            イベントの開催日数が異なる場合でも比較できるように、
+                            データを標準化したものです。これにより、異なるイベント間での
+                            スコアの伸び方の比較が可能になります。
+                        </p>
+                    </div>
+                </div>
+
+                <div className="collapse collapse-plus bg-base-200">
+                    <input type="checkbox" />
+                    <div className="collapse-title text-xl font-medium">
+                        データ更新頻度と古いデータについて
+                    </div>
+                    <div className="collapse-content">
+                        <p>
+                            <strong>データ更新頻度:</strong>
+                            <br />予測データは通常1~2時間ごとに更新されます。
+                        </p>
+                        <p className="mt-2">
+                            <strong>古いデータが表示される場合:</strong>
+                            <br />ブラウザのキャッシュが原因で古いデータが表示される場合があります。
+                            以下の方法で最新データを取得できます：
+                        </p>
+                        <ul className="mt-2 ml-4 list-disc">
+                            <li><strong>ページをリロード:</strong> Ctrl+F5 (Windows) / Cmd+Shift+R (Mac) で強制リロード</li>
+                            <li><strong>ブラウザキャッシュをクリア:</strong> 設定からブラウザキャッシュを削除</li>
+                            <li><strong>プライベートブラウジング:</strong> シークレットモードで開き直し</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div className="collapse collapse-plus bg-base-200">
+                    <input type="checkbox" />
+                    <div className="collapse-title text-xl font-medium">
+                        スコアの正規化方法について
+                    </div>
+                    <div className="collapse-content">
+                        <p>
+                            イベントごとに開催日数やブースト開始タイミングが異なるため、本サイトではスコア推移を比較しやすくするために正規化処理を行っています。<br />
+                            <b>現在のイベントと同じ長さの近傍イベント</b>はリサンプリングのみのため、表示スコアは実際の最終スコアと一致します。<br />
+                            <b>異なる長さの近傍イベント</b>は、ブースト開始位置を同じ比率に合わせ、スコアも長さの比率でスケーリングしています。<br />
+                            そのため、<b>正規化後のスコアは実際のスコアと異なる場合があります</b>。<br />
+                            <span className="text-error font-bold">実際のボーダー推移を比較したい場合は、同じ開催日数のイベントを参照するのがおすすめです。</span>
+                        </p>
+                        <p className="mt-2">
+                            <strong>補足:</strong> 周年イベントは全て同じ開催日数のため、正規化後も最終スコアは実際のスコアと一致します。
+                        </p>
+                    </div>
+                </div>
+
+                
+
 
 
                 <div className="collapse collapse-plus bg-base-200">
@@ -243,6 +245,7 @@ const FAQ: React.FC = () => {
                             <strong>ベータ版について:</strong>
                             <br />このサイトは現在ベータ版として公開されており、テスト段階にあります。
                             予測精度の向上や機能の改善を継続的に行っています。
+                            また、ウェブサイト自体にもバグや改善すべき点が存在する可能性があります。
                             不具合や改善点にお気づきの場合は、お気軽にご連絡ください。
                         </p>
                         <p className="mt-2">
