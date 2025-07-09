@@ -158,7 +158,7 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                                                 予測不可
                                             </div>
                                             <div className="stat-desc text-error">
-                                                十分な過去データがありません
+                                                十分なデータがありません
                                             </div>
                                         </div>
                                     </div>
@@ -197,7 +197,7 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                                                 予測不可
                                             </div>
                                             <div className="stat-desc text-error">
-                                                十分な過去データがありません
+                                                十分なデータがありません
                                             </div>
                                         </div>
                                     </div>
