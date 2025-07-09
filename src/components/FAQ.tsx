@@ -7,7 +7,7 @@ const FAQ: React.FC = () => {
             <div className="space-y-4">
                 <div className="collapse collapse-plus bg-base-200">
                     <input type="checkbox" />
-                    <div className="collapse-title text-xl font-bold text-primary bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 border-l-4 border-primary">
+                    <div className="collapse-title text-xl font-bold bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 border-l-4 border-primary">
                         予測について
                     </div>
                     <div className="collapse-content">
@@ -39,7 +39,7 @@ const FAQ: React.FC = () => {
 
                 <div className="collapse collapse-plus bg-base-200">
                     <input type="checkbox" /> 
-                    <div className="collapse-title text-xl font-bold text-primary bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 border-l-4 border-primary">
+                    <div className="collapse-title text-xl font-bold bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 border-l-4 border-primary">
                         近傍イベントとは
                     </div>
                     <div className="collapse-content">
@@ -58,7 +58,7 @@ const FAQ: React.FC = () => {
 
                 <div className="collapse collapse-plus bg-base-200">
                     <input type="checkbox" />
-                    <div className="collapse-title text-xl font-bold text-primary bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 border-l-4 border-primary">
+                    <div className="collapse-title text-xl font-bold bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 border-l-4 border-primary">
                         予測精度について
                     </div>
                     <div className="collapse-content">
@@ -170,7 +170,7 @@ const FAQ: React.FC = () => {
 
                 <div className="collapse collapse-plus bg-base-200">
                     <input type="checkbox" />
-                    <div className="collapse-title text-xl font-bold text-primary bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 border-l-4 border-primary">
+                    <div className="collapse-title text-xl font-bold bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 border-l-4 border-primary">
                         正規化された軌跡について
                     </div>
                     <div className="collapse-content">
@@ -184,7 +184,7 @@ const FAQ: React.FC = () => {
 
                 <div className="collapse collapse-plus bg-base-200">
                     <input type="checkbox" />
-                    <div className="collapse-title text-xl font-bold text-primary bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 border-l-4 border-primary">
+                    <div className="collapse-title text-xl font-bold bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 border-l-4 border-primary">
                         データ更新頻度と古いデータについて
                     </div>
                     <div className="collapse-content">
@@ -207,7 +207,7 @@ const FAQ: React.FC = () => {
 
                 <div className="collapse collapse-plus bg-base-200">
                     <input type="checkbox" />
-                    <div className="collapse-title text-xl font-bold text-primary bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 border-l-4 border-primary">
+                    <div className="collapse-title text-xl font-bold bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 border-l-4 border-primary">
                         スコアの正規化方法について
                     </div>
                     <div className="collapse-content">
@@ -230,7 +230,7 @@ const FAQ: React.FC = () => {
 
                 <div className="collapse collapse-plus bg-base-200">
                     <input type="checkbox" />
-                    <div className="collapse-title text-xl font-bold text-primary bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 border-l-4 border-primary">
+                    <div className="collapse-title text-xl font-bold bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 border-l-4 border-primary">
                         データソース・不具合報告
                     </div>
                     <div className="collapse-content">
