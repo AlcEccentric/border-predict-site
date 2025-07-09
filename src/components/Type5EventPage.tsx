@@ -123,7 +123,24 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                     {/* Summary Stats */}
                     <CardContainer className="mb-8" ref={summaryStatsRef}>
                         <div className="text-center mb-4">
-                            <h3 className="text-xl font-bold">{getIdolName(selectedIdol)}の予測スコア</h3>
+                            <h3 className="text-xl font-bold flex items-center justify-center gap-2 flex-wrap">
+                                <span>{getIdolName(selectedIdol)}の予測スコア</span>
+                                <div className="tooltip" data-tip="予測精度について詳しく見る">
+                                    <button 
+                                        className="btn btn-xs btn-outline btn-primary"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            const element = document.getElementById('prediction-accuracy');
+                                            if (element) {
+                                                element.scrollIntoView({ behavior: 'smooth' });
+                                            }
+                                        }}
+                                    >
+                                        <Info className="w-3 h-3" />
+                                        精度
+                                    </button>
+                                </div>
+                            </h3>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* 100 Border Stats */}
