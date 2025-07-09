@@ -82,8 +82,23 @@ const BorderTabs: React.FC<BorderTabsProps> = ({
 
                 <div className="text-center space-y-2">
                     {/* Final Score */}
-                    <h3 className="text-lg sm:text-2xl font-bold">
-                        {activeTab}位の予想最終スコア: {finalScore.toLocaleString()}
+                    <h3 className="text-lg sm:text-2xl font-bold flex items-center justify-center gap-2 flex-wrap">
+                        <span>{activeTab}位の予想最終スコア: {finalScore.toLocaleString()}</span>
+                        <div className="tooltip" data-tip="予測精度について詳しく見る">
+                            <button 
+                                className="btn btn-xs btn-outline btn-primary"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    const element = document.getElementById('prediction-accuracy');
+                                    if (element) {
+                                        element.scrollIntoView({ behavior: 'smooth' });
+                                    }
+                                }}
+                            >
+                                <Info className="w-3 h-3" />
+                                精度
+                            </button>
+                        </div>
                     </h3>
 
                     {/* ±5% Range */}
