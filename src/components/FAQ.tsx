@@ -22,8 +22,8 @@ const FAQ: React.FC = () => {
                             <br />3. 距離に基づく重み付けを行い、複数の近傍イベントから最終予測を算出
                         </p>
                         <p className="mt-2">
-                            <strong>アライメント方法:</strong> 線形回帰、アフィン変換、比例調整の3つの方法を用いて、
-                            近傍イベントのスコア推移を現在のイベントの直近数時間のトレンドに最適に合わせます。
+                            <strong>アライメント方法:</strong> 線形回帰、アフィン変換の2つの方法を用いて、
+                            近傍イベントのスコア推移を現在のイベントの直近十数時間のトレンドに最適に合わせます。
                         </p>
                         <p className="mt-2">
                             <strong>重み付け計算:</strong> アライメント後、各近傍イベントと現在のイベントとの距離を計算し、
@@ -106,7 +106,7 @@ const FAQ: React.FC = () => {
                             <span className="text-error font-bold">実際のボーダー推移を比較したい場合は、同じ開催日数のイベントを参照するのがおすすめです。</span>
                         </p>
                         <p className="mt-2">
-                            <strong>補足:</strong> アニバーサリーイベントは全て同じ開催日数のため、正規化後も最終スコアは実際のスコアと一致します。
+                            <strong>補足:</strong> 周年イベントは全て同じ開催日数のため、正規化後も最終スコアは実際のスコアと一致します。
                         </p>
                     </div>
                 </div>
@@ -142,25 +142,69 @@ const FAQ: React.FC = () => {
                                     <br />• ±10%誤差範囲の的中率は90%以前で約80%、90%以降で90%
                                     <br />• ±5%誤差範囲の的中率は90%以前で60-70%、90%以降で80%
                                 </p>
-                                
-                                <p className="mt-3">
-                                    <strong>アイドル別の予測精度について:</strong>
-                                    <br />一部のアイドルでは予測精度が他のアイドルと比較して低い場合があります。
+                            </div>
+
+                            <div className="mt-6">
+                                <h5 className="text-md font-semibold mb-2">アイドル別の予測精度について</h5>
+                                <p className="text-sm mb-2">
+                                    一部のアイドルでは予測精度が他のアイドルと比較して低い場合があります。
+                                    以下は7周年データでの検証結果に基づく、特に注意が必要なアイドルの傾向です。
                                 </p>
-                                <div className="ml-4">
-                                    <p className="mt-2">
-                                        <strong>100位ボーダー:</strong>
-                                        <br />• <span className="text-warning">双海真美、双海亜美、島原エレナ</span>では、イベント75%進行時点以降で±10%誤差範囲を外れやすい傾向があります
-                                        <br />• ただし、イベント90%進行時点以降では全アイドルで±10%誤差範囲内に収まります
-                                    </p>
-                                    <p className="mt-2">
-                                        <strong>1000位ボーダー:</strong>
-                                        <br />• <span className="text-warning">福田のり子、舞浜歩、島原エレナ、双海亜美、双海真美</span>では、スコアデータがイベント終盤まで0のままで推移するため、予測精度が低い傾向があります
-                                        <br />• これらのアイドルでは±10%誤差範囲を外れる可能性が高くなります
-                                    </p>
+                                
+                                <div className="mt-4">
+                                    <h6 className="text-sm font-semibold mb-2">±10%誤差範囲を外れやすいアイドル</h6>
+                                    
+                                    <div className="ml-4">
+                                        <p className="mt-2">
+                                            <strong>100位ボーダー:</strong>
+                                            <br />• <span className="text-warning">双海真美、双海亜美、島原エレナ</span>
+                                            <br />• 特にイベント75%進行時点以降で±10%誤差範囲を外れやすい
+                                            <br />• ただし、イベント90%進行時点以降では全アイドルで±10%誤差範囲内に収まる
+                                        </p>
+                                        <p className="mt-2">
+                                            <strong>1000位ボーダー:</strong>
+                                            <br />• <span className="text-warning">福田のり子、舞浜歩、島原エレナ、双海亜美、双海真美</span>
+                                            <br />• スコアデータがイベント終盤まで0のままで推移するため、予測精度が低い
+                                            <br />• これらのアイドルでは±10%誤差範囲を外れる可能性が高い
+                                        </p>
+                                    </div>
                                 </div>
-                                <p className="mt-2 text-sm text-info">
+                                
+                                <div className="mt-4">
+                                    <h6 className="text-sm font-semibold mb-2">±5%誤差範囲を外れやすいアイドル</h6>
+                                    
+                                    <div className="ml-4">
+                                        <p className="mt-2">
+                                            <strong>100位ボーダー:</strong>
+                                        </p>
+                                        <div className="ml-4">
+                                            <p className="mt-1">
+                                                <span className="text-error">特に注意が必要なアイドル:</span>
+                                                <br />• <span className="text-error">島原エレナ、北上麗花</span>
+                                                <br />• イベント全期間を通して±5%誤差範囲を外れやすい（予測誤差が大きい）
+                                                <br />• ただし、イベント90%進行時点以降では予測誤差が5%以下に縮小される
+                                            </p>
+                                            <p className="mt-1">
+                                                <span className="text-warning">中盤以降で注意が必要なアイドル:</span>
+                                                <br />• <span className="text-warning">双海真美、舞浜歩、福田のり子、周防桃子</span>
+                                                <br />• イベント中盤（30-69%）以降で±5%誤差範囲を外れやすい
+                                                <br />• しかし、イベント終盤（80%以降）では予測誤差が5%以下に縮小される
+                                            </p>
+                                        </div>
+                                        
+                                        <div className="mt-3 p-3 bg-success/20 rounded-lg">
+                                            <p className="text-success text-sm">
+                                                上記以外のアイドルでは±5%誤差範囲内に収まる確率が比較的に高い、
+                                                イベント中盤（30%以降）で70-80%、終盤（80%以降）では85-90%、
+                                                最終盤（90%以降）では90%の確率で±5%誤差範囲内に収まります。
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <p className="mt-4 text-sm text-info">
                                     <strong>補足:</strong> 上記のアイドルの予測をご覧になる際は、特に注意して参考程度にご利用ください。
+                                    通常イベントでは異なる傾向を示す可能性があります。
                                 </p>
                             </div>
                         </div>
@@ -178,6 +222,8 @@ const FAQ: React.FC = () => {
                         </p>
                     </div>
                 </div>
+
+
 
                 <div className="collapse collapse-plus bg-base-200">
                     <input type="checkbox" />

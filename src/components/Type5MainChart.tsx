@@ -55,9 +55,79 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
       confidenceInterval?: { min: number; max: number };
     }> 
   } | null>(null);
+  
+  // Track window width for responsive behavior
+  const [isMobile, setIsMobile] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(0);
+  
+  React.useEffect(() => {
+    const checkMobile = () => {
+      const width = window.innerWidth;
+      setIsMobile(width < 640);
+      setWindowWidth(width); // Track window width for chart re-renders
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
-  // Generate time points (memoized to prevent infinite re-renders)
+  // Japanese number formatting function
+  const formatJapaneseNumber = React.useCallback((value: number): string => {
+    if (value >= 100000000) { // 1億以上
+      return Math.round(value / 100000000) + '億';
+    } else if (value >= 10000) { // 1万以上
+      return Math.round(value / 10000) + '万';
+    } else if (value >= 1000) { // 1000以上
+      return Math.round(value / 1000) + '千';
+    } else {
+      return Math.round(value).toString();
+    }
+  }, []);
+
+  // Generate time points for chart display (memoized to prevent infinite re-renders)
   const timePoints = useMemo(() => {
+    const idolData = idolPredictions.get(selectedIdol);
+    if (!idolData) return [];
+
+    const lengths = [];
+    if (idolData.prediction100) {
+      lengths.push(idolData.prediction100.data.raw.target.length);
+    }
+    if (idolData.prediction1000) {
+      lengths.push(idolData.prediction1000.data.raw.target.length);
+    }
+    
+    if (lengths.length === 0) return [];
+    
+    const maxLength = Math.max(...lengths);
+
+    return Array.from({ length: maxLength }, (_, i) => {
+      const date = new Date(startAt);
+      date.setMinutes(date.getMinutes() + i * 30);
+      
+      // Show date only on mobile, full date & time on desktop for X-axis
+      if (isMobile) {
+        return date.toLocaleDateString('ja-JP', {
+          month: 'numeric',
+          day: 'numeric',
+          timeZone: 'Asia/Tokyo'
+        });
+      } else {
+        return date.toLocaleString('ja-JP', {
+          month: 'numeric',
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          timeZone: 'Asia/Tokyo'
+        });
+      }
+    });
+  }, [idolPredictions, selectedIdol, startAt, isMobile]);
+
+  // Generate full date time points for tooltips (always show full date & time)
+  const fullTimePoints = useMemo(() => {
     const idolData = idolPredictions.get(selectedIdol);
     if (!idolData) return [];
 
@@ -79,7 +149,7 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
       return date.toLocaleString('ja-JP', {
         month: 'numeric',
         day: 'numeric',
-        hour: '2-digit',
+        hour: 'numeric',
         minute: '2-digit',
         timeZone: 'Asia/Tokyo'
       });
@@ -173,7 +243,7 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
       labels: timePoints,
       datasets
     };
-  }, [idolData, selectedIdol, timePoints, theme]); // Add theme to dependencies
+  }, [idolData, selectedIdol, timePoints, theme]);
 
   const handleChartHover = React.useCallback((event: any, _elements: InteractionItem[]) => {
     const chart = chartRef.current;
@@ -223,14 +293,14 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
       });
 
       setHoveredData({
-        timePoint: timePoints[dataIndex],
+        timePoint: fullTimePoints[dataIndex],
         values: values.sort((a, b) => b.value - a.value) // Sort by value descending
       });
     } else {
       setCrosshairPosition(null);
       setHoveredData(null);
     }
-  }, [timePoints, chartData.datasets, idolData]);
+  }, [timePoints, fullTimePoints, chartData.datasets, idolData]);
 
   const handleChartLeave = React.useCallback(() => {
     setCrosshairPosition(null);
@@ -306,6 +376,9 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
             usePointStyle: true,
             pointStyle: 'line',
             color: getTextColor(), // Use theme-appropriate text color
+            font: {
+              size: isMobile ? 11 : 12
+            },
             generateLabels: (_chart) => {
               const labels = [];
               
@@ -347,7 +420,10 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
           display: true,
           text: `${eventName} - ${idolName}`,
           padding: { bottom: 20 },
-          color: getTextColor() // Use theme-appropriate text color
+          color: getTextColor(), // Use theme-appropriate text color
+          font: {
+            size: isMobile ? 14 : 16
+          }
         },
         tooltip: {
           enabled: false // Disable default tooltip since we're using custom crosshair
@@ -359,13 +435,15 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
               // Prediction range background
               predictionRange: {
                 type: 'box',
-                xMin: Math.min(
-                  ...[
-                    idolData.prediction100?.metadata.raw.last_known_step_index,
-                    idolData.prediction1000?.metadata.raw.last_known_step_index
-                  ].filter(val => val !== undefined)
-                ),
-                xMax: Math.max(timePoints.length - 1, 0),
+                xMin: (() => {
+                  return Math.min(
+                    ...[
+                      idolData.prediction100?.metadata.raw.last_known_step_index,
+                      idolData.prediction1000?.metadata.raw.last_known_step_index
+                    ].filter(val => val !== undefined)
+                  );
+                })(),
+                xMax: timePoints.length - 1,
                 backgroundColor: 'rgba(103, 220, 209, 0.1)',
                 borderColor: 'rgba(200, 200, 200, 0.2)',
                 borderWidth: 1
@@ -373,18 +451,22 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
               // Prediction start line
               predictionLine: {
                 type: 'line',
-                xMin: Math.min(
-                  ...[
-                    idolData.prediction100?.metadata.raw.last_known_step_index,
-                    idolData.prediction1000?.metadata.raw.last_known_step_index
-                  ].filter(val => val !== undefined)
-                ),
-                xMax: Math.min(
-                  ...[
-                    idolData.prediction100?.metadata.raw.last_known_step_index,
-                    idolData.prediction1000?.metadata.raw.last_known_step_index
-                  ].filter(val => val !== undefined)
-                ),
+                xMin: (() => {
+                  return Math.min(
+                    ...[
+                      idolData.prediction100?.metadata.raw.last_known_step_index,
+                      idolData.prediction1000?.metadata.raw.last_known_step_index
+                    ].filter(val => val !== undefined)
+                  );
+                })(),
+                xMax: (() => {
+                  return Math.min(
+                    ...[
+                      idolData.prediction100?.metadata.raw.last_known_step_index,
+                      idolData.prediction1000?.metadata.raw.last_known_step_index
+                    ].filter(val => val !== undefined)
+                  );
+                })(),
                 borderColor: 'rgb(255, 99, 132)',
                 borderWidth: 2,
                 borderDash: [5, 5]
@@ -398,10 +480,18 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
           title: {
             display: true,
             text: '時間',
-            color: getTextColor() // Use theme-appropriate text color
+            color: getTextColor(), // Use theme-appropriate text color
+            font: {
+              size: isMobile ? 11 : 12
+            }
           },
           ticks: {
-            color: getTextColor() // Use theme-appropriate text color
+            color: getTextColor(), // Use theme-appropriate text color
+            font: {
+              size: isMobile ? 10 : 11
+            },
+            // Only reduce number of ticks on mobile
+            ...(isMobile && { maxTicksLimit: 6 })
           }
         },
         y: {
@@ -409,19 +499,40 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
           title: {
             display: true,
             text: 'スコア',
-            color: getTextColor() // Use theme-appropriate text color
+            color: getTextColor(), // Use theme-appropriate text color
+            font: {
+              size: isMobile ? 11 : 12
+            }
           },
           ticks: {
-            color: getTextColor() // Use theme-appropriate text color
+            color: getTextColor(), // Use theme-appropriate text color
+            font: {
+              size: isMobile ? 10 : 11
+            },
+            callback: function(value: number | string) {
+              const numValue = typeof value === 'string' ? parseFloat(value) : value;
+              return formatJapaneseNumber(numValue);
+            }
           }
         }
       },
       interaction: {
         mode: 'index',
         intersect: false
+      },
+      elements: {
+        point: {
+          radius: 0,
+          hoverRadius: isMobile ? 6 : 4,
+          hitRadius: isMobile ? 20 : 10
+        },
+        line: {
+          borderWidth: isMobile ? 2 : 1.5,
+          tension: 0.1
+        }
       }
     };
-  }, [selectedIdol, eventName, idolData, timePoints, handleChartHover, theme]); // Add theme to dependencies
+  }, [selectedIdol, eventName, idolData, timePoints, handleChartHover, theme, isMobile, windowWidth]);
 
   return (
     <div className="relative w-full">
@@ -436,8 +547,16 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
               className="absolute pointer-events-none"
               style={{
                 left: crosshairPosition.x,
-                top: window.innerWidth < 768 ? '11%' : '5.5%', // Higher percentage for mobile due to smaller chart
-                height: window.innerWidth < 768 ? '41%' : '74.5%',
+                top: (() => {
+                  if (window.innerWidth < 640) return '12%'; // h-[300px]
+                  if (window.innerWidth < 768) return '10%';  // sm:h-[400px] 
+                  return '6.5%'; // md:h-[600px]
+                })(),
+                height: (() => {
+                  if (window.innerWidth < 640) return '62%'; // h-[300px]
+                  if (window.innerWidth < 768) return '61%'; // sm:h-[400px]
+                  return '74%'; // md:h-[600px]
+                })(),
                 width: 1,
                 backgroundColor: 'rgba(255, 99, 132, 0.8)',
                 zIndex: 10
@@ -449,7 +568,6 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
               const chart = chartRef.current;
               if (!chart) return null;
               
-              // Calculate the y position for this data point
               const yValue = item.value;
               const yMin = chart.scales.y.min;
               const yMax = chart.scales.y.max;
@@ -460,8 +578,8 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
                   key={index}
                   className="absolute pointer-events-none rounded-full"
                   style={{
-                    left: crosshairPosition.x - 6, // Center the 12px dot
-                    top: yPixel - 6, // Center the 12px dot
+                    left: crosshairPosition.x - 6,
+                    top: yPixel - 6,
                     width: 12,
                     height: 12,
                     backgroundColor: item.color,
@@ -478,10 +596,9 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
               style={{
                 left: (() => {
                   const containerWidth = window.innerWidth;
-                  const tooltipWidth = window.innerWidth < 640 ? 160 : 320;
+                  const tooltipWidth = isMobile ? 160 : 320;
                   
-                  // On mobile, prefer left positioning when clicking on right half
-                  if (window.innerWidth < 640) {
+                  if (isMobile) {
                     if (crosshairPosition.x > containerWidth * 0.5) {
                       return Math.max(10, crosshairPosition.x - tooltipWidth - 10);
                     } else {
@@ -489,7 +606,6 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
                     }
                   }
                   
-                  // On desktop, use improved logic
                   return crosshairPosition.isNearRightEdge 
                     ? crosshairPosition.x - tooltipWidth - 10
                     : crosshairPosition.x + 10;
@@ -524,8 +640,6 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
           </>
         )}
       </div>
-      
-
     </div>
   );
 };

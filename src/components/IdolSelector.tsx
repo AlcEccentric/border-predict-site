@@ -15,6 +15,20 @@ const IdolSelector: React.FC<IdolSelectorProps> = ({
     availableIdols
 }) => {
     const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
+    const [isExpanded, setIsExpanded] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
+
+    // Check if we're on mobile
+    React.useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 640);
+        };
+        
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     // Generate idol list for 52 idols (assuming IDs 1-52)
     const allIdols = Array.from({ length: 52 }, (_, i) => i + 1);
@@ -53,8 +67,13 @@ const IdolSelector: React.FC<IdolSelectorProps> = ({
                     )}
                 </div>
 
-                <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 2xl:grid-cols-13 gap-2">
-                    {allIdols.map(idolId => (
+                <div className="relative">
+                    <div className={`relative grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 2xl:grid-cols-13 gap-2 ${
+                        !isExpanded && isMobile ? 'overflow-hidden' : ''
+                    }`} style={{
+                        maxHeight: !isExpanded && isMobile ? '12rem' : 'none'
+                    }}>
+                        {allIdols.map(idolId => (
                         <motion.div
                             key={idolId}
                             whileHover={{ scale: hasData(idolId) ? 1.05 : 1.02 }}
@@ -142,10 +161,42 @@ const IdolSelector: React.FC<IdolSelectorProps> = ({
                             </div>
                         </motion.div>
                     ))}
+                        
+                        {/* Gradient overlay when collapsed - positioned inside the grid container */}
+                        {!isExpanded && isMobile && (
+                            <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-base-100 to-transparent pointer-events-none z-10"></div>
+                        )}
+                    </div>
+                    
+                    {/* Mobile expand/collapse button - positioned outside the grid but inside the relative container */}
+                    {isMobile && (
+                        <div className="mt-4 text-center relative z-20">
+                            <button
+                                onClick={() => setIsExpanded(!isExpanded)}
+                                className="btn btn-sm btn-outline"
+                            >
+                                {isExpanded ? (
+                                    <>
+                                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                                        </svg>
+                                        アイドルを折りたたむ
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                        </svg>
+                                        すべてのアイドルを表示
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    )}
                 </div>
-            </div>
-        </CardContainer>
-    );
+        </div>
+    </CardContainer>
+);
 };
 
 export default IdolSelector;
