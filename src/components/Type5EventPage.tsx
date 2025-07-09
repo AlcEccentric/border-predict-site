@@ -130,10 +130,10 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                             <div className="text-center space-y-3">
                                 <h3 className="text-xl text-primary font-bold">100位ボーダー</h3>
                                 {hasDataForBorder(selectedIdol, '100') ? (
-                                    <div className="stats stats-vertical shadow">
+                                    <div className="stats stats-vertical shadow w-full max-w-xs mx-auto">
                                         <div className="stat">
                                             <div className="stat-title font-bold text-primary">予測スコア</div>
-                                            <div className="stat-value text-primary">
+                                            <div className="stat-value text-primary min-w-[140px] mx-auto">
                                                 {Math.round(score100!).toLocaleString()}
                                             </div>
                                         </div>
@@ -169,10 +169,10 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                             <div className="text-center space-y-3">
                                 <h3 className="text-xl font-bold text-secondary">1000位ボーダー</h3>
                                 {hasDataForBorder(selectedIdol, '1000') ? (
-                                    <div className="stats stats-vertical shadow">
+                                    <div className="stats stats-vertical shadow w-full max-w-xs mx-auto">
                                         <div className="stat">
                                             <div className="stat-title font-bold text-secondary">予測スコア</div>
-                                            <div className="stat-value text-secondary">
+                                            <div className="stat-value text-secondary min-w-[140px] mx-auto">
                                                 {Math.round(score1000!).toLocaleString()}
                                             </div>
                                         </div>
@@ -190,7 +190,7 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="stats stats-vertical shadow">
+                                    <div className="stats stats-vertical shadow w-full max-w-xs mx-auto">
                                         <div className="stat">
                                             <div className="stat-title font-bold text-error">データ不足</div>
                                             <div className="stat-value text-error text-lg">

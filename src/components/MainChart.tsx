@@ -55,11 +55,9 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
     (_, i) => {
       const date = new Date(startAt);
       date.setMinutes(date.getMinutes() + i * 30);
-      return date.toLocaleString('ja-JP', {
+      return date.toLocaleDateString('ja-JP', {
         month: 'numeric',
         day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
         timeZone: 'Asia/Tokyo'
       });
     }
@@ -225,6 +223,8 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
         },
         ticks: {
           color: textColor,
+          // Only reduce number of ticks on mobile
+          ...(window.innerWidth < 640 && { maxTicksLimit: 6 })
         }
       },
       y: {
@@ -261,8 +261,8 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
               className="absolute pointer-events-none"
               style={{
                 left: crosshairPosition.x,
-                top: window.innerWidth < 768 ? 20 : 26,
-                bottom: window.innerWidth < 768 ? 60 : 80,
+                top: '5%', // Fixed top position
+                height: '75%', // Fixed height percentage
                 width: 1,
                 backgroundColor: 'rgba(255, 99, 132, 0.8)',
                 zIndex: 10

@@ -62,6 +62,23 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
             isTarget?: boolean;
         }> 
     } | null>(null);
+    
+    // Track window width for responsive behavior
+    const [isMobile, setIsMobile] = useState(false);
+    const [windowWidth, setWindowWidth] = useState(0);
+    
+    React.useEffect(() => {
+        const checkMobile = () => {
+            const width = window.innerWidth;
+            setIsMobile(width < 640);
+            setWindowWidth(width); // Track window width for chart re-renders
+        };
+        
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     // Get current idol data
     const currentIdolData = idolPredictions.get(selectedIdol);
@@ -90,6 +107,19 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
     const formatScore = (score: number): string => {
         return Math.round(score).toLocaleString();
     };
+
+    // Japanese number formatting function
+    const formatJapaneseNumber = React.useCallback((value: number): string => {
+        if (value >= 100000000) { // 1億以上
+            return Math.round(value / 100000000) + '億';
+        } else if (value >= 10000) { // 1万以上
+            return Math.round(value / 10000) + '万';
+        } else if (value >= 1000) { // 1000以上
+            return Math.round(value / 1000) + '千';
+        } else {
+            return Math.round(value).toString();
+        }
+    }, []);
 
     if (!currentPrediction) return null;
 
@@ -261,7 +291,10 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                     padding: {
                         bottom: 10
                     },
-                    color: getTextColor() // Use theme-appropriate text color
+                    color: getTextColor(), // Use theme-appropriate text color
+                    font: {
+                        size: isMobile ? 12 : 14
+                    }
                 }
             },
             scales: {
@@ -270,10 +303,20 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                     title: {
                         display: true,
                         text: '正規化されたスコア',
-                        color: getTextColor() // Use theme-appropriate text color
+                        color: getTextColor(), // Use theme-appropriate text color
+                        font: {
+                            size: isMobile ? 10 : 12
+                        }
                     },
                     ticks: {
-                        color: getTextColor() // Use theme-appropriate text color
+                        color: getTextColor(), // Use theme-appropriate text color
+                        font: {
+                            size: isMobile ? 9 : 10
+                        },
+                        callback: function(value: number | string) {
+                            const numValue = typeof value === 'string' ? parseFloat(value) : value;
+                            return formatJapaneseNumber(numValue);
+                        }
                     }
                 },
                 x: {
@@ -281,10 +324,18 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                     title: {
                         display: true,
                         text: 'イベント進行度 (%)',
-                        color: getTextColor() // Use theme-appropriate text color
+                        color: getTextColor(), // Use theme-appropriate text color
+                        font: {
+                            size: isMobile ? 10 : 12
+                        }
                     },
                     ticks: {
                         color: getTextColor(), // Use theme-appropriate text color
+                        font: {
+                            size: isMobile ? 9 : 10
+                        },
+                        // Only reduce ticks on mobile
+                        ...(isMobile && { maxTicksLimit: 6 }),
                         callback: (value: number | string) => {
                             const index = typeof value === 'string' ? parseInt(value) : value;
                             return `${percentagePoints[index]}%`;
@@ -293,7 +344,7 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                 }
             },
         };
-    }, [selectedIdol, activeBorder, currentPrediction, percentagePoints, handleChartHover, theme]); // Add theme to dependencies
+    }, [selectedIdol, activeBorder, currentPrediction, percentagePoints, handleChartHover, theme, isMobile, windowWidth]); // Add theme to dependencies
 
     return (
         <CardContainer className="mb-4">
@@ -329,7 +380,7 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                 </div>
 
                 {/* Chart */}
-                <div className="relative h-[200px] sm:h-[500px] md:h-[600px] w-full" onMouseLeave={handleChartLeave}>
+                <div className="relative h-[300px] sm:h-[500px] md:h-[600px] w-full" onMouseLeave={handleChartLeave}>
                     <Line 
                         ref={chartRef}
                         data={chartData} 
@@ -344,8 +395,16 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                                 className="absolute pointer-events-none"
                                 style={{
                                     left: crosshairPosition.x,
-                                    top: window.innerWidth < 640 ? '12%' : '4%', // Higher percentage for mobile due to smaller chart
-                                    height: window.innerWidth < 640 ? '56%' : '85.5%', // Shorter height for mobile
+                                    top: (() => {
+                                        if (window.innerWidth < 640) return '12%'; // h-[300px]
+                                        if (window.innerWidth < 768) return '8%';  // sm:h-[500px] 
+                                        return '5%'; // md:h-[600px]
+                                    })(),
+                                    height: (() => {
+                                        if (window.innerWidth < 640) return '62%'; // h-[300px]
+                                        if (window.innerWidth < 768) return '70%'; // sm:h-[500px]
+                                        return '75%'; // md:h-[600px]
+                                    })(),
                                     width: 1,
                                     backgroundColor: 'rgba(255, 99, 132, 0.8)',
                                     zIndex: 10
@@ -385,10 +444,11 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                                 className="absolute pointer-events-none bg-base-100 border border-base-300 rounded-lg shadow-lg p-3 z-20 min-w-[120px] sm:min-w-[280px] max-w-[90vw]"
                                 style={{
                                     left: (() => {
-                                        const tooltipWidth = window.innerWidth < 640 ? 120 : 280;
+                                        const tooltipWidth = isMobile ? 120 : 280;
+                                        const chartWidth = chartRef.current?.chartArea?.right - chartRef.current?.chartArea?.left || 800;
                                         
                                         // Create more space between crosshair and tooltip
-                                        if (window.innerWidth < 640) {
+                                        if (isMobile) {
                                             // On mobile, be more aggressive about positioning
                                             const containerWidth = window.innerWidth;
                                             const spaceOnLeft = crosshairPosition.x;
@@ -411,11 +471,17 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                                             }
                                         }
                                         
-                                        // On desktop, create more space between crosshair and tooltip
-                                        if (crosshairPosition.x > tooltipWidth + 60) {
-                                            return crosshairPosition.x - tooltipWidth - 40; // More space on left
+                                        // On desktop, check if we're approaching the right end
+                                        const chartAreaLeft = chartRef.current?.chartArea?.left || 0;
+                                        const relativeX = crosshairPosition.x - chartAreaLeft;
+                                        const isNearRightEnd = relativeX > chartWidth * 0.7; // If we're in the right 30% of the chart
+                                        
+                                        if (isNearRightEnd) {
+                                            // Position tooltip to the left of crosshair
+                                            return Math.max(10, crosshairPosition.x - tooltipWidth - 140);
                                         } else {
-                                            return crosshairPosition.x + 25; // More space on right
+                                            // Position tooltip to the right of crosshair
+                                            return crosshairPosition.x + 25;
                                         }
                                     })(),
                                     top: 50
@@ -455,21 +521,52 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                     <h3 className="text-lg font-bold mb-4">近傍イベント</h3>
                     <ul className="w-full p-0 gap-2 space-y-2">
                         <li>
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-3 bg-base-200 rounded-lg hover:bg-base-200">
-                                <div className="w-12 h-12 rounded flex-shrink-0" style={{ backgroundColor: getIdolColor(selectedIdol) }} />
+                            <div className="flex items-center gap-2 p-3 bg-base-200 rounded-lg hover:bg-base-200">
                                 <div className="flex-1 min-w-0">
-                                    <div className="font-medium text-sm">
-                                        <span className="sm:hidden">進行中 - {getIdolName(selectedIdol)}</span>
-                                        <span className="hidden sm:inline">進行中 - {currentPrediction.metadata.raw.name} ({getIdolName(selectedIdol)})</span>
+                                    {/* Mobile layout */}
+                                    <div className="block sm:hidden">
+                                        <div className="flex items-center justify-between">
+                                            <div className="font-medium text-sm flex items-center gap-2">
+                                                <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: getIdolColor(selectedIdol) }} />
+                                                <span>進行中 - {getIdolName(selectedIdol)}</span>
+                                            </div>
+                                            <input
+                                                type="checkbox"
+                                                className="toggle toggle-primary toggle-sm"
+                                                checked={visibleNeighbors.target}
+                                                onChange={() => toggleNeighbor('target')}
+                                            />
+                                        </div>
+                                        <div className="text-sm text-base-content/70 mt-1 ml-5">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-sm font-medium">{currentPrediction.metadata.raw.name}</span>
+                                                <a
+                                                    href={`https://mltd.matsurihi.me/events/${currentPrediction.metadata.raw.id}#chart-idol`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-xs text-primary hover:text-primary-focus underline font-medium"
+                                                >
+                                                    実ボーダー
+                                                </a>
+                                            </div>
+                                        </div>
+                                        <div className="text-sm text-base-content/70 mt-1 ml-5">
+                                            <span>最終予測スコア: {formatScore(currentPrediction.data.normalized.target[currentPrediction.data.normalized.target.length - 1])}</span>
+                                        </div>
                                     </div>
-                                    <div className="text-xs text-base-content/70 truncate sm:hidden">{currentPrediction.metadata.raw.name}</div>
-                                    <div className="text-xs text-base-content/70 mt-1">
-                                        <div className="flex flex-wrap gap-2">
-                                            <span>最終スコア: {formatScore(currentPrediction.data.normalized.target[currentPrediction.data.normalized.target.length - 1])}</span>
+                                    
+                                    {/* Desktop layout */}
+                                    <div className="hidden sm:block">
+                                        <div className="font-medium text-sm flex items-center gap-2">
+                                            <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: getIdolColor(selectedIdol) }} />
+                                            進行中 - {currentPrediction.metadata.raw.name} ({getIdolName(selectedIdol)})
+                                        </div>
+                                        <div className="text-xs text-base-content/70 mt-1">
+                                            最終予測スコア: {formatScore(currentPrediction.data.normalized.target[currentPrediction.data.normalized.target.length - 1])}
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2 w-full sm:w-auto">
+                                <div className="hidden sm:flex items-center gap-2 justify-end shrink-0">
                                     <input
                                         type="checkbox"
                                         className="toggle toggle-primary toggle-sm"
@@ -480,7 +577,7 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                                         href={`https://mltd.matsurihi.me/events/${currentPrediction.metadata.raw.id}#chart-idol`}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="btn btn-xs btn-outline btn-primary"
+                                        className="btn btn-xs btn-outline btn-primary shrink-0"
                                     >
                                         実ボーダー
                                     </a>
@@ -489,22 +586,53 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                         </li>
                         {Object.entries(currentPrediction.metadata.normalized.neighbors).map(([key, neighbor], index) => (
                             <li key={key}>
-                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-3 bg-base-200 rounded-lg hover:bg-base-200">
-                                    <div className="w-12 h-12 rounded flex-shrink-0" style={{ backgroundColor: COLORS.neighbors[index] }} />
+                                <div className="flex items-center gap-2 p-3 bg-base-200 rounded-lg hover:bg-base-200">
                                     <div className="flex-1 min-w-0">
-                                        <div className="font-medium text-sm">
-                                            <span className="sm:hidden">近傍{key} - {neighbor.idol_id ? getIdolName(neighbor.idol_id) : 'Unknown'}</span>
-                                            <span className="hidden sm:inline">近傍{key} - {neighbor.name} ({neighbor.idol_id ? getIdolName(neighbor.idol_id) : 'Unknown'})</span>
-                                        </div>
-                                        <div className="text-xs text-base-content/70 truncate sm:hidden">{neighbor.name}</div>
-                                        <div className="text-xs text-base-content/70 mt-1">
-                                            <div className="flex flex-wrap gap-2">
+                                        {/* Mobile layout */}
+                                        <div className="block sm:hidden">
+                                            <div className="flex items-center justify-between">
+                                                <div className="font-medium text-sm flex items-center gap-2">
+                                                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS.neighbors[index] }} />
+                                                    <span>近傍{key} - {neighbor.idol_id ? getIdolName(neighbor.idol_id) : 'Unknown'}</span>
+                                                </div>
+                                                <input
+                                                    type="checkbox"
+                                                    className="toggle toggle-primary toggle-sm"
+                                                    checked={visibleNeighbors[key] ?? true}
+                                                    onChange={() => toggleNeighbor(key)}
+                                                />
+                                            </div>
+                                            <div className="text-sm text-base-content/70 mt-1 ml-5">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-sm font-medium">{neighbor.name}</span>
+                                                    <a
+                                                        href={`https://mltd.matsurihi.me/events/${neighbor.id}#chart-idol`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-xs text-primary hover:text-primary-focus underline font-medium"
+                                                    >
+                                                        実ボーダー
+                                                    </a>
+                                                </div>
+                                            </div>
+                                            <div className="text-sm text-base-content/70 mt-1 ml-5">
                                                 <span>最終スコア: {formatScore(currentPrediction.data.normalized.neighbors[key][currentPrediction.data.normalized.neighbors[key].length - 1])}</span>
+                                            </div>
+                                        </div>
+                                        
+                                        {/* Desktop layout */}
+                                        <div className="hidden sm:block">
+                                            <div className="font-medium text-sm flex items-center gap-2">
+                                                <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS.neighbors[index] }} />
+                                                近傍{key} - {neighbor.name} ({neighbor.idol_id ? getIdolName(neighbor.idol_id) : 'Unknown'})
+                                            </div>
+                                            <div className="text-xs text-base-content/70 mt-1">
+                                                最終スコア: {formatScore(currentPrediction.data.normalized.neighbors[key][currentPrediction.data.normalized.neighbors[key].length - 1])}
                                             </div>
                                         </div>
                                     </div>
                                     
-                                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                                    <div className="hidden sm:flex items-center gap-2 justify-end shrink-0">
                                         <input
                                             type="checkbox"
                                             className="toggle toggle-primary toggle-sm"
@@ -515,7 +643,7 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                                             href={`https://mltd.matsurihi.me/events/${neighbor.id}#chart-idol`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="btn btn-xs btn-outline btn-primary"
+                                            className="btn btn-xs btn-outline btn-primary shrink-0"
                                         >
                                             実ボーダー
                                         </a>

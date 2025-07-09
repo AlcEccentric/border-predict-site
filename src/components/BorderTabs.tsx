@@ -128,7 +128,7 @@ const BorderTabs: React.FC<BorderTabsProps> = ({
                 <div className="flex justify-center sm:justify-end">
                     <label className="cursor-pointer label gap-2 flex-wrap justify-center sm:justify-end">
                         <div className="flex items-center gap-2">
-                            <span className="label-text text-center sm:text-left">近傍イベント表示</span>
+                            <span className="label-text text-center sm:text-left">近傍(類似)イベント表示</span>
                             <div
                                 className="tooltip"
                                 data-tip="近傍イベントは現在のイベントと傾向が似ているイベントです。詳細はページ下部の「解説」内「近傍イベントとは」をご覧ください"

@@ -163,6 +163,19 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
         setHoveredData(null);
     };
 
+    // Japanese number formatting function
+    const formatJapaneseNumber = React.useCallback((value: number): string => {
+        if (value >= 100000000) { // 1億以上
+            return Math.round(value / 100000000) + '億';
+        } else if (value >= 10000) { // 1万以上
+            return Math.round(value / 10000) + '万';
+        } else if (value >= 1000) { // 1000以上
+            return Math.round(value / 1000) + 'K';
+        } else {
+            return Math.round(value).toString();
+        }
+    }, []);
+
     const formatScore = (score: number): string => {
         return Math.round(score).toLocaleString();
     };
@@ -258,13 +271,17 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                 },
                 ticks: {
                     color: textColor,
+                    callback: function(value: number | string) {
+                        const numValue = typeof value === 'string' ? parseFloat(value) : value;
+                        return formatJapaneseNumber(numValue);
+                    }
                 }
             },
             x: {
                 type: 'category',
                 title: {
                     display: true,
-                    text: 'イベント進行度 (%)',
+                    text: 'イベント進行度',
                     color: textColor,
                 },
                 grid: {
@@ -390,10 +407,12 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                     <ul className="w-full p-0 gap-2 space-y-2">
                         <li>
                             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-3 bg-base-200 rounded-lg hover:bg-base-200">
-                                <div className="w-12 h-12 rounded flex-shrink-0" style={{ backgroundColor: COLORS.target }} />
                                 <div className="flex-1 min-w-0">
-                                    <div className="font-medium text-sm">現在のイベント</div>
-                                    <div className="text-xs text-base-content/70 mt-1">
+                                    <div className="font-medium text-sm flex items-center gap-2">
+                                        <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS.target }} />
+                                        現在のイベント
+                                    </div>
+                                    <div className="text-sm text-base-content/70 mt-1 sm:ml-0 ml-5">
                                         <div className="flex flex-wrap gap-2">
                                             <span>開催日数: {eventMetadata.length}日</span>
                                             <span>最終スコア: {formatScore(normalizedData.target[normalizedData.target.length - 1])}</span>
@@ -421,14 +440,14 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                         {Object.entries(neighborMetadata).map(([key, neighbor], index) => (
                             <li key={key}>
                                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-3 bg-base-200 rounded-lg hover:bg-base-200">
-                                    <div className="w-12 h-12 rounded flex-shrink-0" style={{ backgroundColor: COLORS.neighbors[index] }} />
                                     <div className="flex-1 min-w-0">
-                                        <div className="font-medium text-sm">
+                                        <div className="font-medium text-sm flex items-center gap-2">
+                                            <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS.neighbors[index] }} />
                                             <span className="sm:hidden">近傍{key}</span>
                                             <span className="hidden sm:inline">近傍{key}：{neighbor.name}</span>
                                         </div>
-                                        <div className="text-xs text-base-content/70 truncate sm:hidden">{neighbor.name}</div>
-                                        <div className="text-xs text-base-content/70 mt-1">
+                                        <div className="text-sm text-base-content/70 truncate sm:hidden ml-5">{neighbor.name}</div>
+                                        <div className="text-sm text-base-content/70 mt-1 sm:ml-0 ml-5">
                                             <div className="flex flex-wrap gap-2">
                                                 <span>開催日数: {neighbor.length}日</span>
                                                 <span className="flex items-center gap-1">
