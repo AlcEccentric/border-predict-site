@@ -396,14 +396,14 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                                 style={{
                                     left: crosshairPosition.x,
                                     top: (() => {
-                                        if (window.innerWidth < 640) return '12%'; // h-[300px]
-                                        if (window.innerWidth < 768) return '8%';  // sm:h-[500px] 
-                                        return '5%'; // md:h-[600px]
+                                        if (window.innerWidth < 640) return '8%'; // h-[300px]
+                                        if (window.innerWidth < 768) return '5.2%';  // sm:h-[500px] 
+                                        return '4.5%'; // md:h-[600px]
                                     })(),
                                     height: (() => {
-                                        if (window.innerWidth < 640) return '62%'; // h-[300px]
-                                        if (window.innerWidth < 768) return '70%'; // sm:h-[500px]
-                                        return '75%'; // md:h-[600px]
+                                        if (window.innerWidth < 640) return '77%'; // h-[300px]
+                                        if (window.innerWidth < 768) return '83%'; // sm:h-[500px]
+                                        return '85.5%'; // md:h-[600px]
                                     })(),
                                     width: 1,
                                     backgroundColor: 'rgba(255, 99, 132, 0.8)',
