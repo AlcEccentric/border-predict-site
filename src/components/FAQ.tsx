@@ -138,7 +138,7 @@ const FAQ: React.FC = () => {
                                             </p>
                                             <p className="mt-1">
                                                 <span className="text-warning">中盤以降で注意が必要なアイドル:</span>
-                                                <br />• <span className="text-warning">双海真美、舞浜歩、福田のり子、周防桃子</span>
+                                                <br />• <span className="text-warning">双海真美、双海亜美、舞浜歩、福田のり子、周防桃子</span>
                                                 <br />• イベント中盤（30-69%）以降で±5%誤差範囲を外れやすくなります
                                                 <br />• しかし、イベント終盤（80%以降）では予測誤差が5%以下に縮小されます
                                             </p>
