@@ -26,8 +26,8 @@ const ThemeSelector: React.FC<{
                 <Palette size={24} />
             </button>
             {open && (
-                <div className="absolute right-0 mt-2 w-96 bg-base-100 shadow-lg rounded-lg p-2 z-50">
-                    <div className="grid grid-cols-2 gap-2">
+                <div className="absolute right-0 mt-2 w-96 sm:w-96 w-64 bg-base-100 shadow-lg rounded-lg p-2 z-50">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {themes.map(t => (
                             <button
                                 key={t.name}

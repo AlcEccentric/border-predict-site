@@ -19,8 +19,14 @@ const App: React.FC = () => {
     const [prediction2500, setPrediction2500] = useState<PredictionData | null>(null);
     const [idolPredictions, setIdolPredictions] = useState<Map<number, IdolPredictionData>>(new Map());
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState('100');
-    const [showNeighbors, setShowNeighbors] = useState(false);
+    const [activeTab, setActiveTab] = useState(() => {
+        const savedActiveTab = localStorage.getItem('activeTab');
+        return savedActiveTab || '100';
+    });
+    const [showNeighbors, setShowNeighbors] = useState(() => {
+        const savedShowNeighbors = localStorage.getItem('normalEventShowNeighbors');
+        return savedShowNeighbors === 'true';
+    });
     const themes = ['nord', 'cupcake', 'dim', 'aqua', 'sunset'];
     // Configuration for data source - set to local for development, remote for production
     const baseUrl = 'https://cdn.yuenimillion.live'; // Production URL
@@ -129,6 +135,18 @@ const App: React.FC = () => {
         document.documentElement.setAttribute('data-theme', theme);
     }, [theme]);
 
+    // Wrapper functions to save state to localStorage
+    const handleActiveTabChange = (tab: string) => {
+        setActiveTab(tab);
+        localStorage.setItem('activeTab', tab);
+    };
+
+    const handleNeighborsToggle = () => {
+        const newShowNeighbors = !showNeighbors;
+        setShowNeighbors(newShowNeighbors);
+        localStorage.setItem('normalEventShowNeighbors', newShowNeighbors.toString());
+    };
+
     if (loading) {
         return <div>Loading... (｀・ω・´)</div>;
     }
@@ -173,10 +191,10 @@ const App: React.FC = () => {
                         prediction100={prediction100}
                         prediction2500={prediction2500}
                         showNeighbors={showNeighbors}
-                        toggleNeighbors={() => setShowNeighbors(!showNeighbors)}
+                        toggleNeighbors={handleNeighborsToggle}
                         startAt={eventInfo.StartAt}
                         activeTab={activeTab} 
-                        setActiveTab={setActiveTab} 
+                        setActiveTab={handleActiveTabChange} 
                         theme={theme}
                     />
                 </>

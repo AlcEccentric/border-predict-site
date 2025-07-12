@@ -1,9 +1,15 @@
 import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { Line } from 'react-chartjs-2';
 import { ChartOptions, InteractionItem } from 'chart.js';
+import zoomPlugin from 'chartjs-plugin-zoom';
+import { Chart as ChartJS } from 'chart.js';
+import { getRelativePosition } from 'chart.js/helpers';
 import CardContainer from './CardContainer';
 import { IdolPredictionData } from '../types';
 import { getIdolName, getIdolColor } from '../utils/idolData';
+
+// Register the zoom plugin
+ChartJS.register(zoomPlugin);
 
 interface Type5NeighborSectionProps {
     idolPredictions: Map<number, IdolPredictionData>;
@@ -62,6 +68,16 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
             isTarget?: boolean;
         }> 
     } | null>(null);
+    const [isPanning, setIsPanning] = useState(false);
+    
+    // Range selection state
+    const [isSelecting, setIsSelecting] = useState(false);
+    const [selectionStart, setSelectionStart] = useState<number | null>(null);
+    const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
+    const [selectionRect, setSelectionRect] = useState<{ x: number; width: number } | null>(null);
+    
+    // Zoom state to persist across re-renders
+    const [zoomState, setZoomState] = useState<{ min: number; max: number } | null>(null);
     
     // Track window width for responsive behavior
     const [isMobile, setIsMobile] = useState(false);
@@ -79,6 +95,29 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
         
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
+
+    // Apply zoom state when chart is ready
+    React.useEffect(() => {
+        if (chartRef.current && zoomState) {
+            const chart = chartRef.current;
+            console.log('Applying zoom state:', zoomState);
+            
+            // Use the chartjs-plugin-zoom's zoomScale method
+            try {
+                console.log('Attempting to use zoomScale method');
+                (chart as any).zoomScale('x', { min: zoomState.min, max: zoomState.max }, 'none');
+                console.log('zoomScale method succeeded');
+            } catch (error) {
+                console.log('zoomScale method failed:', error);
+                
+                // Fallback: Direct scale manipulation with forced update
+                console.log('Falling back to direct scale manipulation');
+                chart.scales.x.min = zoomState.min;
+                chart.scales.x.max = zoomState.max;
+                chart.update('resize'); // Force a complete update
+            }
+        }
+    }, [zoomState]); // Remove chartRef.current dependency
 
     // Get current idol data
     const currentIdolData = idolPredictions.get(selectedIdol);
@@ -152,17 +191,20 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
 
     const handleChartHover = useCallback((event: any, _elements: InteractionItem[]) => {
         const chart = chartRef.current;
-        if (!chart || !event.native) return;
+        if (!chart || !event.native || isPanning || isSelecting) return; // Hide crosshair during panning or selection
 
         const rect = chart.canvas.getBoundingClientRect();
         const x = event.native.clientX - rect.left;
 
-        // Get the data index at this x position (snap to nearest data point)
-        const dataIndex = Math.round((x - chart.chartArea.left) / (chart.chartArea.width) * (percentagePoints.length - 1));
+        // Use Chart.js built-in methods to get the data index from pixel position
+        const rawDataIndex = chart.scales.x.getValueForPixel(x);
+        if (rawDataIndex === undefined) return;
+        
+        const dataIndex = Math.round(rawDataIndex);
         
         if (dataIndex >= 0 && dataIndex < percentagePoints.length) {
-            // Calculate the actual x position for the data point (snapped position)
-            const snappedX = chart.chartArea.left + (dataIndex / (percentagePoints.length - 1)) * chart.chartArea.width;
+            // Get the actual x pixel position for this data index using Chart.js scale
+            const snappedX = chart.scales.x.getPixelForValue(dataIndex);
             
             setCrosshairPosition({ x: snappedX, dataIndex });
             
@@ -199,12 +241,128 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
             setCrosshairPosition(null);
             setHoveredData(null);
         }
-    }, [percentagePoints, visibleNeighbors, currentPrediction, selectedIdol]);
+    }, [percentagePoints, visibleNeighbors, currentPrediction, selectedIdol, isPanning]);
 
     const handleChartLeave = useCallback(() => {
         setCrosshairPosition(null);
         setHoveredData(null);
     }, []);
+
+    // Range selection mouse handlers
+    const handleMouseDown = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+        const chart = chartRef.current;
+        if (!chart) return;
+
+        // Get the chart canvas bounds
+        const rect = chart.canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        
+        // Convert pixel position to data index
+        const canvasPosition = getRelativePosition(event.nativeEvent, chart);
+        const dataIndex = chart.scales.x.getValueForPixel(canvasPosition.x);
+        
+        if (typeof dataIndex === 'number' && dataIndex >= 0 && dataIndex < percentagePoints.length) {
+            setIsSelecting(true);
+            setSelectionStart(dataIndex);
+            setSelectionEnd(dataIndex);
+            setSelectionRect({ x, width: 0 });
+        }
+    }, [percentagePoints.length]);
+
+    const handleMouseMove = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+        const chart = chartRef.current;
+        if (!chart || !isSelecting || selectionStart === null) return;
+
+        // Convert pixel position to data index
+        const canvasPosition = getRelativePosition(event.nativeEvent, chart);
+        const dataIndex = chart.scales.x.getValueForPixel(canvasPosition.x);
+        
+        if (typeof dataIndex === 'number' && dataIndex >= 0 && dataIndex < percentagePoints.length) {
+            setSelectionEnd(dataIndex);
+            
+            // Update selection rectangle
+            const startPixel = chart.scales.x.getPixelForValue(selectionStart);
+            const endPixel = chart.scales.x.getPixelForValue(dataIndex);
+            const leftPixel = Math.min(startPixel, endPixel);
+            const rightPixel = Math.max(startPixel, endPixel);
+            
+            setSelectionRect({
+                x: leftPixel,
+                width: rightPixel - leftPixel
+            });
+        }
+    }, [isSelecting, selectionStart, percentagePoints.length]);
+
+    const handleMouseUp = React.useCallback(() => {
+        if (!isSelecting || selectionStart === null || selectionEnd === null) {
+            setIsSelecting(false);
+            setSelectionStart(null);
+            setSelectionEnd(null);
+            setSelectionRect(null);
+            return;
+        }
+
+        const chart = chartRef.current;
+        if (!chart) return;
+
+        const minIndex = Math.round(Math.min(selectionStart, selectionEnd));
+        const maxIndex = Math.round(Math.max(selectionStart, selectionEnd));
+        
+        console.log('Range selection:', { minIndex, maxIndex, selectionStart, selectionEnd });
+        
+        // Only zoom if there's a meaningful selection (more than 1 data point)
+        if (maxIndex - minIndex > 1) {
+            console.log('Setting zoom state:', { min: minIndex, max: maxIndex });
+            setZoomState({ min: minIndex, max: maxIndex });
+        } else {
+            console.log('Selection too small, not zooming');
+        }
+
+        // Reset selection state
+        setIsSelecting(false);
+        setSelectionStart(null);
+        setSelectionEnd(null);
+        setSelectionRect(null);
+    }, [isSelecting, selectionStart, selectionEnd]);
+
+    // Add global mouse event listeners to handle mouse up outside the chart
+    React.useEffect(() => {
+        const handleGlobalMouseUp = () => {
+            if (isSelecting) {
+                handleMouseUp();
+            }
+        };
+
+        const handleGlobalMouseMove = (event: MouseEvent) => {
+            if (isSelecting && chartRef.current) {
+                const chart = chartRef.current;
+                const rect = chart.canvas.getBoundingClientRect();
+                
+                // Only update if mouse is still over the chart area
+                if (event.clientX >= rect.left && event.clientX <= rect.right &&
+                    event.clientY >= rect.top && event.clientY <= rect.bottom) {
+                    // Convert global mouse event to React mouse event format
+                    const syntheticEvent = {
+                        nativeEvent: event,
+                        clientX: event.clientX,
+                        clientY: event.clientY
+                    } as React.MouseEvent<HTMLDivElement>;
+                    
+                    handleMouseMove(syntheticEvent);
+                }
+            }
+        };
+
+        if (isSelecting) {
+            document.addEventListener('mouseup', handleGlobalMouseUp);
+            document.addEventListener('mousemove', handleGlobalMouseMove);
+            
+            return () => {
+                document.removeEventListener('mouseup', handleGlobalMouseUp);
+                document.removeEventListener('mousemove', handleGlobalMouseMove);
+            };
+        }
+    }, [isSelecting, handleMouseUp, handleMouseMove]);
 
     if (!currentPrediction) return null;
 
@@ -295,6 +453,31 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                     font: {
                         size: isMobile ? 12 : 14
                     }
+                },
+                zoom: {
+                    zoom: {
+                        wheel: {
+                            enabled: false // Disable wheel zoom in favor of range selection
+                        },
+                        pinch: {
+                            enabled: false // Disable pinch zoom in favor of range selection
+                        },
+                        mode: 'x'
+                    },
+                    pan: {
+                        enabled: false // Disable pan so drag only means range selection
+                    },
+                    limits: {
+                        x: {
+                            min: 0,
+                            max: percentagePoints.length - 1,
+                            minRange: Math.ceil(percentagePoints.length * 0.1) // Minimum 10% of data range
+                        },
+                        y: {
+                            min: 'original',
+                            max: 'original'
+                        }
+                    }
                 }
             },
             scales: {
@@ -344,7 +527,14 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                 }
             },
         };
-    }, [selectedIdol, activeBorder, currentPrediction, percentagePoints, handleChartHover, theme, isMobile, windowWidth]); // Add theme to dependencies
+    }, [selectedIdol, activeBorder, currentPrediction, percentagePoints, handleChartHover, theme, isMobile, windowWidth, setIsPanning]); // Add theme to dependencies
+
+    const resetZoom = () => {
+        if (chartRef.current) {
+            chartRef.current.resetZoom();
+            setZoomState(null); // Clear the zoom state
+        }
+    };
 
     return (
         <CardContainer className="mb-4">
@@ -354,9 +544,6 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                     <div className="flex flex-wrap gap-4">
                         {/* Border Selector - Only show available borders */}
                         <div className="flex-1 min-w-0">
-                            <label className="label">
-                                <span className="label-text">ボーダー選択</span>
-                            </label>
                             <div className="join w-full">
                                 {hasBorder100 && (
                                     <button
@@ -377,18 +564,69 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                             </div>
                         </div>
                     </div>
+                    
+                    {/* Zoom Controls */}
+                    <div className="flex justify-between items-center">
+                        <div className="text-sm text-base-content/70">
+                            <span className="hidden sm:inline">ドラッグでズーム</span>
+                            <span className="sm:hidden">ドラッグでズーム</span>
+                        </div>
+                        <div className="flex gap-2">
+                            {/* Only show reset button when zoomed in */}
+                            {zoomState && (
+                                <button
+                                    onClick={resetZoom}
+                                    className="btn btn-xs btn-outline btn-secondary"
+                                    title="ズームリセット"
+                                >
+                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                    </svg>
+                                    リセット
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
                 {/* Chart */}
-                <div className="relative h-[300px] sm:h-[500px] md:h-[600px] w-full" onMouseLeave={handleChartLeave}>
+                <div 
+                    className="relative h-[300px] sm:h-[500px] md:h-[600px] w-full" 
+                    onMouseLeave={handleChartLeave}
+                    onMouseDown={handleMouseDown}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                >
                     <Line 
                         ref={chartRef}
                         data={chartData} 
                         options={options} 
                     />
                     
+                    {/* Range selection rectangle */}
+                    {selectionRect && isSelecting && (
+                        <div
+                            className="absolute pointer-events-none bg-primary/20 border border-primary"
+                            style={{
+                                left: selectionRect.x,
+                                top: (() => {
+                                    if (window.innerWidth < 640) return '8%'; // h-[300px]
+                                    if (window.innerWidth < 768) return '5.2%';  // sm:h-[500px] 
+                                    return '4.5%'; // md:h-[600px]
+                                })(),
+                                width: selectionRect.width,
+                                height: (() => {
+                                    if (window.innerWidth < 640) return '77%'; // h-[300px]
+                                    if (window.innerWidth < 768) return '83%'; // sm:h-[500px]
+                                    return '85.5%'; // md:h-[600px]
+                                })(),
+                                zIndex: 5
+                            }}
+                        />
+                    )}
+                    
                     {/* Custom crosshair and tooltip */}
-                    {crosshairPosition && hoveredData && (
+                    {crosshairPosition && hoveredData && !isPanning && !isSelecting && (
                         <>
                             {/* Vertical crosshair line */}
                             <div
@@ -416,11 +654,8 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                                 const chart = chartRef.current;
                                 if (!chart) return null;
                                 
-                                // Calculate the y position for this data point
-                                const yValue = item.value;
-                                const yMin = chart.scales.y.min;
-                                const yMax = chart.scales.y.max;
-                                const yPixel = chart.chartArea.bottom - ((yValue - yMin) / (yMax - yMin)) * chart.chartArea.height;
+                                // Use Chart.js built-in method to get accurate pixel position
+                                const yPixel = chart.scales.y.getPixelForValue(item.value);
                                 
                                 return (
                                     <div
