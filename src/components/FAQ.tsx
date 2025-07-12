@@ -193,7 +193,7 @@ const FAQ: React.FC = () => {
                     <div className="collapse-content">
                         <p>
                             <strong>データ更新頻度:</strong>
-                            <br />予測データは通常1~2時間ごとに更新されます。
+                            <br />予測データは通常1時間ごとに更新されます。
                         </p>
                         <p className="mt-2">
                             <strong>古いデータが表示される場合:</strong>
