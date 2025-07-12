@@ -193,7 +193,7 @@ const FAQ: React.FC = () => {
                     <div className="collapse-content">
                         <p>
                             <strong>データ更新頻度:</strong>
-                            <br />予測データは通常1時間ごとに更新されます。
+                            <br />予測データは通常30分ごとに更新されます。
                         </p>
                         <p className="mt-2">
                             <strong>古いデータが表示される場合:</strong>
@@ -238,12 +238,10 @@ const FAQ: React.FC = () => {
                     </div>
                     <div className="collapse-content">
                         <p>
-                            <strong>データソース:</strong>
-                            <br />ボーダーデータおよびアイドル画像は、
+                            ボーダーデータおよびアイドル画像は、
                             <a href="https://www.matsurihi.me/" target="_blank" rel="noopener noreferrer" className="link link-primary">
-                                https://www.matsurihi.me
-                            </a>
-                            から提供されています。
+                            https://www.matsurihi.me
+                            </a> より取得しています。
                         </p>
                         <p className="mt-2">
                             <strong>ベータ版について:</strong>
