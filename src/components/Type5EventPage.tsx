@@ -25,14 +25,30 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
     theme,
     setTheme
 }) => {
-    const [selectedIdol, setSelectedIdol] = useState<number>(1); // Default selection
-    const [showNeighbors, setShowNeighbors] = useState<boolean>(false); // Ensure boolean type for controlled input
+    // Initialize selectedIdol from localStorage or default to 1
+    const [selectedIdol, setSelectedIdol] = useState<number>(() => {
+        const savedIdol = localStorage.getItem('selectedIdol');
+        if (savedIdol) {
+            const idolId = parseInt(savedIdol, 10);
+            // Validate that the idol ID is within valid range
+            if (idolId >= 1 && idolId <= 52) {
+                return idolId;
+            }
+        }
+        return 1; // Default to idol 1 if no valid saved selection
+    });
+    const [showNeighbors, setShowNeighbors] = useState<boolean>(() => {
+        const savedShowNeighbors = localStorage.getItem('showNeighbors');
+        return savedShowNeighbors === 'true';
+    }); // Initialize from localStorage
     const chartSectionRef = useRef<HTMLDivElement>(null);
     const neighborSectionRef = useRef<HTMLDivElement>(null);
     const summaryStatsRef = useRef<HTMLDivElement>(null);
 
     const handleIdolSelect = (idolId: number) => {
         setSelectedIdol(idolId);
+        // Save to localStorage
+        localStorage.setItem('selectedIdol', idolId.toString());
         
         // Scroll to summary stats section after a short delay to allow for state update
         setTimeout(() => {
@@ -46,6 +62,8 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
     const handleNeighborToggle = () => {
         const newShowNeighbors = !showNeighbors;
         setShowNeighbors(newShowNeighbors);
+        // Save to localStorage
+        localStorage.setItem('showNeighbors', newShowNeighbors.toString());
         
         // If turning on, scroll to neighbor section after animation
         if (newShowNeighbors) {
@@ -74,6 +92,23 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
         if (!idolData) return false;
         return border === '100' ? !!idolData.prediction100 : !!idolData.prediction1000;
     };
+
+    // Validate selectedIdol has data once predictions are loaded
+    React.useEffect(() => {
+        if (idolPredictions.size > 0) {
+            const idolData = idolPredictions.get(selectedIdol);
+            // If the saved idol has no data, find the first idol with data
+            if (!idolData) {
+                const firstAvailableIdol = Array.from(idolPredictions.keys()).find(idolId => 
+                    idolPredictions.get(idolId)
+                );
+                if (firstAvailableIdol) {
+                    setSelectedIdol(firstAvailableIdol);
+                    localStorage.setItem('selectedIdol', firstAvailableIdol.toString());
+                }
+            }
+        }
+    }, [idolPredictions, selectedIdol]);
 
     if (loading) {
         return (

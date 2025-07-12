@@ -1,6 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { Line } from 'react-chartjs-2';
 import annotationPlugin from 'chartjs-plugin-annotation';
+import zoomPlugin from 'chartjs-plugin-zoom';
+import { getRelativePosition } from 'chart.js/helpers';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -23,7 +25,8 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
-  annotationPlugin
+  annotationPlugin,
+  zoomPlugin
 );
 
 interface MainChartProps {
@@ -49,6 +52,28 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
   const chartRef = useRef<ChartJS<'line'>>(null);
   const [crosshairPosition, setCrosshairPosition] = useState<{ x: number; y: number } | null>(null);
   const [hoveredData, setHoveredData] = useState<{ timePoint: string; value: number } | null>(null);
+  
+  // Range selection state
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selectionStart, setSelectionStart] = useState<number | null>(null);
+  const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
+  const [selectionRect, setSelectionRect] = useState<{ x: number; width: number } | null>(null);
+  
+  // Zoom state to persist across re-renders
+  const [zoomState, setZoomState] = useState<{ min: number; max: number } | null>(null);
+
+  // Apply zoom state when chart is ready
+  React.useEffect(() => {
+    if (chartRef.current && zoomState) {
+      const chart = chartRef.current;
+      console.log('Applying zoom state:', zoomState);
+      
+      // Set the scale limits directly
+      chart.scales.x.min = zoomState.min;
+      chart.scales.x.max = zoomState.max;
+      chart.update('none'); // Update without animation
+    }
+  }, [zoomState, chartRef.current]);
 
   const timePoints = Array.from(
     { length: data.data.raw.target.length },
@@ -123,6 +148,94 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
     setCrosshairPosition(null);
     setHoveredData(null);
   };
+
+  // Range selection mouse handlers
+  const handleMouseDown = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    const chart = chartRef.current;
+    if (!chart) return;
+
+    // Get the chart canvas bounds
+    const rect = chart.canvas.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    
+    // Convert pixel position to data index
+    const canvasPosition = getRelativePosition(event.nativeEvent, chart);
+    const dataIndex = chart.scales.x.getValueForPixel(canvasPosition.x);
+    
+    if (typeof dataIndex === 'number' && dataIndex >= 0 && dataIndex < timePoints.length) {
+      setIsSelecting(true);
+      setSelectionStart(dataIndex);
+      setSelectionEnd(dataIndex);
+      setSelectionRect({ x, width: 0 });
+    }
+  }, [timePoints.length]);
+
+  const handleMouseMove = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    const chart = chartRef.current;
+    if (!chart || !isSelecting || selectionStart === null) return;
+
+    // Convert pixel position to data index
+    const canvasPosition = getRelativePosition(event.nativeEvent, chart);
+    const dataIndex = chart.scales.x.getValueForPixel(canvasPosition.x);
+    
+    if (typeof dataIndex === 'number' && dataIndex >= 0 && dataIndex < timePoints.length) {
+      setSelectionEnd(dataIndex);
+      
+      // Update selection rectangle
+      const startPixel = chart.scales.x.getPixelForValue(selectionStart);
+      const endPixel = chart.scales.x.getPixelForValue(dataIndex);
+      const leftPixel = Math.min(startPixel, endPixel);
+      const rightPixel = Math.max(startPixel, endPixel);
+      
+      setSelectionRect({
+        x: leftPixel,
+        width: rightPixel - leftPixel
+      });
+    }
+  }, [isSelecting, selectionStart, timePoints.length]);
+
+  const handleMouseUp = React.useCallback(() => {
+    if (!isSelecting || selectionStart === null || selectionEnd === null) {
+      setIsSelecting(false);
+      setSelectionStart(null);
+      setSelectionEnd(null);
+      setSelectionRect(null);
+      return;
+    }
+
+    const chart = chartRef.current;
+    if (!chart) return;
+
+    const minIndex = Math.round(Math.min(selectionStart, selectionEnd));
+    const maxIndex = Math.round(Math.max(selectionStart, selectionEnd));
+    
+    console.log('Range selection:', { minIndex, maxIndex, selectionStart, selectionEnd });
+    
+    // Only zoom if there's a meaningful selection (more than 1 data point)
+    if (maxIndex - minIndex > 1) {
+      console.log('Setting zoom state:', { min: minIndex, max: maxIndex });
+      setZoomState({ min: minIndex, max: maxIndex });
+    } else {
+      console.log('Selection too small, not zooming');
+    }
+
+    // Reset selection state
+    setIsSelecting(false);
+    setSelectionStart(null);
+    setSelectionEnd(null);
+    setSelectionRect(null);
+  }, [isSelecting, selectionStart, selectionEnd]);
+
+  // Apply zoom state when it changes
+  React.useEffect(() => {
+    if (zoomState && chartRef.current) {
+      const chart = chartRef.current;
+      console.log('Applying zoom state:', zoomState);
+      chart.scales.x.min = zoomState.min;
+      chart.scales.x.max = zoomState.max;
+      chart.update('none'); // Use 'none' to prevent animation and reduce re-renders
+    }
+  }, [zoomState]);
 
   const chartData: ChartData<'line'> = {
     labels: timePoints,
@@ -209,6 +322,31 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
       },
       tooltip: {
         enabled: false // Disable default tooltip since we're using custom crosshair
+      },
+      zoom: {
+        zoom: {
+          wheel: {
+            enabled: false // Disable wheel zoom in favor of range selection
+          },
+          pinch: {
+            enabled: false // Disable pinch zoom in favor of range selection
+          },
+          mode: 'x'
+        },
+        pan: {
+          enabled: false // Disable pan so drag only means range selection
+        },
+        limits: {
+          x: {
+            min: 0,
+            max: data.data.raw.target.length - 1,
+            minRange: Math.ceil(data.data.raw.target.length * 0.1) // Minimum 10% of data range
+          },
+          y: {
+            min: 'original',
+            max: 'original'
+          }
+        }
       }
     },
     scales: {
@@ -250,11 +388,31 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
 
   return (
     <div className="relative w-full">
-      <div className="relative w-full h-[300px] sm:h-[400px] md:h-[600px]" onMouseLeave={handleChartLeave}>
+      <div 
+        className="relative w-full h-[300px] sm:h-[400px] md:h-[600px]" 
+        onMouseLeave={handleChartLeave}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+      >
         <Line ref={chartRef} data={chartData} options={options} />
         
+        {/* Range selection rectangle */}
+        {selectionRect && isSelecting && (
+          <div
+            className="absolute pointer-events-none bg-primary/20 border border-primary"
+            style={{
+              left: selectionRect.x,
+              top: '5%', // Fixed top position
+              width: selectionRect.width,
+              height: '75%', // Fixed height percentage
+              zIndex: 5
+            }}
+          />
+        )}
+        
         {/* Custom crosshair and tooltip */}
-        {crosshairPosition && hoveredData && (
+        {crosshairPosition && hoveredData && !isSelecting && (
           <>
             {/* Vertical crosshair line */}
             <div
