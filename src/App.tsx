@@ -155,6 +155,22 @@ const App: React.FC = () => {
         return <EventModal />;
     }
 
+    // Show a page in the first 36 hours of an event
+    const eventStart = new Date(eventInfo.StartAt);
+    const nowTime = new Date();
+    const hoursSinceStart = (nowTime.getTime() - eventStart.getTime()) / (1000 * 60 * 60);
+    if (hoursSinceStart < 36) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center">
+                <div className="bg-base-200 rounded-lg shadow-lg p-8 max-w-md text-center">
+                    <h2 className="text-xl font-bold mb-4">予測データ準備中</h2>
+                    <p className="mb-2">イベント開始から36時間分のデータが必要です。</p>
+                    <p className="text-base-content/70">申し訳ありませんが、予測はイベント開始から36時間経過後にご利用いただけます。</p>
+                </div>
+            </div>
+        );
+    }
+
     // Render Type 5 event page
     if (isType5Event(eventInfo.EventType)) {
         return (
