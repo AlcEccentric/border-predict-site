@@ -326,7 +326,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
       },
       title: {
         display: true,
-        text: data.metadata.raw.name ? `${data.metadata.raw.name} - スコア推移` : 'スコア推移',
+        text: data.metadata.raw.name ? `${data.metadata.raw.name} - スコア推移予測` : 'スコア推移予測',
         color: textColor,
         padding: {
           bottom: 10
@@ -466,16 +466,13 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
                 zIndex: 10
               }}
             />
-            
             {/* Custom tooltip */}
             <div
-              className="absolute pointer-events-none bg-base-100 border border-base-300 text-base-content rounded-lg shadow-lg p-3 z-20 min-w-[180px] sm:min-w-[320px] max-w-[90vw]"
+              className="absolute pointer-events-none bg-base-100 border border-base-300 text-base-content rounded-lg shadow-lg p-3 z-20 min-w-[120px] sm:min-w-[160px] max-w-[70vw]"
               style={{
                 left: (() => {
                   const containerWidth = window.innerWidth;
-                  const tooltipWidth = window.innerWidth < 640 ? 180 : 320;
-                  
-                  // On mobile, prefer left positioning when clicking on right half
+                  const tooltipWidth = window.innerWidth < 640 ? 120 : 160;
                   if (window.innerWidth < 640) {
                     if (crosshairPosition.x > containerWidth * 0.5) {
                       return Math.max(10, crosshairPosition.x - tooltipWidth - 10);
@@ -483,7 +480,6 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
                       return Math.min(crosshairPosition.x + 10, containerWidth - tooltipWidth - 10);
                     }
                   }
-
                   return crosshairPosition.x > containerWidth * 0.6 
                     ? crosshairPosition.x - tooltipWidth - 10
                     : crosshairPosition.x + 10;
