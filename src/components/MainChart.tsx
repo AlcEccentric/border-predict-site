@@ -76,7 +76,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
   React.useEffect(() => {
     if (chartRef.current && zoomState) {
       const chart = chartRef.current;
-      console.log('Applying zoom state:', zoomState);
+      // console.log('Applying zoom state:', zoomState);
       
       // Set the scale limits directly
       chart.scales.x.min = zoomState.min;
@@ -221,14 +221,14 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
     const minIndex = Math.round(Math.min(selectionStart, selectionEnd));
     const maxIndex = Math.round(Math.max(selectionStart, selectionEnd));
     
-    console.log('Range selection:', { minIndex, maxIndex, selectionStart, selectionEnd });
+    // console.log('Range selection:', { minIndex, maxIndex, selectionStart, selectionEnd });
     
     // Only zoom if there's a meaningful selection (more than 1 data point)
     if (maxIndex - minIndex > 1) {
-      console.log('Setting zoom state:', { min: minIndex, max: maxIndex });
+      // console.log('Setting zoom state:', { min: minIndex, max: maxIndex });
       setZoomState({ min: minIndex, max: maxIndex });
     } else {
-      console.log('Selection too small, not zooming');
+      // console.log('Selection too small, not zooming');
     }
 
     // Reset selection state
@@ -242,7 +242,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
   React.useEffect(() => {
     if (zoomState && chartRef.current) {
       const chart = chartRef.current;
-      console.log('Applying zoom state:', zoomState);
+      // console.log('Applying zoom state:', zoomState);
       chart.scales.x.min = zoomState.min;
       chart.scales.x.max = zoomState.max;
       chart.update('none'); // Use 'none' to prevent animation and reduce re-renders

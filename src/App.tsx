@@ -219,7 +219,7 @@ const App: React.FC = () => {
             )}
 
             <CardContainer>
-                <FAQ />
+                <FAQ eventType={eventInfo.EventType} internalEventType={eventInfo.InternalEventType} />
             </CardContainer>
         </div>
     );

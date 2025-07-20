@@ -1,6 +1,7 @@
 export interface EventInfo {
     EventId: number;
     EventType: number;
+    InternalEventType: number;
     EventName: string;
     StartAt: string;
     EndAt: string;
