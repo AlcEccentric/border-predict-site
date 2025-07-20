@@ -13,6 +13,12 @@ export interface EventMetadata {
     idol_id?: number;
 }
 
+export interface NeighborMetadata {
+    name: string;
+    id: number;
+    raw_length: number;
+}
+
 export interface IdolInfo {
     id: number;
     name: string;
@@ -43,7 +49,7 @@ export interface PredictionData {
         normalized: {
             last_known_step_index: number;
             neighbors: {
-                [key: string]: EventMetadata;
+                [key: string]: NeighborMetadata;
             };
         };
     };
