@@ -29,7 +29,9 @@ const App: React.FC = () => {
     });
     const themes = ['nord', 'cupcake', 'dim', 'aqua', 'sunset'];
     // Configuration for data source - set to local for development, remote for production
-    const baseUrl = 'https://cdn.yuenimillion.live'; // Production URL
+    const baseUrl = 'https://cdn.yuenimillion.live/data'; // Production URL
+    const isDebug = false;
+    const debugSuffix = isDebug ? '?debug' : '';
     const [theme, setTheme] = useState(() => {
         const savedTheme = localStorage.getItem('theme') || themes[1];
         // Set initial theme immediately
@@ -51,7 +53,7 @@ const App: React.FC = () => {
         const loadData = async () => {
             try {
                 // Load event info (CDN will cache for 24 hours based on Cache-Control header)
-                const eventInfoResponse = await fetch(`${baseUrl}/metadata/latest_event_border_info.json`);
+                const eventInfoResponse = await fetch(`${baseUrl}/metadata/latest_event_border_info.json${debugSuffix}`);
                 if (!eventInfoResponse.ok) {
                     throw new Error(`Failed to fetch event info: ${eventInfoResponse.status} ${eventInfoResponse.statusText}`);
                 }
@@ -60,8 +62,8 @@ const App: React.FC = () => {
 
                 if (isNormalEvent(eventInfoData.EventType)) {
                     // Load normal event predictions (idol 0) - CDN will cache for 1 hour
-                    const pred100Response = await fetch(`${baseUrl}/prediction/0/100.0/predictions.json`);
-                    const pred2500Response = await fetch(`${baseUrl}/prediction/0/2500.0/predictions.json`);
+                    const pred100Response = await fetch(`${baseUrl}/prediction/0/100.0/predictions.json${debugSuffix}`);
+                    const pred2500Response = await fetch(`${baseUrl}/prediction/0/2500.0/predictions.json${debugSuffix}`);
                     
                     if (pred100Response.ok && pred2500Response.ok) {
                         setPrediction100(await pred100Response.json());
@@ -76,7 +78,7 @@ const App: React.FC = () => {
                     // Helper function to safely fetch prediction data
                     const fetchPrediction = async (idolId: number, border: string) => {
                         try {
-                            const response = await fetch(`${baseUrl}/prediction/${idolId}/${border}/predictions.json`);
+                            const response = await fetch(`${baseUrl}/prediction/${idolId}/${border}/predictions.json${debugSuffix}`);
                             if (!response.ok) {
                                 return null; // Return null for 404s and other errors
                             }
