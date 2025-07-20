@@ -219,21 +219,23 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
         }
     }, []);
 
-    // Calculate crosshair index for dot placement
-    let crosshairIndex: number | null = null;
-    if (crosshairPosition && chartRef.current) {
-        // Find closest index to crosshair x
-        const chart = chartRef.current;
-        const chartArea = chart.chartArea;
-        if (chartArea) {
-            const relX = crosshairPosition.x - chartArea.left;
-            const percent = relX / chartArea.width;
-            const idx = Math.round(percent * (normalizedData.target.length - 1));
-            if (idx >= 0 && idx < normalizedData.target.length) {
-                crosshairIndex = idx;
+    // Calculate crosshair index for dot placement (always up-to-date)
+    const getCrosshairIndex = () => {
+        if (crosshairPosition && chartRef.current) {
+            const chart = chartRef.current;
+            const chartArea = chart.chartArea;
+            if (chartArea) {
+                const relX = crosshairPosition.x - chartArea.left;
+                const percent = relX / chartArea.width;
+                const idx = Math.round(percent * (normalizedData.target.length - 1));
+                if (idx >= 0 && idx < normalizedData.target.length) {
+                    return idx;
+                }
             }
         }
-    }
+        return null;
+    };
+    const crosshairIndex = getCrosshairIndex();
 
     const formatScore = (score: number): string => {
         return Math.round(score).toLocaleString();
@@ -251,7 +253,7 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                 data: visibleNeighbors.target ? normalizedData.target : [],
                 borderColor: COLORS.target,
                 tension: 0.1,
-                pointRadius: normalizedData.target.map((_, idx) => (crosshairIndex !== null && crosshairIndex === idx ? 4 : 0)), // Small dot for all
+                pointRadius: normalizedData.target.map((_, idx) => (crosshairIndex !== null && crosshairIndex === idx ? 4 : 0)), // Smaller dot for intersection
                 pointBackgroundColor: COLORS.target,
                 borderWidth: 3,
                 borderDash: [], // Solid line for current
@@ -263,7 +265,7 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                     data: visibleNeighbors[key] ? data : [],
                     borderColor: COLORS.neighbors[index],
                     tension: 0.1,
-                    pointRadius: data.map((_, idx) => (crosshairIndex !== null && crosshairIndex === idx ? 4 : 0)), // Small dot for all
+                    pointRadius: data.map((_, idx) => (crosshairIndex !== null && crosshairIndex === idx ? 4 : 0)), // Smaller dot for intersection
                     pointBackgroundColor: COLORS.neighbors[index],
                     borderWidth: 1.5,
                     borderDash: [6, 4], // Dashed line for neighbors
@@ -295,6 +297,7 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
         responsive: true,
         maintainAspectRatio: false,
         onHover: handleChartHover,
+        animation: false, // Disable all chart animations
         plugins: {
             legend: {
                 display: false

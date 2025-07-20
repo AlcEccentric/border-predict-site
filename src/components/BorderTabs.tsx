@@ -97,14 +97,18 @@ const BorderTabs: React.FC<BorderTabsProps> = ({
                         </div>
                     </h3>
 
-                    {/* ±5% Range */}
-                    <div className="flex flex-col sm:flex-row justify-center items-center gap-2 text-sm">
-                        <span className="text-center">±5% 誤差区間: {Math.round(finalScore * 0.95).toLocaleString()} ～ {Math.round(finalScore * 1.05).toLocaleString()}</span>
-                    </div>
-
-                    {/* ±10% Range */}
-                    <div className="flex flex-col sm:flex-row justify-center items-center gap-2 text-sm">
-                        <span className="text-center">±10% 誤差区間: {Math.round(finalScore * 0.9).toLocaleString()} ～ {Math.round(finalScore * 1.1).toLocaleString()}</span>
+                    {/* Error Ranges Bubble - subtle style */}
+                    <div className="inline-block rounded-lg bg-base-100 border border-base-300 px-3 py-2 text-base-content font-normal shadow-sm mt-2">
+                        <div className="flex flex-col gap-1 items-center">
+                            <div className="text-sm sm:text-base">
+                                <span className="mr-2 text-base-content/70">±5% 誤差区間:</span>
+                                <span>{Math.round(finalScore * 0.95).toLocaleString()} ～ {Math.round(finalScore * 1.05).toLocaleString()}</span>
+                            </div>
+                            <div className="text-sm sm:text-base">
+                                <span className="mr-2 text-base-content/70">±10% 誤差区間:</span>
+                                <span>{Math.round(finalScore * 0.9).toLocaleString()} ～ {Math.round(finalScore * 1.1).toLocaleString()}</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
