@@ -35,10 +35,6 @@ const BorderTabs: React.FC<BorderTabsProps> = ({
     };
     const finalScore = getFinalScore(activeTab === '100' ? prediction100 : prediction2500);
 
-    const getSLAInfo = (prediction: PredictionData, errorRange: number) => {
-        return prediction.metadata.raw.sla[errorRange];
-    };
-
     const handleNeighborToggle = () => {
         toggleNeighbors();
         
@@ -104,21 +100,11 @@ const BorderTabs: React.FC<BorderTabsProps> = ({
                     {/* ±5% Range */}
                     <div className="flex flex-col sm:flex-row justify-center items-center gap-2 text-sm">
                         <span className="text-center">±5% 誤差区間: {Math.round(finalScore * 0.95).toLocaleString()} ～ {Math.round(finalScore * 1.05).toLocaleString()}</span>
-                        <div className="tooltip" data-tip={getSLAInfo(activeTab === '100' ? prediction100 : prediction2500, 5)}>
-                            <span className="cursor-pointer text-info">
-                                <Info className="w-4 h-4 text-info cursor-pointer" />
-                            </span>
-                        </div>
                     </div>
 
                     {/* ±10% Range */}
                     <div className="flex flex-col sm:flex-row justify-center items-center gap-2 text-sm">
                         <span className="text-center">±10% 誤差区間: {Math.round(finalScore * 0.9).toLocaleString()} ～ {Math.round(finalScore * 1.1).toLocaleString()}</span>
-                        <div className="tooltip" data-tip={getSLAInfo(activeTab === '100' ? prediction100 : prediction2500, 10)}>
-                            <span className="cursor-pointer text-info">
-                                <Info className="w-4 h-4 text-info cursor-pointer" />
-                            </span>
-                        </div>
                     </div>
                 </div>
 
