@@ -4,7 +4,7 @@ import { Line } from 'react-chartjs-2';
 import annotationPlugin from 'chartjs-plugin-annotation';
 import { LineElement, CategoryScale, LinearScale, PointElement, Legend, Tooltip, InteractionItem } from 'chart.js';
 import CardContainer from './CardContainer';
-import { EventMetadata } from '../types';
+import { EventMetadata, NeighborMetadata } from '../types';
 import { AlertTriangle } from 'lucide-react';
 
 interface NeighborSectionProps {
@@ -16,11 +16,7 @@ interface NeighborSectionProps {
     };
     lastKnownIndex: number;
     neighborMetadata: {
-        [key: string]: {
-            name: string;
-            id: number;
-            length: number;
-        };
+        [key: string]: NeighborMetadata;
     };
     currentEventMetadata: EventMetadata;
     theme?: string;
@@ -28,7 +24,18 @@ interface NeighborSectionProps {
 
 const COLORS = {
     target: '#8884d8',
-    neighbors: ['#82ca9d', '#ffc658', '#ff7300', '#0088fe']
+    neighbors: [
+        '#43a047', // 1st neighbor (green)
+        '#fbc02d', // 2nd neighbor (yellow)
+        '#e64a19', // 3rd neighbor (red-orange)
+        '#0088fe', // 4th neighbor (blue)
+        '#c2185b', // 5th neighbor (magenta)
+        '#7b1fa2', // 6th neighbor (purple)
+        '#00bcd4', // 7th neighbor (cyan)
+        '#ff9800', // 8th neighbor (orange)
+        '#d32f2f', // 9th neighbor (red)
+        '#4caf50', // 10th neighbor (light green)
+    ]
 };
 
 ChartJS.register(
@@ -74,6 +81,37 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
     currentEventMetadata,
     theme
 }) => {
+    // Helper to display normalization warning
+    const renderNormalizationWarning = (length: number, popoverIndex: number | null, setPopoverIndex: (idx: number | null) => void, idx: number) => {
+        if (Number(length) === 349) return null;
+        return (
+            <span
+                className="relative inline-flex items-center cursor-pointer select-none"
+                onMouseEnter={() => setPopoverIndex(idx)}
+                onMouseLeave={() => setPopoverIndex(null)}
+            >
+                <AlertTriangle size={12} className="text-warning" />
+                <span className="ml-1 text-xs text-warning font-bold">正規化された</span>
+                {popoverIndex === idx && (
+                    <span className="absolute -left-8 top-full z-50 mt-2 w-56 sm:w-72 rounded bg-base-200 p-2 text-xs text-base-content shadow-lg border border-base-300">
+                        このスコアは <b>正規化</b> されています。<br />
+                        <span className="text-error font-bold">7.25日（349区間）を基準に正規化しています。表示値はメインチャートの予測値とは異なります。予測はメインチャートをご利用ください。</span><br />
+                        詳しくはページ下部の「解説」内「スコアの正規化方法について」をご覧ください。
+                    </span>
+                )}
+            </span>
+        );
+    };
+    function getTopPercent() {
+        if (window.innerWidth < 640) return '7.2%';
+        if (window.innerWidth < 768) return '4.8%';
+        return '3.8%';
+    }
+    function getHeightPercent() {
+        if (window.innerWidth < 640) return '62.5%';
+        if (window.innerWidth < 768) return '75.7%';
+        return '80.1%';
+    }
     const chartRef = useRef<ChartJS<'line'>>(null);
     const [crosshairPosition, setCrosshairPosition] = useState<{ x: number; y: number } | null>(null);
     const [hoveredData, setHoveredData] = useState<{ 
@@ -121,12 +159,12 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
         if (dataIndex >= 0 && dataIndex < percentagePoints.length) {
             // Calculate the actual x position for the data point (snapped position)
             const snappedX = chart.chartArea.left + (dataIndex / (percentagePoints.length - 1)) * chart.chartArea.width;
-            
+
             setCrosshairPosition({ x: snappedX, y: event.native.clientY - rect.top });
-            
+
             // Collect all values at this point
-            const values: Array<{ name: string; value: number; color: string; isTarget?: boolean }> = [];
-            
+            let values: Array<{ name: string; value: number; color: string; isTarget?: boolean }> = [];
+
             // Add target (current event) value
             if (visibleNeighbors.target && normalizedData.target[dataIndex] !== undefined) {
                 values.push({
@@ -136,7 +174,7 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                     isTarget: true
                 });
             }
-            
+
             // Add neighbor values
             Object.entries(normalizedData.neighbors).forEach(([key, data], index) => {
                 if (visibleNeighbors[key] && data[dataIndex] !== undefined) {
@@ -147,7 +185,12 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                     });
                 }
             });
-            
+
+            // Sort neighbors by value descending, keep target always on top
+            const target = values.find(v => v.isTarget);
+            const neighborsSorted = values.filter(v => !v.isTarget).sort((a, b) => b.value - a.value);
+            values = target ? [target, ...neighborsSorted] : neighborsSorted;
+
             setHoveredData({
                 percentagePoint: percentagePoints[dataIndex],
                 values
@@ -176,6 +219,22 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
         }
     }, []);
 
+    // Calculate crosshair index for dot placement
+    let crosshairIndex: number | null = null;
+    if (crosshairPosition && chartRef.current) {
+        // Find closest index to crosshair x
+        const chart = chartRef.current;
+        const chartArea = chart.chartArea;
+        if (chartArea) {
+            const relX = crosshairPosition.x - chartArea.left;
+            const percent = relX / chartArea.width;
+            const idx = Math.round(percent * (normalizedData.target.length - 1));
+            if (idx >= 0 && idx < normalizedData.target.length) {
+                crosshairIndex = idx;
+            }
+        }
+    }
+
     const formatScore = (score: number): string => {
         return Math.round(score).toLocaleString();
     };
@@ -192,8 +251,10 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                 data: visibleNeighbors.target ? normalizedData.target : [],
                 borderColor: COLORS.target,
                 tension: 0.1,
-                pointRadius: 0, // Remove dots
-                borderWidth: 1.5, // Make line thinner
+                pointRadius: normalizedData.target.map((_, idx) => (crosshairIndex !== null && crosshairIndex === idx ? 4 : 0)), // Small dot for all
+                pointBackgroundColor: COLORS.target,
+                borderWidth: 3,
+                borderDash: [], // Solid line for current
                 fill: false,
             },
             ...Object.entries(normalizedData.neighbors)
@@ -202,8 +263,10 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                     data: visibleNeighbors[key] ? data : [],
                     borderColor: COLORS.neighbors[index],
                     tension: 0.1,
-                    pointRadius: 0, // Remove dots
-                    borderWidth: 1.5, // Make line thinner
+                    pointRadius: data.map((_, idx) => (crosshairIndex !== null && crosshairIndex === idx ? 4 : 0)), // Small dot for all
+                    pointBackgroundColor: COLORS.neighbors[index],
+                    borderWidth: 1.5,
+                    borderDash: [6, 4], // Dashed line for neighbors
                     fill: false,
                 }))
         ]
@@ -301,7 +364,7 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
     return (
         <CardContainer className="mb-4">
             <div className="flex flex-col gap-4">
-                <div className="h-[200px] sm:h-[500px] md:h-[600px] w-full">
+                <div className="h-[320px] sm:h-[500px] md:h-[600px] w-full">
                     <div className="relative w-full h-full" onMouseLeave={handleChartLeave}>
                         <Line 
                             ref={chartRef}
@@ -340,8 +403,8 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                                     className="absolute pointer-events-none"
                                     style={{
                                         left: crosshairPosition.x,
-                                        top: 0,
-                                        bottom: 90,
+                                        top: getTopPercent(),
+                                        height: getHeightPercent(),
                                         width: 1,
                                         backgroundColor: 'rgba(255, 99, 132, 0.8)',
                                         zIndex: 10
@@ -350,27 +413,22 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                                 
                                 {/* Custom tooltip */}
                                 <div
-                                    className="absolute pointer-events-none bg-base-100 border border-base-300 text-base-content rounded-lg shadow-lg p-3 z-20 min-w-[120px] sm:min-w-[200px] max-w-[90vw]"
+                                    className="absolute pointer-events-none bg-base-100 border border-base-300 text-base-content rounded-lg shadow-lg p-3 z-20 min-w-[160px] sm:min-w-[200px] max-w-[90vw]"
                                     style={{
                                         left: (() => {
-                                            const tooltipWidth = window.innerWidth < 640 ? 120 : 200;
-                                            
-                                            // Always prefer left positioning in neighbor view
-                                            if (window.innerWidth < 640) {
-                                                // On mobile, always show to the left if possible
-                                                if (crosshairPosition.x > tooltipWidth + 20) {
-                                                    return crosshairPosition.x - tooltipWidth - 10;
-                                                } else {
-                                                    return Math.max(10, crosshairPosition.x - tooltipWidth - 10);
-                                                }
+                                            // Tooltip width for mobile and desktop
+                                            const tooltipWidth = window.innerWidth < 640 ? 140 : 200;
+                                            const containerWidth = window.innerWidth;
+                                            // If cursor is near left edge, show tooltip on right
+                                            if (crosshairPosition.x < tooltipWidth + 20) {
+                                                return crosshairPosition.x + 20;
                                             }
-                                            
-                                            // On desktop, strongly prefer left positioning
-                                            if (crosshairPosition.x > tooltipWidth + 20) {
-                                                return crosshairPosition.x - tooltipWidth - 10;
-                                            } else {
-                                                return crosshairPosition.x + 10;
+                                            // If cursor is near right edge, show tooltip on left
+                                            if (crosshairPosition.x > containerWidth - tooltipWidth - 20) {
+                                                return crosshairPosition.x - tooltipWidth - 30;
                                             }
+                                            // Otherwise, default to left of crosshair
+                                            return crosshairPosition.x - tooltipWidth - 30;
                                         })(),
                                         top: Math.max(crosshairPosition.y - 60, 10)
                                     }}
@@ -410,12 +468,26 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                                 <div className="flex-1 min-w-0">
                                     <div className="font-medium text-sm flex items-center gap-2">
                                         <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS.target }} />
-                                        現在のイベント
+                                        <span className="sm:hidden">現在のイベント</span>
+                                        <span className="hidden sm:inline">現在のイベント：{eventMetadata.name}</span>
+                                    </div>
+                                    <div className="text-sm text-base-content/70 sm:hidden ml-5" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                                        <span style={{
+                                            display: 'inline-block',
+                                            maxWidth: '100%',
+                                            whiteSpace: 'normal',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            verticalAlign: 'bottom',
+                                        }}>{eventMetadata.name}</span>
                                     </div>
                                     <div className="text-sm text-base-content/70 mt-1 sm:ml-0 ml-5">
                                         <div className="flex flex-wrap gap-2">
-                                            <span>開催日数: {eventMetadata.length}日</span>
-                                            <span>最終スコア: {formatScore(normalizedData.target[normalizedData.target.length - 1])}</span>
+                                            <span>開催日数: {((eventMetadata.length - 1) * 30 / (24 * 60)).toFixed(2)}日</span>
+                                            <span className="flex flex-row flex-wrap items-center gap-1 min-w-0">
+                                                <span className="truncate block max-w-full">最終スコア: {formatScore(normalizedData.target[normalizedData.target.length - 1])}</span>
+                                                {renderNormalizationWarning(eventMetadata.length, popoverIndex, setPopoverIndex, -1)}
+                                            </span>
                                         </div>
                                     </div>
                                 </div>
@@ -446,30 +518,22 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                                             <span className="sm:hidden">近傍{key}</span>
                                             <span className="hidden sm:inline">近傍{key}：{neighbor.name}</span>
                                         </div>
-                                        <div className="text-sm text-base-content/70 truncate sm:hidden ml-5">{neighbor.name}</div>
+                                        <div className="text-sm text-base-content/70 sm:hidden ml-5" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                                            <span style={{
+                                                display: 'inline-block',
+                                                maxWidth: '100%',
+                                                whiteSpace: 'normal',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                verticalAlign: 'bottom',
+                                            }}>{neighbor.name}</span>
+                                        </div>
                                         <div className="text-sm text-base-content/70 mt-1 sm:ml-0 ml-5">
                                             <div className="flex flex-wrap gap-2">
-                                                <span>開催日数: {neighbor.length}日</span>
-                                                <span className="flex items-center gap-1">
-                                                    最終スコア: {formatScore(normalizedData.neighbors[key][normalizedData.neighbors[key].length - 1])}
-                                                    {neighbor.length !== eventMetadata.length && (
-                                                        <span
-                                                            className="relative inline-flex items-center cursor-pointer select-none"
-                                                            onMouseEnter={() => setPopoverIndex(index)}
-                                                            onMouseLeave={() => setPopoverIndex(null)}
-                                                            onClick={() => setPopoverIndex(popoverIndex === index ? null : index)}
-                                                        >
-                                                            <AlertTriangle size={12} className="text-warning" />
-                                                            <span className="ml-1 text-xs text-warning font-bold">注意</span>
-                                                            {popoverIndex === index && (
-                                                                <span className="absolute left-0 top-full z-50 mt-2 w-72 sm:w-96 rounded bg-base-200 p-2 text-xs text-base-content shadow-lg border border-base-300">
-                                                                    このスコアは <b>正規化</b> されています。<br />
-                                                                    <span className="text-error font-bold">比較する場合は、同じ開催日数のイベントのデータがより参考になります。</span><br />
-                                                                    詳しくはページ下部の「解説」内「スコアの正規化方法について」をご覧ください。
-                                                                </span>
-                                                            )}
-                                                        </span>
-                                                    )}
+                                                <span>開催日数: {((neighbor.raw_length - 1) * 30 / (24 * 60)).toFixed(2)}日</span>
+                                                <span className="flex flex-row flex-wrap items-center gap-1 min-w-0">
+                                                    <span className="truncate block max-w-full">最終スコア: {formatScore(normalizedData.neighbors[key][normalizedData.neighbors[key].length - 1])}</span>
+                                                    {renderNormalizationWarning(neighbor.raw_length, popoverIndex, setPopoverIndex, index)}
                                                 </span>
                                             </div>
                                         </div>

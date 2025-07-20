@@ -50,12 +50,12 @@ interface MainChartProps {
 
 const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
   function getTopPercent() {
-    if (window.innerWidth < 640) return '7.8%';
+    if (window.innerWidth < 640) return '6.7%';
     if (window.innerWidth < 768) return '6.2%';
     return '3.8%';
   }
   function getHeightPercent() {
-    if (window.innerWidth < 640) return '52.7%';
+    if (window.innerWidth < 640) return '60.6%';
     if (window.innerWidth < 768) return '66.6%';
     return '78%';
   }
@@ -429,7 +429,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
   return (
     <div className="relative w-full">
       <div 
-        className="relative w-full h-[480px] sm:h-[400px] md:h-[600px]" 
+        className="relative w-full h-[360px] sm:h-[400px] md:h-[600px]" 
         onMouseLeave={handleChartLeave}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}

@@ -30,7 +30,7 @@ const App: React.FC = () => {
     const themes = ['nord', 'cupcake', 'dim', 'aqua', 'sunset'];
     // Configuration for data source - set to local for development, remote for production
     const baseUrl = 'https://cdn.yuenimillion.live/data'; // Production URL
-    const isDebug = false;
+    const isDebug = true;
     const debugSuffix = isDebug ? '?debug' : '';
     const [theme, setTheme] = useState(() => {
         const savedTheme = localStorage.getItem('theme') || themes[1];
