@@ -95,7 +95,7 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                 {popoverIndex === idx && (
                     <span className="absolute -left-8 top-full z-50 mt-2 w-56 sm:w-72 rounded bg-base-200 p-2 text-xs text-base-content shadow-lg border border-base-300">
                         このスコアは <b>正規化</b> されています。<br />
-                        <span className="text-error font-bold">7.25日（349区間）を基準に正規化しています。表示値はメインチャートの予測値とは異なります。予測はメインチャートをご利用ください。</span><br />
+                        <span className="text-error font-bold">7.25日を基準に正規化しています。予測値はサイト上部の「○○位の予想最終スコア」をご参照ください。</span><br />
                         詳しくはページ下部の「解説」内「スコアの正規化方法について」をご覧ください。
                     </span>
                 )}
