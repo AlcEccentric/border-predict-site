@@ -15,6 +15,7 @@ export interface EventMetadata {
 }
 
 export interface NeighborMetadata {
+    idol_id: any;
     name: string;
     id: number;
     raw_length: number;
