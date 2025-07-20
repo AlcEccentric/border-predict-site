@@ -49,6 +49,16 @@ interface MainChartProps {
 }
 
 const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
+  function getTopPercent() {
+    if (window.innerWidth < 640) return '7.8%';
+    if (window.innerWidth < 768) return '6.2%';
+    return '3.8%';
+  }
+  function getHeightPercent() {
+    if (window.innerWidth < 640) return '52.7%';
+    if (window.innerWidth < 768) return '66.6%';
+    return '78%';
+  }
   const chartRef = useRef<ChartJS<'line'>>(null);
   const [crosshairPosition, setCrosshairPosition] = useState<{ x: number; y: number } | null>(null);
   const [hoveredData, setHoveredData] = useState<{ timePoint: string; value: number } | null>(null);
@@ -80,9 +90,11 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
     (_, i) => {
       const date = new Date(startAt);
       date.setMinutes(date.getMinutes() + i * 30);
-      return date.toLocaleDateString('ja-JP', {
+      return date.toLocaleString('ja-JP', {
         month: 'numeric',
         day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
         timeZone: 'Asia/Tokyo'
       });
     }
@@ -362,7 +374,21 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
         ticks: {
           color: textColor,
           // Only reduce number of ticks on mobile
-          ...(window.innerWidth < 640 && { maxTicksLimit: 6 })
+          ...(window.innerWidth < 640 && { maxTicksLimit: 6, autoSkip: false }),
+          minRotation: window.innerWidth < 640 ? 45 : 30,
+          maxRotation: window.innerWidth < 640 ? 45 : 30,
+          callback: function(value, index, values) {
+            // Always show last tick
+            const isLast = index === values.length - 1;
+            if (window.innerWidth < 640) {
+              const step = Math.ceil(values.length / 6);
+              if (index % step === 0 || isLast) {
+                return this.getLabelForValue(Number(value));
+              }
+              return '';
+            }
+            return this.getLabelForValue(Number(value));
+          }
         }
       },
       y: {
@@ -377,6 +403,20 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
         },
         ticks: {
           color: textColor,
+          callback: function(value) {
+            // Format as "万" on mobile
+            if (window.innerWidth < 640) {
+              if (typeof value === 'number' && value >= 10000) {
+                return Math.round(value / 10000) + '万';
+              }
+              return value;
+            }
+            // Default formatting with commas
+            if (typeof value === 'number') {
+              return value.toLocaleString();
+            }
+            return value;
+          }
         }
       }
     },
@@ -389,7 +429,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
   return (
     <div className="relative w-full">
       <div 
-        className="relative w-full h-[300px] sm:h-[400px] md:h-[600px]" 
+        className="relative w-full h-[480px] sm:h-[400px] md:h-[600px]" 
         onMouseLeave={handleChartLeave}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -403,9 +443,9 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
             className="absolute pointer-events-none bg-primary/20 border border-primary"
             style={{
               left: selectionRect.x,
-              top: '5%', // Fixed top position
+              top: getTopPercent(),
               width: selectionRect.width,
-              height: '75%', // Fixed height percentage
+              height: getHeightPercent(),
               zIndex: 5
             }}
           />
@@ -419,8 +459,8 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
               className="absolute pointer-events-none"
               style={{
                 left: crosshairPosition.x,
-                top: '5%', // Fixed top position
-                height: '75%', // Fixed height percentage
+                top: getTopPercent(),
+                height: getHeightPercent(),
                 width: 1,
                 backgroundColor: 'rgba(255, 99, 132, 0.8)',
                 zIndex: 10
@@ -443,8 +483,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
                       return Math.min(crosshairPosition.x + 10, containerWidth - tooltipWidth - 10);
                     }
                   }
-                  
-                  // On desktop, use improved logic
+
                   return crosshairPosition.x > containerWidth * 0.6 
                     ? crosshairPosition.x - tooltipWidth - 10
                     : crosshairPosition.x + 10;
