@@ -6,7 +6,6 @@ import { LineElement, CategoryScale, LinearScale, PointElement, Legend, Tooltip,
 import CardContainer from './CardContainer';
 import { EventMetadata, NeighborMetadata } from '../types';
 import { AlertTriangle } from 'lucide-react';
-
 interface NeighborSectionProps {
     normalizedData: {
         target: number[];
@@ -81,6 +80,10 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
     currentEventMetadata,
     theme
 }) => {
+    // Percentage points for chart labels and zoom logic
+    const percentagePoints = normalizedData.target.map((_, index) => 
+        Math.round((index / (normalizedData.target.length - 1)) * 100)
+    );
     // Helper to display normalization warning
     const renderNormalizationWarning = (length: number, popoverIndex: number | null, setPopoverIndex: (idx: number | null) => void, idx: number) => {
         if (Number(length) === 349) return null;
@@ -123,6 +126,15 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
             isTarget?: boolean;
         }> 
     } | null>(null);
+
+    // Zoom state for range selection
+    const [zoomState, setZoomState] = useState<{ min: number; max: number } | null>(null);
+    const isZoomed = !!zoomState;
+    // Range selection state
+    const [isSelecting, setIsSelecting] = useState(false);
+    const [selectionStart, setSelectionStart] = useState<number | null>(null);
+    const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
+    const [selectionRect, setSelectionRect] = useState<{ x: number; width: number } | null>(null);
     
     // Create default event metadata if it's not provided
     const eventMetadata = currentEventMetadata || {
@@ -139,6 +151,8 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
         }), { target: true })
     );
 
+    // Percentage points for chart labels and zoom logic
+
     const toggleNeighbor = (key: string) => {
         setVisibleNeighbors(prev => ({
             ...prev,
@@ -151,60 +165,173 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
         if (!chart || !event.native) return;
 
         const rect = chart.canvas.getBoundingClientRect();
-        const x = event.native.clientX - rect.left;
+        const mouseX = event.native.clientX;
+        const mouseY = event.native.clientY;
 
-        // Get the data index at this x position (snap to nearest data point)
-        const dataIndex = Math.round((x - chart.chartArea.left) / (chart.chartArea.width) * (percentagePoints.length - 1));
-        
-        if (dataIndex >= 0 && dataIndex < percentagePoints.length) {
-            // Calculate the actual x position for the data point (snapped position)
-            const snappedX = chart.chartArea.left + (dataIndex / (percentagePoints.length - 1)) * chart.chartArea.width;
+        // Hide crosshair if mouse is outside the visible chart area
+        if (
+            mouseX < rect.left ||
+            mouseX > rect.right ||
+            mouseY < rect.top ||
+            mouseY > rect.bottom
+        ) {
+            setCrosshairPosition(prev => (prev !== null ? null : prev));
+            setHoveredData(prev => (prev !== null ? null : prev));
+            return;
+        }
 
-            setCrosshairPosition({ x: snappedX, y: event.native.clientY - rect.top });
+        const x = mouseX - rect.left;
+        const relX = x - chart.chartArea.left;
 
-            // Collect all values at this point
-            let values: Array<{ name: string; value: number; color: string; isTarget?: boolean }> = [];
+        // Use zoomed range for tooltip
+        const dataLength = zoomState ? zoomState.max - zoomState.min + 1 : percentagePoints.length;
+        let dataIndex;
+        if (relX >= chart.chartArea.width) {
+            dataIndex = dataLength - 1;
+        } else {
+            dataIndex = Math.round((relX / chart.chartArea.width) * (dataLength - 1));
+        }
+        // Calculate the actual x position for the data point (snapped position)
+        const snappedX = chart.chartArea.left + (dataIndex / (dataLength - 1)) * chart.chartArea.width;
 
-            // Add target (current event) value
-            if (visibleNeighbors.target && normalizedData.target[dataIndex] !== undefined) {
+        // Use zoomed slices for tooltip
+        const targetData = zoomState
+            ? normalizedData.target.slice(zoomState.min, zoomState.max + 1)
+            : normalizedData.target;
+        const neighborData = Object.entries(normalizedData.neighbors).map(([key, arr]) => [key, zoomState ? arr.slice(zoomState.min, zoomState.max + 1) : arr]);
+        const percentPoints = zoomState
+            ? percentagePoints.slice(zoomState.min, zoomState.max + 1)
+            : percentagePoints;
+
+        let values: Array<{ name: string; value: number; color: string; isTarget?: boolean }> = [];
+
+        // Add target (current event) value
+        if (visibleNeighbors.target && targetData[dataIndex] !== undefined) {
+            values.push({
+                name: '現在のイベント',
+                value: targetData[dataIndex],
+                color: COLORS.target,
+                isTarget: true
+            });
+        }
+
+        // Add neighbor values
+        neighborData.forEach((entry, index) => {
+            const key = entry[0] as string;
+            const dataArr = entry[1] as number[];
+            if (visibleNeighbors[key] && typeof dataArr[dataIndex] === 'number') {
                 values.push({
-                    name: '現在のイベント',
-                    value: normalizedData.target[dataIndex],
-                    color: COLORS.target,
-                    isTarget: true
+                    name: `近傍${key}`,
+                    value: dataArr[dataIndex],
+                    color: COLORS.neighbors[index]
                 });
             }
+        });
 
-            // Add neighbor values
-            Object.entries(normalizedData.neighbors).forEach(([key, data], index) => {
-                if (visibleNeighbors[key] && data[dataIndex] !== undefined) {
-                    values.push({
-                        name: `近傍${key}`,
-                        value: data[dataIndex],
-                        color: COLORS.neighbors[index]
-                    });
-                }
-            });
+        // Sort neighbors by value descending, keep target always on top
+        const target = values.find(v => v.isTarget);
+        const neighborsSorted = values.filter(v => !v.isTarget).sort((a, b) => b.value - a.value);
+        values = target ? [target, ...neighborsSorted] : neighborsSorted;
 
-            // Sort neighbors by value descending, keep target always on top
-            const target = values.find(v => v.isTarget);
-            const neighborsSorted = values.filter(v => !v.isTarget).sort((a, b) => b.value - a.value);
-            values = target ? [target, ...neighborsSorted] : neighborsSorted;
-
-            setHoveredData({
-                percentagePoint: percentagePoints[dataIndex],
+        setCrosshairPosition(prev => {
+            const newCrosshair = { x: snappedX, y: mouseY - rect.top };
+            if (!prev || prev.x !== newCrosshair.x || prev.y !== newCrosshair.y) {
+                return newCrosshair;
+            }
+            return prev;
+        });
+        setHoveredData(prev => {
+            const newHovered = {
+                percentagePoint: percentPoints[dataIndex],
                 values
-            });
-        } else {
-            setCrosshairPosition(null);
-            setHoveredData(null);
-        }
+            };
+            if (!prev || prev.percentagePoint !== newHovered.percentagePoint || JSON.stringify(prev.values) !== JSON.stringify(newHovered.values)) {
+                return newHovered;
+            }
+            return prev;
+        });
     };
 
     const handleChartLeave = () => {
         setCrosshairPosition(null);
         setHoveredData(null);
     };
+
+    // Range selection mouse handlers
+    const handleMouseDown = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+        const chart = chartRef.current;
+        if (!chart) return;
+        const rect = chart.canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        // Convert pixel position to data index
+        const relX = x - chart.chartArea.left;
+        let dataIndex;
+        if (relX >= chart.chartArea.width) {
+            dataIndex = percentagePoints.length - 1;
+        } else {
+            dataIndex = Math.round((relX / chart.chartArea.width) * (percentagePoints.length - 1));
+        }
+        if (typeof dataIndex === 'number' && dataIndex >= 0 && dataIndex < percentagePoints.length) {
+            setIsSelecting(true);
+            setSelectionStart(dataIndex);
+            setSelectionEnd(dataIndex);
+            setSelectionRect({ x, width: 0 });
+        }
+    }, [percentagePoints]);
+
+    const handleMouseMove = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+        const chart = chartRef.current;
+        if (!chart || !isSelecting || selectionStart === null) return;
+        const rect = chart.canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        // Convert pixel position to data index
+        const relX = x - chart.chartArea.left;
+        let dataIndex;
+        if (relX >= chart.chartArea.width) {
+            dataIndex = percentagePoints.length - 1;
+        } else {
+            dataIndex = Math.round((relX / chart.chartArea.width) * (percentagePoints.length - 1));
+        }
+        if (typeof dataIndex === 'number' && dataIndex >= 0 && dataIndex < percentagePoints.length) {
+            setSelectionEnd(dataIndex);
+            // Update selection rectangle
+            const startPixel = chart.chartArea.left + (selectionStart / (percentagePoints.length - 1)) * chart.chartArea.width;
+            const endPixel = chart.chartArea.left + (dataIndex / (percentagePoints.length - 1)) * chart.chartArea.width;
+            const leftPixel = Math.min(startPixel, endPixel);
+            const rightPixel = Math.max(startPixel, endPixel);
+            setSelectionRect({ x: leftPixel, width: rightPixel - leftPixel });
+        }
+    }, [isSelecting, selectionStart, percentagePoints]);
+
+    const handleMouseUp = React.useCallback(() => {
+        if (!isSelecting || selectionStart === null || selectionEnd === null) {
+            setIsSelecting(false);
+            setSelectionStart(null);
+            setSelectionEnd(null);
+            setSelectionRect(null);
+            return;
+        }
+        // Clamp and round indices to valid integer range
+        const minIndex = Math.max(0, Math.min(Math.round(selectionStart), Math.round(selectionEnd)));
+        const maxIndex = Math.min(percentagePoints.length - 1, Math.max(Math.round(selectionStart), Math.round(selectionEnd)));
+        // Only zoom if there's a meaningful selection (more than 1 data point)
+        if (maxIndex - minIndex > 1) {
+            setZoomState({ min: minIndex, max: maxIndex });
+        }
+        // Reset selection state
+        setIsSelecting(false);
+        setSelectionStart(null);
+        setSelectionEnd(null);
+        setSelectionRect(null);
+    }, [isSelecting, selectionStart, selectionEnd, percentagePoints]);
+
+    // Global mouseup listener for range selection
+    React.useEffect(() => {
+        if (!isSelecting) return;
+        const onMouseUp = () => { handleMouseUp(); };
+        window.addEventListener('mouseup', onMouseUp);
+        return () => { window.removeEventListener('mouseup', onMouseUp); };
+    }, [isSelecting, handleMouseUp]);
 
     // Japanese number formatting function
     const formatJapaneseNumber = React.useCallback((value: number): string => {
@@ -219,16 +346,18 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
         }
     }, []);
 
-    // Calculate crosshair index for dot placement (always up-to-date)
+    // Calculate crosshair index for dot placement (zoom-aware)
     const getCrosshairIndex = () => {
         if (crosshairPosition && chartRef.current) {
             const chart = chartRef.current;
             const chartArea = chart.chartArea;
             if (chartArea) {
                 const relX = crosshairPosition.x - chartArea.left;
+                // Use zoomed range for index calculation
+                const dataLength = zoomState ? zoomState.max - zoomState.min + 1 : normalizedData.target.length;
                 const percent = relX / chartArea.width;
-                const idx = Math.round(percent * (normalizedData.target.length - 1));
-                if (idx >= 0 && idx < normalizedData.target.length) {
+                const idx = Math.round(percent * (dataLength - 1));
+                if (idx >= 0 && idx < dataLength) {
                     return idx;
                 }
             }
@@ -241,34 +370,40 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
         return Math.round(score).toLocaleString();
     };
 
-    const percentagePoints = normalizedData.target.map((_, index) => 
-        Math.round((index / (normalizedData.target.length - 1)) * 100)
-    );
-
+    // Apply zoom to chart data
+    const chartLabels = percentagePoints.slice(zoomState ? zoomState.min : 0, (zoomState ? zoomState.max + 1 : percentagePoints.length));
     const chartData = {
-        labels: percentagePoints,
+        labels: chartLabels,
         datasets: [
             {
                 label: '現在のイベント',
-                data: visibleNeighbors.target ? normalizedData.target : [],
+                data: visibleNeighbors.target ? normalizedData.target.slice(zoomState ? zoomState.min : 0, (zoomState ? zoomState.max + 1 : percentagePoints.length)) : [],
                 borderColor: COLORS.target,
                 tension: 0.1,
-                pointRadius: normalizedData.target.map((_, idx) => (crosshairIndex !== null && crosshairIndex === idx ? 4 : 0)), // Smaller dot for intersection
+                pointRadius: (zoomState
+                    ? normalizedData.target.slice(zoomState.min, zoomState.max + 1)
+                    : normalizedData.target
+                ).map((_, idx) => (crosshairIndex !== null && crosshairIndex === idx ? 4 : 0)),
                 pointBackgroundColor: COLORS.target,
                 borderWidth: 3,
-                borderDash: [], // Solid line for current
+                borderDash: [],
                 fill: false,
             },
             ...Object.entries(normalizedData.neighbors)
                 .map(([key, data], index) => ({
                     label: `近傍${key}`,
-                    data: visibleNeighbors[key] ? data : [],
+                    data: visibleNeighbors[key]
+                        ? data.slice(zoomState ? zoomState.min : 0, (zoomState ? zoomState.max + 1 : percentagePoints.length))
+                        : [],
                     borderColor: COLORS.neighbors[index],
                     tension: 0.1,
-                    pointRadius: data.map((_, idx) => (crosshairIndex !== null && crosshairIndex === idx ? 4 : 0)), // Smaller dot for intersection
+                    pointRadius: (zoomState
+                        ? data.slice(zoomState.min, zoomState.max + 1)
+                        : data
+                    ).map((_, idx) => (crosshairIndex !== null && crosshairIndex === idx ? 4 : 0)),
                     pointBackgroundColor: COLORS.neighbors[index],
                     borderWidth: 1.5,
-                    borderDash: [6, 4], // Dashed line for neighbors
+                    borderDash: [6, 4],
                     fill: false,
                 }))
         ]
@@ -293,6 +428,10 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
     }, [theme]);
 
     
+    // Adjust prediction range annotation for zoom
+    const box1_xMin = zoomState ? Math.max(lastKnownIndex, zoomState.min) - (zoomState.min) : lastKnownIndex;
+    const box1_xMax = zoomState ? zoomState.max - zoomState.min : normalizedData.target.length - 1;
+
     const options: ExtendedChartOptions = {
         responsive: true,
         maintainAspectRatio: false,
@@ -306,16 +445,16 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                 annotations: {
                     line1: {
                         type: 'line',
-                        xMin: lastKnownIndex,
-                        xMax: lastKnownIndex,
+                        xMin: zoomState ? lastKnownIndex - zoomState.min : lastKnownIndex,
+                        xMax: zoomState ? lastKnownIndex - zoomState.min : lastKnownIndex,
                         borderColor: 'rgb(255, 99, 132)',
                         borderWidth: 2,
                         borderDash: [5, 5],
                     },
                     box1: {
                         type: 'box',
-                        xMin: lastKnownIndex,
-                        xMax: normalizedData.target.length - 1,
+                        xMin: box1_xMin,
+                        xMax: box1_xMax,
                         backgroundColor: 'rgba(103, 220, 209, 0.1)',
                         borderColor: 'rgba(200, 200, 200, 0.2)',
                     }
@@ -353,10 +492,13 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                 grid: {
                     color: 'rgba(200, 200, 200, 0.2)',
                 },
+                min: zoomState ? 0 : undefined,
+                max: zoomState ? chartData.labels.length - 1 : undefined,
                 ticks: {
                     callback: (value: number | string) => {
                         const index = typeof value === 'string' ? parseInt(value) : value;
-                        return `${percentagePoints[index]}%`;
+                        // Use chartData.labels for zoomed range
+                        return `${chartData.labels[index]}%`;
                     },
                     color: textColor,
                 }
@@ -368,10 +510,47 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
         <CardContainer className="mb-4">
             <div className="flex flex-col gap-4">
                 <div className="h-[320px] sm:h-[500px] md:h-[600px] w-full">
-                    <div className="relative w-full h-full" onMouseLeave={handleChartLeave}>
-                        <Line 
+                    <div
+                        className="relative w-full h-full"
+                        onMouseLeave={handleChartLeave}
+                        onMouseDown={handleMouseDown}
+                        onMouseMove={handleMouseMove}
+                        onMouseUp={handleMouseUp}
+                    >
+                        {/* Zoom note and zoom out button as floating badges at top-left, offset to avoid y axis */}
+                        {!isZoomed && (
+                            <div
+                                className="absolute left-16 top-4 px-3 py-1 rounded-md bg-base-200 text-base-content/80 shadow text-xs z-30"
+                                style={{ pointerEvents: 'none', fontWeight: 500 }}
+                            >
+                                <span style={{ fontSize: '1.1em', verticalAlign: 'middle', marginRight: '0.3em' }}>🔍</span>範囲選択でズーム
+                            </div>
+                        )}
+                        {isZoomed && (
+                            <button
+                                onClick={() => { setZoomState(null); }}
+                                className="absolute left-12 top-4 px-2 py-1 rounded-md bg-base-200 text-base-content shadow transition hover:bg-primary hover:text-white z-30 text-xs"
+                                style={{ fontSize: '0.85rem', fontWeight: 500, padding: '0.25rem 0.5rem' }}
+                            >
+                                <span className="inline-block align-middle mr-1" style={{ fontSize: '1em' }}>⤺</span> 全体表示
+                            </button>
+                        )}
+                        {/* Range selection rectangle */}
+                        {selectionRect && isSelecting && (
+                            <div
+                                className="absolute pointer-events-none bg-primary/20 border border-primary"
+                                style={{
+                                    left: selectionRect.x,
+                                    top: getTopPercent(),
+                                    width: selectionRect.width,
+                                    height: getHeightPercent(),
+                                    zIndex: 5
+                                }}
+                            />
+                        )}
+                        <Line
                             ref={chartRef}
-                            data={chartData} 
+                            data={chartData}
                             options={{
                                 ...options,
                                 plugins: {
@@ -395,9 +574,8 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                                         }
                                     }
                                 }
-                            }} 
+                            }}
                         />
-                        
                         {/* Custom crosshair and tooltip */}
                         {crosshairPosition && hoveredData && (
                             <>
@@ -413,7 +591,6 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                                         zIndex: 10
                                     }}
                                 />
-                                
                                 {/* Custom tooltip */}
                                 <div
                                     className="absolute pointer-events-none bg-base-100 border border-base-300 text-base-content rounded-lg shadow-lg p-3 z-20 min-w-[160px] sm:min-w-[200px] max-w-[90vw]"
