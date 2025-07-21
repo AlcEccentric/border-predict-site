@@ -108,7 +108,7 @@ const FAQ: React.FC<FAQProps> = ({ eventType, internalEventType }) => {
                 </p>
                 <div className="p-3 mb-2 bg-success/20 rounded-lg">
                     <p className="text-success text-sm">
-                        <strong>要点:</strong> 100位は進行度80%付近で高い確率(約90%)で±10%誤差範囲内に収まり、2500位は85%付近で高い確率(約90%)で±10%誤差範囲内に収まります。
+                        <strong>要点: 100位は進行度80%付近で高い確率(約90%)で±10%誤差範囲内に収まり、2500位は85%付近で高い確率(約90%)で±10%誤差範囲内に収まります。</strong>
                     </p>
                 </div>
                 
