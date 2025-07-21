@@ -129,7 +129,6 @@ const FAQ: React.FC<FAQProps> = ({ eventType, internalEventType }) => {
                     </div>
                 </div>
                 <div className="mt-6">
-                    <h5 className="text-md font-semibold mb-2">誤差が大きくなりやすいイベント</h5>
                     <p className="text-sm mb-2">
                         一部イベントでは、参加者の行動パターンや特殊なスコア推移により予測誤差が大きくなる場合があります。
                         特にイベント終盤までスコアが急激に伸びる場合や、途中で大きな変動がある場合は注意が必要です。
