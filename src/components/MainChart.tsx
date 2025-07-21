@@ -49,6 +49,11 @@ interface MainChartProps {
 }
 
 const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
+  // Zoom state to persist across re-renders
+  const [zoomState, setZoomState] = useState<{ min: string; max: string } | null>(null);
+  const isZoomed = !!zoomState;
+
+  // ...existing code...
   function getTopPercent() {
     if (window.innerWidth < 640) return '6.7%';
     if (window.innerWidth < 768) return '6.2%';
@@ -70,37 +75,31 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
   const [selectionRect, setSelectionRect] = useState<{ x: number; width: number } | null>(null);
   
   // Zoom state to persist across re-renders
-  const [zoomState, setZoomState] = useState<{ min: number; max: number } | null>(null);
+  // (Removed zoomState, not needed)
 
   // Apply zoom state when chart is ready
-  React.useEffect(() => {
-    if (chartRef.current && zoomState) {
-      const chart = chartRef.current;
-      // console.log('Applying zoom state:', zoomState);
-      
-      // Set the scale limits directly
-      chart.scales.x.min = zoomState.min;
-      chart.scales.x.max = zoomState.max;
-      chart.update('none'); // Update without animation
-    }
-  }, [zoomState, chartRef.current]);
+  // (Removed zoomState effect)
 
-  const timePoints = Array.from(
-    { length: data.data.raw.target.length },
-    (_, i) => {
-      const date = new Date(startAt);
-      date.setMinutes(date.getMinutes() + i * 30);
-      return date.toLocaleString('ja-JP', {
-        month: 'numeric',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZone: 'Asia/Tokyo'
-      });
-    }
-  );
+  const timePoints = React.useMemo(() => {
+    return Array.from(
+      { length: data.data.raw.target.length },
+      (_, i) => {
+        const date = new Date(startAt);
+        date.setMinutes(date.getMinutes() + i * 30);
+        return date.toLocaleString('ja-JP', {
+          month: 'numeric',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'Asia/Tokyo'
+        });
+      }
+    );
+  }, [startAt, data.data.raw.target.length]);
 
-  const handleChartHover = (event: any) => {
+  // ...existing code...
+
+  const handleChartHover = React.useCallback((event: any) => {
     const chart = chartRef.current;
     if (!chart || !event.native) return;
 
@@ -140,26 +139,65 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
       return 20; // Fallback default
     })();
 
-    if (minDistance <= threshold) {
-      setCrosshairPosition({
-        x: dataPoints[closestIndex].x,
-        y: dataPoints[closestIndex].y,
+    // Show crosshair at last tick if mouse is within 5px to the right of the last tick position
+    const lastTickX = dataPoints[dataPoints.length - 1].x;
+    if (x > lastTickX && x <= lastTickX + 5) {
+      setCrosshairPosition(prev => {
+        const newCrosshair = {
+          x: lastTickX,
+          y: dataPoints[dataPoints.length - 1].y,
+        };
+        if (!prev || prev.x !== newCrosshair.x || prev.y !== newCrosshair.y) {
+          return newCrosshair;
+        }
+        return prev;
       });
-      setHoveredData({
-        timePoint: timePoints[closestIndex],
-        value: data.data.raw.target[closestIndex],
+      setHoveredData(prev => {
+        const newHovered = {
+          timePoint: timePoints[dataPoints.length - 1],
+          value: data.data.raw.target[dataPoints.length - 1],
+        };
+        if (!prev || prev.timePoint !== newHovered.timePoint || prev.value !== newHovered.value) {
+          return newHovered;
+        }
+        return prev;
+      });
+      return;
+    }
+
+    if (minDistance <= threshold) {
+      setCrosshairPosition(prev => {
+        const newCrosshair = {
+          x: dataPoints[closestIndex].x,
+          y: dataPoints[closestIndex].y,
+        };
+        if (!prev || prev.x !== newCrosshair.x || prev.y !== newCrosshair.y) {
+          return newCrosshair;
+        }
+        return prev;
+      });
+      setHoveredData(prev => {
+        const newHovered = {
+          timePoint: timePoints[closestIndex],
+          value: data.data.raw.target[closestIndex],
+        };
+        if (!prev || prev.timePoint !== newHovered.timePoint || prev.value !== newHovered.value) {
+          return newHovered;
+        }
+        return prev;
       });
     } else {
-      setCrosshairPosition(null);
-      setHoveredData(null);
+      setCrosshairPosition(prev => (prev !== null ? null : prev));
+      setHoveredData(prev => (prev !== null ? null : prev));
     }
-  };
+  }, [timePoints, data]);
 
 
   const handleChartLeave = () => {
     setCrosshairPosition(null);
     setHoveredData(null);
   };
+
 
   // Range selection mouse handlers
   const handleMouseDown = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
@@ -169,18 +207,18 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
     // Get the chart canvas bounds
     const rect = chart.canvas.getBoundingClientRect();
     const x = event.clientX - rect.left;
-    
+
     // Convert pixel position to data index
     const canvasPosition = getRelativePosition(event.nativeEvent, chart);
     const dataIndex = chart.scales.x.getValueForPixel(canvasPosition.x);
-    
+
     if (typeof dataIndex === 'number' && dataIndex >= 0 && dataIndex < timePoints.length) {
       setIsSelecting(true);
       setSelectionStart(dataIndex);
       setSelectionEnd(dataIndex);
       setSelectionRect({ x, width: 0 });
     }
-  }, [timePoints.length]);
+  }, [timePoints]);
 
   const handleMouseMove = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     const chart = chartRef.current;
@@ -189,22 +227,22 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
     // Convert pixel position to data index
     const canvasPosition = getRelativePosition(event.nativeEvent, chart);
     const dataIndex = chart.scales.x.getValueForPixel(canvasPosition.x);
-    
+
     if (typeof dataIndex === 'number' && dataIndex >= 0 && dataIndex < timePoints.length) {
       setSelectionEnd(dataIndex);
-      
+
       // Update selection rectangle
       const startPixel = chart.scales.x.getPixelForValue(selectionStart);
       const endPixel = chart.scales.x.getPixelForValue(dataIndex);
       const leftPixel = Math.min(startPixel, endPixel);
       const rightPixel = Math.max(startPixel, endPixel);
-      
+
       setSelectionRect({
         x: leftPixel,
         width: rightPixel - leftPixel
       });
     }
-  }, [isSelecting, selectionStart, timePoints.length]);
+  }, [isSelecting, selectionStart, timePoints]);
 
   const handleMouseUp = React.useCallback(() => {
     if (!isSelecting || selectionStart === null || selectionEnd === null) {
@@ -215,20 +253,13 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
       return;
     }
 
-    const chart = chartRef.current;
-    if (!chart) return;
+    // Clamp and round indices to valid integer range
+    const minIndex = Math.max(0, Math.min(Math.round(selectionStart), Math.round(selectionEnd)));
+    const maxIndex = Math.min(timePoints.length - 1, Math.max(Math.round(selectionStart), Math.round(selectionEnd)));
 
-    const minIndex = Math.round(Math.min(selectionStart, selectionEnd));
-    const maxIndex = Math.round(Math.max(selectionStart, selectionEnd));
-    
-    // console.log('Range selection:', { minIndex, maxIndex, selectionStart, selectionEnd });
-    
     // Only zoom if there's a meaningful selection (more than 1 data point)
     if (maxIndex - minIndex > 1) {
-      // console.log('Setting zoom state:', { min: minIndex, max: maxIndex });
-      setZoomState({ min: minIndex, max: maxIndex });
-    } else {
-      // console.log('Selection too small, not zooming');
+      setZoomState({ min: timePoints[minIndex], max: timePoints[maxIndex] });
     }
 
     // Reset selection state
@@ -236,18 +267,19 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
     setSelectionStart(null);
     setSelectionEnd(null);
     setSelectionRect(null);
-  }, [isSelecting, selectionStart, selectionEnd]);
+  }, [isSelecting, selectionStart, selectionEnd, timePoints]);
 
-  // Apply zoom state when it changes
+  // Global mouseup listener for range selection
   React.useEffect(() => {
-    if (zoomState && chartRef.current) {
-      const chart = chartRef.current;
-      // console.log('Applying zoom state:', zoomState);
-      chart.scales.x.min = zoomState.min;
-      chart.scales.x.max = zoomState.max;
-      chart.update('none'); // Use 'none' to prevent animation and reduce re-renders
-    }
-  }, [zoomState]);
+    if (!isSelecting) return;
+    const onMouseUp = () => {
+      handleMouseUp();
+    };
+    window.addEventListener('mouseup', onMouseUp);
+    return () => {
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [isSelecting, handleMouseUp]);
 
   const chartData: ChartData<'line'> = {
     labels: timePoints,
@@ -261,173 +293,172 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
     }]
   };
 
-  // Get theme-appropriate text color
-  const textColor = React.useMemo(() => {
-    if (typeof window !== 'undefined') {
+  const chartOptions = React.useMemo<ChartOptions<'line'>>(() => {
+    const textColor = (() => {
       try {
         const tempElement = document.createElement('div');
         tempElement.className = 'text-base-content';
         tempElement.style.position = 'absolute';
         tempElement.style.visibility = 'hidden';
         document.body.appendChild(tempElement);
-        
         const computedStyle = getComputedStyle(tempElement);
         const color = computedStyle.color;
-        
         document.body.removeChild(tempElement);
         return color;
-      } catch (e) {
-        return 'rgb(75, 85, 99)'; // Default color as fallback
+      } catch {
+        return 'rgb(75, 85, 99)';
       }
-    }
-    return 'rgb(75, 85, 99)'; // Default color for SSR
-  }, [theme]); // Add theme as dependency
+    })();
 
-  const options: ChartOptions<'line'> = {
-    responsive: true,
-    maintainAspectRatio: false,
-    onHover: handleChartHover,
-    plugins: {
-      legend: {
+    const options: ChartOptions<'line'> = {
+      responsive: true,
+      maintainAspectRatio: false,
+      onHover: handleChartHover,
+      plugins: {
+        legend: {
           display: true,
           position: 'bottom',
           labels: {
-              color: textColor,
-              generateLabels: () => [{
-                  text: '予測範囲',
-                  fillStyle: 'rgba(103, 220, 209, 0.1)',
-                  strokeStyle: 'rgba(103, 220, 209, 0.6)',
-                  fontColor: textColor,
-                  lineWidth: 2,
-                  pointStyle: 'rect',
-                  pointStyleWidth: 15,
-                  pointStyleHeight: 15,
-              }]
+            color: textColor,
+            generateLabels: () => [{
+              text: '予測範囲',
+              fillStyle: 'rgba(103, 220, 209, 0.1)',
+              strokeStyle: 'rgba(103, 220, 209, 0.6)',
+              fontColor: textColor,
+              lineWidth: 2,
+              pointStyle: 'rect',
+              pointStyleWidth: 15,
+              pointStyleHeight: 15,
+            }]
           }
-      },
-      annotation: {
-        annotations: {
-          verticalLine: {
-            type: 'line',
-            scaleID: 'x',
-            value: timePoints[data.metadata.raw.last_known_step_index],
-            borderColor: 'rgb(255, 99, 132)',
-            borderWidth: 2,
-            borderDash: [5, 5],
-          },
-          predictionArea: {
-            type: 'box',
-            xMin: timePoints[data.metadata.raw.last_known_step_index],
-            xMax: timePoints[timePoints.length - 1],
-            backgroundColor: 'rgba(103, 220, 209, 0.1)',
-            borderColor: 'rgba(200, 200, 200, 0.2)',
-          }
-        }
-      },
-      title: {
-        display: true,
-        text: data.metadata.raw.name ? `${data.metadata.raw.name} - スコア推移予測` : 'スコア推移予測',
-        color: textColor,
-        padding: {
-          bottom: 10
-        }
-      },
-      tooltip: {
-        enabled: false // Disable default tooltip since we're using custom crosshair
-      },
-      zoom: {
-        zoom: {
-          wheel: {
-            enabled: false // Disable wheel zoom in favor of range selection
-          },
-          pinch: {
-            enabled: false // Disable pinch zoom in favor of range selection
-          },
-          mode: 'x'
         },
-        pan: {
-          enabled: false // Disable pan so drag only means range selection
-        },
-        limits: {
-          x: {
-            min: 0,
-            max: data.data.raw.target.length - 1,
-            minRange: Math.ceil(data.data.raw.target.length * 0.1) // Minimum 10% of data range
-          },
-          y: {
-            min: 'original',
-            max: 'original'
-          }
-        }
-      }
-    },
-    scales: {
-      x: {
-        title: {
-          display: true,
-          text: '時間',
-          color: textColor
-        },
-        grid: {
-          color: 'rgba(200, 200, 200, 0.2)',
-        },
-        ticks: {
-          color: textColor,
-          // Only reduce number of ticks on mobile
-          ...(window.innerWidth < 640 && { maxTicksLimit: 6, autoSkip: false }),
-          minRotation: window.innerWidth < 640 ? 45 : 30,
-          maxRotation: window.innerWidth < 640 ? 45 : 30,
-          callback: function(value, index, values) {
-            // Always show last tick
-            const isLast = index === values.length - 1;
-            if (window.innerWidth < 640) {
-              const step = Math.ceil(values.length / 6);
-              if (index % step === 0 || isLast) {
-                return this.getLabelForValue(Number(value));
-              }
-              return '';
+        annotation: {
+          annotations: {
+            verticalLine: {
+              type: 'line',
+              scaleID: 'x',
+              value: timePoints[data.metadata.raw.last_known_step_index],
+              borderColor: 'rgb(255, 99, 132)',
+              borderWidth: 2,
+              borderDash: [5, 5],
+            },
+            predictionArea: {
+              type: 'box',
+              xMin: timePoints[data.metadata.raw.last_known_step_index],
+              xMax: timePoints[timePoints.length - 1],
+              backgroundColor: 'rgba(103, 220, 209, 0.1)',
+              borderColor: 'rgba(200, 200, 200, 0.2)',
             }
-            return this.getLabelForValue(Number(value));
+          }
+        },
+        title: {
+          display: true,
+          text: data.metadata.raw.name ? `${data.metadata.raw.name} - スコア推移予測` : 'スコア推移予測',
+          color: textColor,
+          padding: {
+            bottom: 10
+          }
+        },
+        tooltip: {
+          enabled: false
+        },
+        zoom: {
+          zoom: {
+            wheel: { enabled: false },
+            pinch: { enabled: false },
+            mode: 'x'
+          },
+          pan: { enabled: false },
+          limits: {
+            x: {
+              min: 0,
+              max: data.data.raw.target.length - 1,
+              minRange: Math.ceil(data.data.raw.target.length * 0.1)
+            },
+            y: { min: 'original', max: 'original' }
           }
         }
       },
-      y: {
-        beginAtZero: false,
-        title: {
-          display: true,
-          text: 'スコア',
-          color: textColor
+      scales: {
+        x: {
+          title: { display: true, text: '時間', color: textColor },
+          grid: { color: 'rgba(200, 200, 200, 0.2)' },
+          ticks: {
+            color: textColor,
+            ...(window.innerWidth < 640 && { maxTicksLimit: 6, autoSkip: false }),
+            minRotation: window.innerWidth < 640 ? 45 : 30,
+            maxRotation: window.innerWidth < 640 ? 45 : 30,
+            callback: function(value, index, values) {
+              const isLast = index === values.length - 1;
+              if (window.innerWidth < 640) {
+                const step = Math.ceil(values.length / 6);
+                if (index % step === 0 || isLast) {
+                  return this.getLabelForValue(Number(value));
+                }
+                return '';
+              }
+              return this.getLabelForValue(Number(value));
+            }
+          },
+          // min/max will be set below
         },
-        grid: {
-          color: 'rgba(200, 200, 200, 0.2)',
-        },
-        ticks: {
-          color: textColor,
-          callback: function(value) {
-            // Format as "万" on mobile
-            if (window.innerWidth < 640) {
-              if (typeof value === 'number' && value >= 10000) {
-                return Math.round(value / 10000) + '万';
+        y: {
+          beginAtZero: false,
+          title: { display: true, text: 'スコア', color: textColor },
+          grid: { color: 'rgba(200, 200, 200, 0.2)' },
+          ticks: {
+            color: textColor,
+            callback: function(value) {
+              if (window.innerWidth < 640) {
+                if (typeof value === 'number' && value >= 10000) {
+                  return Math.round(value / 10000) + '万';
+                }
+                return value;
+              }
+              if (typeof value === 'number') {
+                return value.toLocaleString();
               }
               return value;
             }
-            // Default formatting with commas
-            if (typeof value === 'number') {
-              return value.toLocaleString();
-            }
-            return value;
           }
         }
-      }
-    },
-    interaction: {
-      mode: 'index',
-      intersect: false
+      },
+      interaction: { mode: 'index', intersect: false }
+    };
+
+    if (zoomState) {
+      (options.scales!.x!.min as any) = zoomState.min;
+      (options.scales!.x!.max as any) = zoomState.max;
+    } else {
+      options.scales!.x!.min = undefined;
+      options.scales!.x!.max = undefined;
     }
-  };
+
+    return options;
+  }, [zoomState, startAt, data.data.raw.target.length, theme, timePoints, data.metadata.raw.last_known_step_index, data.metadata.raw.name]);
 
   return (
     <div className="relative w-full">
+      {/* Zoom note and zoom out button as floating badges at top-left, avoiding y axis */}
+      {!isZoomed && (
+        <div
+          className="absolute left-20 top-4 px-3 py-1 rounded-md bg-base-200 text-base-content/80 shadow text-xs z-30"
+          style={{ pointerEvents: 'none', fontWeight: 500 }}
+        >
+          <span style={{ fontSize: '1.1em', verticalAlign: 'middle', marginRight: '0.3em' }}>🔍</span>範囲選択でズーム
+        </div>
+      )}
+      {isZoomed && (
+        <button
+          onClick={() => {
+            setZoomState(null);
+          }}
+          className="absolute left-20 top-4 px-2 py-1 rounded-md bg-base-200 text-base-content shadow transition hover:bg-primary hover:text-white z-30 text-xs"
+          style={{ fontSize: '0.85rem', fontWeight: 500, padding: '0.25rem 0.5rem' }}
+        >
+          <span className="inline-block align-middle mr-1" style={{ fontSize: '1em' }}>⤺</span> 全体表示
+        </button>
+      )}
       <div 
         className="relative w-full h-[360px] sm:h-[400px] md:h-[600px]" 
         onMouseLeave={handleChartLeave}
@@ -435,8 +466,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
       >
-        <Line ref={chartRef} data={chartData} options={options} />
-        
+        <Line ref={chartRef} data={chartData} options={chartOptions} />
         {/* Range selection rectangle */}
         {selectionRect && isSelecting && (
           <div
@@ -450,7 +480,6 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
             }}
           />
         )}
-        
         {/* Custom crosshair and tooltip */}
         {crosshairPosition && hoveredData && !isSelecting && (
           <>
