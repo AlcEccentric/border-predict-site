@@ -106,6 +106,12 @@ const FAQ: React.FC<FAQProps> = ({ eventType, internalEventType }) => {
                 <p className="text-sm mb-2">
                     100位・2500位ボーダーの予測精度は、<b>過去16回分の同種イベント</b>（現在のイベントと類似パターンと判断したもの）を用いてKNN法で検証した結果に基づいています。イベント進行度が高くなるほど精度が向上します。
                 </p>
+                <div className="p-3 mb-2 bg-success/20 rounded-lg">
+                    <p className="text-success text-sm">
+                        <strong>要点:</strong> 100位は進行度80%付近で高い確率(約90%)で±10%誤差範囲内に収まり、2500位は85%付近で高い確率(約90%)で±10%誤差範囲内に収まります。
+                    </p>
+                </div>
+                
                 <div className="ml-4">
                     <p className="mt-2">
                         <strong>100位ボーダー:</strong>
@@ -128,12 +134,6 @@ const FAQ: React.FC<FAQProps> = ({ eventType, internalEventType }) => {
                         ※2500位はブーストに特に敏感で、ブースト付近（イベント中盤40-69%）では予測精度がイベント序盤より悪化する傾向があります。
                     </div>
                 </div>
-                <div className="mt-6">
-                    <p className="text-sm mb-2">
-                        一部イベントでは、参加者の行動パターンや特殊なスコア推移により予測誤差が大きくなる場合があります。
-                        特にイベント終盤までスコアが急激に伸びる場合や、途中で大きな変動がある場合は注意が必要です。
-                    </p>
-                </div>
             </div>
         );
     }
@@ -141,7 +141,48 @@ const FAQ: React.FC<FAQProps> = ({ eventType, internalEventType }) => {
         <div className="mt-4">
             <h2 className="text-2xl font-bold mb-4">解説</h2>
             <div className="space-y-4">
-                {/* ...existing code... */}
+                {/* 予測について section */}
+                <div className="collapse collapse-plus bg-base-200">
+                    <input type="checkbox" />
+                    <div className="collapse-title text-xl font-bold bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 border-l-4 border-primary">
+                        予測について
+                    </div>
+                    <div className="collapse-content">
+                        <p>
+                            予測値は過去の類似イベントデータをもとに算出していますが、実際の結果とは異なる場合があります。参考情報としてご利用ください。
+                        </p>
+                        <p className="mt-2">
+                            <strong>予測の流れ:</strong><br />
+                            1. 現在のイベントデータを正規化し、過去のイベントと比較して近傍イベントを選定<br />
+                            2. 近傍イベントのスコア推移を現在の傾向に合わせて調整<br />
+                            3. 類似度に応じて重み付けし、複数イベントから予測値を算出
+                        </p>
+                    </div>
+                </div>
+                {/* 近傍イベントとは section */}
+                <div className="collapse collapse-plus bg-base-200">
+                    <input type="checkbox" />
+                    <div className="collapse-title text-xl font-bold bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 border-l-4 border-primary">
+                        近傍イベントとは
+                    </div>
+                    <div className="collapse-content">
+                        <p>
+                            近傍イベントとは、現在進行中のイベントと「イベント形式」や「スコアの伸び方（特に現在の進行度付近）」などが類似している過去のイベントのことです。<br />
+                            これらのイベントのスコア推移を比較・参照することで、現在のイベントが今後どのように進行するかを予測する材料になります。<br />
+                            特に同じ形式・同じ開催期間のイベントであれば、ボーダーライン（100位や2500位など）の伸び方も似てくる傾向があるため、より正確な予測に繋がります。
+                        </p>
+                        <p className="mt-2">
+                            <strong>近傍イベント表示について:</strong><br />
+                            「近傍1」は最も類似度の高い（距離が最も近い）イベント、「近傍2」は2番目に類似度の高いイベントを示します。<br />
+                            数字が小さいほど現在のイベントとの類似度が高く、予測精度により大きく影響します。<br />
+                            <span className="block mt-2 text-base-content/70">
+                                なお、表示される近傍イベントの数（近傍1〜N）は、現在のイベントの進行度やイベント形式に応じて選択されます。<br />
+                                この数は、過去データで最も良い予測結果が得られた設定に基づいています。
+                            </span>
+                        </p>
+                    </div>
+                </div>
+                {/* 予測精度について section */}
                 <div className="collapse collapse-plus bg-base-200" id="prediction-accuracy">
                     <input type="checkbox" />
                     <div className="collapse-title text-xl font-bold bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 border-l-4 border-primary">
