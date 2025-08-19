@@ -161,7 +161,7 @@ const App: React.FC = () => {
     const eventStart = new Date(eventInfo.StartAt);
     const nowTime = new Date();
     const hoursSinceStart = (nowTime.getTime() - eventStart.getTime()) / (1000 * 60 * 60);
-    if (hoursSinceStart < 42) {
+    if (hoursSinceStart < 36) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center">
                 <div className="bg-base-200 rounded-lg shadow-lg p-8 max-w-md text-center">
