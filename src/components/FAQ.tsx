@@ -12,6 +12,7 @@ const FAQ: React.FC<FAQProps> = ({ eventType, internalEventType }) => {
     // Precision blocks
     let anniversaryBlock = null;
     let normalBlock = null;
+    let type42KnnBlock = null;
     let defaultBlock = (
         <div className="mt-4">
             <h4 className="text-lg font-semibold mb-2">通常イベント</h4>
@@ -95,6 +96,47 @@ const FAQ: React.FC<FAQProps> = ({ eventType, internalEventType }) => {
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+        );
+    }
+    if (eventType === 4 && typeof internalEventType === 'number' && [22, 23].includes(internalEventType)) {
+        type42KnnBlock = (
+            <div className="mt-4">
+                <h4 className="text-lg font-semibold mb-2">ツアービンゴ・ツアービンゴスペシャル（KNN法での検証結果）</h4>
+                <p className="text-sm mb-2">
+                    100位・2500位ボーダーの予測精度は、<b>過去13回分の同種のイベント</b>を用いてKNN法で検証した結果に基づいています。イベント進行度が高くなるほど精度が向上します。
+                </p>
+                <div className="p-3 mb-2 bg-success/20 rounded-lg">
+                    <p className="text-success text-sm">
+                        <strong>要点:</strong> 100位は進行度85%(残り26時間ほど)付近で高い確率(約90%)で±10%誤差範囲内に収まり、2500位は80%(残り35時間ほど)付近で高い確率(約90%)で±10%誤差範囲内に収まります。
+                    </p>
+                </div>
+                
+                <div className="ml-4">
+                    <p className="mt-2">
+                        <strong>100位ボーダー:</strong>
+                        <br />• イベント序盤（20-39%）: ±10%誤差範囲の的中率 36-45%、±5%誤差範囲 9-27%
+                        <br />• イベント中盤（40-69%）: ±10%誤差範囲の的中率 45-72%、±5%誤差範囲 27-63%
+                        <br />• イベント後半（70-79%）: ±10%誤差範囲の的中率 72-81%、±5%誤差範囲 36-63%
+                        <br />• イベント終盤（80-89%）: ±10%誤差範囲の的中率 81-100%、±5%誤差範囲 54-72%
+                        <br />• イベント最終盤（90-97%）: ±10%誤差範囲の的中率 100%、±5%誤差範囲 100%
+                    </p>
+                    
+                    <p className="mt-2">
+                        <strong>2500位ボーダー:</strong>
+                        <br />• イベント序盤（20-39%）: ±10%誤差範囲の的中率 64-73%、±5%誤差範囲 27-45%
+                        <br />• イベント中盤（40-69%）: ±10%誤差範囲の的中率 73-91%、±5%誤差範囲 36-55%
+                        <br />• イベント後半（70-79%）: ±10%誤差範囲の的中率 73-100%、±5%誤差範囲 45-82%
+                        <br />• イベント終盤（80-89%）: ±10%誤差範囲の的中率 100%、±5%誤差範囲 82-100%
+                        <br />• イベント最終盤（90-97%）: ±10%誤差範囲の的中率 100%、±5%誤差範囲 100%
+                    </p>
+                </div>
+                <div className="mt-6">
+                    <p className="text-sm mb-2">
+                        この種類のイベントでは、イベント中盤以降で予測精度が大幅に向上する傾向があります。
+                        2500位は100位よりも早期（80%付近）から高い精度を示し、安定した予測が可能です。
+                    </p>
                 </div>
             </div>
         );
@@ -193,8 +235,9 @@ const FAQ: React.FC<FAQProps> = ({ eventType, internalEventType }) => {
                             予測精度はイベント形式によって異なります。以下は検証結果に基づく精度の目安です。
                         </p>
                         {anniversaryBlock}
+                        {type42KnnBlock}
                         {normalBlock}
-                        {!anniversaryBlock && !normalBlock && defaultBlock}
+                        {!anniversaryBlock && !type42KnnBlock && !normalBlock && defaultBlock}
                         <p className="mt-4 text-sm">
                             <strong>注意:</strong> 予測精度はイベント形式や参加者の行動パターンによって変動する可能性があります。
                             あくまで参考程度にご利用ください。
