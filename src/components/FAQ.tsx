@@ -13,6 +13,7 @@ const FAQ: React.FC<FAQProps> = ({ eventType, internalEventType }) => {
     let anniversaryBlock = null;
     let normalBlock = null;
     let type42KnnBlock = null;
+    let type33KnnBlock = null;
     let defaultBlock = (
         <div className="mt-4">
             <h4 className="text-lg font-semibold mb-2">通常イベント</h4>
@@ -141,6 +142,42 @@ const FAQ: React.FC<FAQProps> = ({ eventType, internalEventType }) => {
             </div>
         );
     }
+    if (eventType === 3 && typeof internalEventType === 'number' && [3].includes(internalEventType)) {
+        type33KnnBlock = (
+            <div className="mt-4">
+                <h4 className="text-lg font-semibold mb-2">シアター・シアタースペシャルの検証結果</h4>
+                <p className="text-sm mb-2">
+                    100位・2500位ボーダーの予測精度は、<b>過去12回分の同種イベント</b>を用いて検証した結果に基づいています。イベント進行度が高くなるほど精度が向上します。
+                </p>
+                <div className="p-3 mb-2 bg-error/20 rounded-lg">
+                    <p className="text-error text-sm mb-2">
+                        <strong>重要な注意:</strong> シアター・シアタースペシャルは近年開催頻度が低く、過去には多数開催されていましたが、古いイベントのスコア推移パターンは最近のものと大きく異なるため、他のイベント形式より精度が低いです。
+                    </p>
+                    <p className="text-error text-sm">
+                        特に折り返し開始前（60%未満）の精度は低いため、参考程度にご利用ください。
+                    </p>
+                </div>
+                
+                <div className="ml-4">
+                    <p className="mt-2">
+                        <strong>100位ボーダー:</strong>
+                        <br />• イベント序盤（20-39%）: ±10%誤差範囲の的中率 20%、±5%誤差範囲 10-20%
+                        <br />• イベント中盤（40-69%）: ±10%誤差範囲の的中率 40-60%、±5%誤差範囲 10-50%
+                        <br />• イベント後半（70-79%）: ±10%誤差範囲の的中率 40-70%、±5%誤差範囲 50-60%
+                        <br />• イベント終盤（80-97%）: ±10%誤差範囲の的中率 80-100%、±5%誤差範囲 60-70%
+                    </p>
+                    
+                    <p className="mt-2">
+                        <strong>2500位ボーダー:</strong>
+                        <br />• イベント序盤（20-39%）: ±10%誤差範囲の的中率 43-64%、±5%誤差範囲 14-29%
+                        <br />• イベント中盤（40-69%）: ±10%誤差範囲の的中率 43-78%、±5%誤差範囲 21-50%
+                        <br />• イベント後半（70-79%）: ±10%誤差範囲の的中率 64-78%、±5%誤差範囲 29-50%
+                        <br />• イベント終盤（80-97%）: ±10%誤差範囲の的中率 78-92%、±5%誤差範囲 50-71%
+                    </p>
+                </div>
+            </div>
+        );
+    }
     if (eventType === 3 && typeof internalEventType === 'number' && normalInternalTypes.includes(internalEventType)) {
         normalBlock = (
             <div className="mt-4">
@@ -236,8 +273,9 @@ const FAQ: React.FC<FAQProps> = ({ eventType, internalEventType }) => {
                         </p>
                         {anniversaryBlock}
                         {type42KnnBlock}
+                        {type33KnnBlock}
                         {normalBlock}
-                        {!anniversaryBlock && !type42KnnBlock && !normalBlock && defaultBlock}
+                        {!anniversaryBlock && !type42KnnBlock && !type33KnnBlock && !normalBlock && defaultBlock}
                         <p className="mt-4 text-sm">
                             <strong>注意:</strong> 予測精度はイベント形式や参加者の行動パターンによって変動する可能性があります。
                             あくまで参考程度にご利用ください。
