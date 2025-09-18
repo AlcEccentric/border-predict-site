@@ -5,9 +5,6 @@ const themes = [
     { name: 'cupcake', color: '#EFEAE6', jp: 'カップケーキ' },
     { name: 'dim', color: '#242933', jp: 'ディム' },
     { name: 'nord', color: '#5E81AC', jp: 'ノルド' },
-    { name: 'halloween', color: '#FF865B', jp: 'ハロウィン' },
-    { name: 'sunset', color: '#fdba74', jp: 'サンセット' },
-    { name: 'synthwave', color: '#E779C1', jp: 'シンセウェーブ' },
 ];
 
 const ThemeSelector: React.FC<{
@@ -26,8 +23,8 @@ const ThemeSelector: React.FC<{
                 <Palette size={24} />
             </button>
             {open && (
-                <div className="absolute right-0 mt-2 w-96 sm:w-96 w-64 bg-base-100 shadow-lg rounded-lg p-2 z-50">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="absolute right-0 mt-2 w-48 bg-base-100 shadow-lg rounded-lg p-2 z-50">
+                    <div className="grid grid-cols-1 gap-2">
                         {themes.map(t => (
                             <button
                                 key={t.name}

@@ -101,12 +101,30 @@ const BorderTabs: React.FC<BorderTabsProps> = ({
                     <div className="inline-block rounded-lg bg-base-100 border border-base-300 px-3 py-2 text-base-content font-normal shadow-sm mt-2">
                         <div className="flex flex-col gap-1 items-center">
                             <div className="text-sm sm:text-base">
-                                <span className="mr-2 text-base-content/70">±5% 誤差区間:</span>
-                                <span>{Math.round(finalScore * 0.95).toLocaleString()} ～ {Math.round(finalScore * 1.05).toLocaleString()}</span>
+                                <span className="mr-2 text-base-content/70">90%信頼区間:</span>
+                                <span>
+                                    {(() => {
+                                        const prediction = activeTab === '100' ? prediction100 : prediction2500;
+                                        const bounds = prediction.data.raw.bounds;
+                                        if (bounds && bounds[90]) {
+                                            return `${Math.round(bounds[90].lower.slice(-1)[0]).toLocaleString()} ～ ${Math.round(bounds[90].upper.slice(-1)[0]).toLocaleString()}`;
+                                        }
+                                        return `${Math.round(finalScore * 0.95).toLocaleString()} ～ ${Math.round(finalScore * 1.05).toLocaleString()}`;
+                                    })()} 
+                                </span>
                             </div>
                             <div className="text-sm sm:text-base">
-                                <span className="mr-2 text-base-content/70">±10% 誤差区間:</span>
-                                <span>{Math.round(finalScore * 0.9).toLocaleString()} ～ {Math.round(finalScore * 1.1).toLocaleString()}</span>
+                                <span className="mr-2 text-base-content/70">75%信頼区間:</span>
+                                <span>
+                                    {(() => {
+                                        const prediction = activeTab === '100' ? prediction100 : prediction2500;
+                                        const bounds = prediction.data.raw.bounds;
+                                        if (bounds && bounds[75]) {
+                                            return `${Math.round(bounds[75].lower.slice(-1)[0]).toLocaleString()} ～ ${Math.round(bounds[75].upper.slice(-1)[0]).toLocaleString()}`;
+                                        }
+                                        return `${Math.round(finalScore * 0.9).toLocaleString()} ～ ${Math.round(finalScore * 1.1).toLocaleString()}`;
+                                    })()} 
+                                </span>
                             </div>
                         </div>
                     </div>

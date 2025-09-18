@@ -7,6 +7,7 @@ import Type5EventPage from './components/Type5EventPage';
 import FAQ from './components/FAQ';
 import CardContainer from './components/CardContainer';
 import ThemeSelector from './components/ThemeSelector';
+import UpdatesButton from './components/UpdatesButton';
 
 const App: React.FC = () => {
     const releaseDate = new Date('2025-06-01T00:00:00+09:00');
@@ -161,7 +162,7 @@ const App: React.FC = () => {
     const eventStart = new Date(eventInfo.StartAt);
     const nowTime = new Date();
     const hoursSinceStart = (nowTime.getTime() - eventStart.getTime()) / (1000 * 60 * 60);
-    if (hoursSinceStart < 40) {
+    if (hoursSinceStart < 36) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center">
                 <div className="bg-base-200 rounded-lg shadow-lg p-8 max-w-md text-center">
@@ -221,6 +222,8 @@ const App: React.FC = () => {
             <CardContainer>
                 <FAQ eventType={eventInfo.EventType} internalEventType={eventInfo.InternalEventType} />
             </CardContainer>
+            
+            <UpdatesButton />
         </div>
     );
 };

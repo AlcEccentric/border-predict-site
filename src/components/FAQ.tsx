@@ -263,26 +263,60 @@ const FAQ: React.FC<FAQProps> = ({ eventType, internalEventType }) => {
                 </div>
                 {/* 予測精度について section */}
                 <div className="collapse collapse-plus bg-base-200" id="prediction-accuracy">
-                    <input type="checkbox" />
-                    <div className="collapse-title text-xl font-bold bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 border-l-4 border-primary">
-                        予測精度について
+                <input type="checkbox" />
+                <div className="collapse-title text-xl font-bold bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 border-l-4 border-primary">
+                    予測精度について
+                </div>
+                <div className="collapse-content">
+                    <p>
+                    上のグラフに表示される「信頼区間」は、実際の最終スコアがどこまでずれる可能性があるかを示しています。
+                    この範囲は、過去のイベントで予測と結果がどれくらい違ったかをもとに計算しています。
+                    </p>
+
+                    <div className="mt-4">
+                    <h4 className="text-lg font-semibold mb-2">信頼区間とは</h4>
+                    <p className="text-sm mb-2">
+                        実際のスコアがどのくらいの確率で範囲内に収まるかを示します。
+                    </p>
+                    <ul className="ml-4 list-disc text-sm">
+                        <li><strong>75%信頼区間:</strong> 75%の確率で範囲内に収まる</li>
+                        <li><strong>90%信頼区間:</strong> 90%の確率で範囲内に収まる</li>
+                    </ul>
+                    <p className="mt-2 text-sm text-base-content/70">
+                        → 信頼度が高いほど当たりやすいですが、その分、範囲は広くなります。
+                    </p>
                     </div>
-                    <div className="collapse-content">
-                        <p>
-                            予測精度はイベント形式によって異なります。以下は検証結果に基づく精度の目安です。
-                        </p>
-                        {anniversaryBlock}
-                        {type42KnnBlock}
-                        {type33KnnBlock}
-                        {normalBlock}
-                        {!anniversaryBlock && !type42KnnBlock && !type33KnnBlock && !normalBlock && defaultBlock}
-                        <p className="mt-4 text-sm">
-                            <strong>注意:</strong> 予測精度はイベント形式や参加者の行動パターンによって変動する可能性があります。
-                            あくまで参考程度にご利用ください。
-                        </p>
+
+                    <div className="mt-4">
+                    <h4 className="text-lg font-semibold mb-2">算出の流れ</h4>
+                    <ol className="ml-4 list-decimal text-sm space-y-1">
+                        <li>
+                        <strong>相対誤差を計算:</strong> 過去イベントの予測と実際のスコアを比較し、ずれを割合（相対誤差）として計算
+                        </li>
+                        <li>
+                        <strong>分布を分析:</strong> 相対誤差の分布からパーセンタイルを計算
+                        <ul className="ml-6 list-disc">
+                            <li>75%信頼区間 → 12.5～87.5パーセンタイル</li>
+                            <li>90%信頼区間 → 5～95パーセンタイル</li>
+                        </ul>
+                        </li>
+                        <li>
+                        <strong>補間:</strong> 誤差データは一定間隔でしか計算していないため、その間の値は前後のデータをもとに滑らかに補っています
+                        </li>
+                        <li>
+                        <strong>適用:</strong> 現在の予測値に誤差範囲を当てはめて信頼区間を生成
+                        </li>
+                    </ol>
                     </div>
+
+                    <p className="mt-4 text-sm">
+                    <strong>⚠ 注意:</strong> 信頼区間はあくまで過去データに基づく推定値です。
+                    参加者の行動や特殊な状況によっては、実際の結果が範囲外になることもあります。
+                    </p>
+                </div>
                 </div>
 
+                {/* データ更新頻度と古いデータについて section */}
                 <div className="collapse collapse-plus bg-base-200">
                     <input type="checkbox" />
                     <div className="collapse-title text-xl font-bold bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 border-l-4 border-primary">
@@ -305,7 +339,7 @@ const FAQ: React.FC<FAQProps> = ({ eventType, internalEventType }) => {
                         </ul>
                     </div>
                 </div>
-
+                {/* スコアの正規化方法について section */}
                 <div className="collapse collapse-plus bg-base-200">
                     <input type="checkbox" />
                     <div className="collapse-title text-xl font-bold bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 border-l-4 border-primary">
@@ -313,16 +347,14 @@ const FAQ: React.FC<FAQProps> = ({ eventType, internalEventType }) => {
                     </div>
                     <div className="collapse-content">
                         <p>
-                            本サイトでは<b>7.25日</b>を標準イベント長とみなし、すべてのイベントスコアをこの長さに正規化しています。最も多くのイベントがこの長さなので、他の長さのイベントでも7.25日のデータを活用できます。
+                            本サイトでは、<b>現在進行中のイベントの期間</b>を基準として、過去の類似イベント（近傍イベント）のスコアを調整しています。
+                            これにより、開催期間が異なる過去のイベントでも、現在のイベントと比べやすくなります。
+                            例えば、現在のイベントが7.25日で、過去の類似イベントが6.25日の場合は、
+                            <b>正規化スコア = 過去のスコア × 7.25 / 6.25</b> のように、現在のイベント期間に合わせてスコアを調整します。
                             <br />
-                            例えば6.25日のイベントの場合、<b>正規化スコア = 元のスコア × 7.25 / 6.25</b> で7.25日に合わせてスコアを変換します。
                             <br />
-                            逆に、正規化された予測値を元のイベント長に戻すには <b>元のスコア = 正規化予測値 × 6.25 / 7.25</b> で元の長さに戻します。
-                            <br />
-                            ※詳細なサンプリングや補間は省略していますが、ブースト開始タイミングも標準化比率に合わせて調整しています。
-                        </p>
-                        <p className="mt-2">
-                            <strong>補足:</strong> 周年イベントは全て同じ開催日数のため、正規化後も最終スコアは実際のスコアと一致します。
+                            ※ブーストの開始タイミングもイベント期間に合わせて調整しています（詳細な計算方法についてはここでは触れません）。
+                            そのため、近傍イベントグラフに表示されている過去イベントのブースト開始時間も、現在のイベントに合わせて調整されています。
                         </p>
                     </div>
                 </div>

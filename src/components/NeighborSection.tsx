@@ -5,6 +5,7 @@ import annotationPlugin from 'chartjs-plugin-annotation';
 import { LineElement, CategoryScale, LinearScale, PointElement, Legend, Tooltip, InteractionItem } from 'chart.js';
 import CardContainer from './CardContainer';
 import { EventMetadata, NeighborMetadata } from '../types';
+import { getDaisyUIColor, getColorWithAlpha } from '../utils/daisyui';
 import { AlertTriangle } from 'lucide-react';
 interface NeighborSectionProps {
     normalizedData: {
@@ -84,9 +85,11 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
     const percentagePoints = normalizedData.target.map((_, index) => 
         Math.round((index / (normalizedData.target.length - 1)) * 100)
     );
+    const primaryColor = React.useMemo(() => getDaisyUIColor('bg-primary'), [getDaisyUIColor, theme]);
     // Helper to display normalization warning
-    const renderNormalizationWarning = (length: number, popoverIndex: number | null, setPopoverIndex: (idx: number | null) => void, idx: number) => {
-        if (Number(length) === 349) return null;
+    const renderNormalizationWarning = (length: number, popoverIndex: number | null, setPopoverIndex: (idx: number | null) => void, idx: number, currentLength?: number) => {
+        // Only show for neighbors when their length differs from current event
+        if (!currentLength || length === currentLength) return null;
         return (
             <span
                 className="relative inline-flex items-center cursor-pointer select-none"
@@ -94,12 +97,11 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                 onMouseLeave={() => setPopoverIndex(null)}
             >
                 <AlertTriangle size={12} className="text-warning" />
-                <span className="ml-1 text-xs text-warning font-bold">正規化された</span>
+                <span className="ml-1 text-xs text-warning font-bold">正規化されたスコア</span>
                 {popoverIndex === idx && (
                     <span className="absolute -left-8 top-full z-50 mt-2 w-56 sm:w-72 rounded bg-base-200 p-2 text-xs text-base-content shadow-lg border border-base-300">
-                        このスコアは <b>正規化</b> されています。<br />
-                        <span className="text-error font-bold">7.25日を基準に正規化しています。予測値はサイト上部の「○○位の予想最終スコア」をご参照ください。</span><br />
-                        詳しくはページ下部の「解説」内「スコアの正規化方法について」をご覧ください。
+                        <span className="text-error font-bold">このスコアは、現在のイベントの長さを基準に正規化されています。</span><br />
+                        詳しくはページ下部の「解説」内「スコアの正規化方法について」をご覧ください。<br />
                     </span>
                 )}
             </span>
@@ -455,7 +457,7 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                         type: 'box',
                         xMin: box1_xMin,
                         xMax: box1_xMax,
-                        backgroundColor: 'rgba(103, 220, 209, 0.1)',
+                        backgroundColor: getColorWithAlpha(primaryColor, 0.1),
                         borderColor: 'rgba(200, 200, 200, 0.2)',
                     }
                 }
@@ -566,10 +568,11 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                                             color: textColor,
                                             generateLabels: () => [{
                                                 text: '予測範囲',
-                                                fillStyle: 'rgba(103, 220, 209, 0.1)',
-                                                strokeStyle: 'rgba(69, 120, 129, 1)',
+                                                fillStyle: getColorWithAlpha(primaryColor, 0.2),
+                                                strokeStyle: 'rgb(255, 99, 132)',
                                                 fontColor: textColor,
-                                                lineWidth: 1,
+                                                lineWidth: 2,
+                                                lineDash: [5, 3],
                                             }]
                                         }
                                     }
@@ -666,7 +669,7 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                                             <span>開催日数: {((eventMetadata.length - 1) * 30 / (24 * 60)).toFixed(2)}日</span>
                                             <span className="flex flex-row flex-wrap items-center gap-1 min-w-0">
                                                 <span className="truncate block max-w-full">最終スコア: {formatScore(normalizedData.target[normalizedData.target.length - 1])}</span>
-                                                {renderNormalizationWarning(eventMetadata.length, popoverIndex, setPopoverIndex, -1)}
+
                                             </span>
                                         </div>
                                     </div>
@@ -713,7 +716,7 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                                                 <span>開催日数: {((neighbor.raw_length - 1) * 30 / (24 * 60)).toFixed(2)}日</span>
                                                 <span className="flex flex-row flex-wrap items-center gap-1 min-w-0">
                                                     <span className="truncate block max-w-full">最終スコア: {formatScore(normalizedData.neighbors[key][normalizedData.neighbors[key].length - 1])}</span>
-                                                    {renderNormalizationWarning(neighbor.raw_length, popoverIndex, setPopoverIndex, index)}
+                                                    {renderNormalizationWarning(neighbor.raw_length, popoverIndex, setPopoverIndex, index, eventMetadata.length)}
                                                 </span>
                                             </div>
                                         </div>
