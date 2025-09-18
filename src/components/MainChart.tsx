@@ -3,6 +3,7 @@ import { Line } from 'react-chartjs-2';
 import annotationPlugin from 'chartjs-plugin-annotation';
 import zoomPlugin from 'chartjs-plugin-zoom';
 import { getRelativePosition } from 'chart.js/helpers';
+import { getDaisyUIColor, getColorWithAlpha } from '../utils/daisyui';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -12,6 +13,7 @@ import {
   Title,
   Tooltip,
   Legend,
+  Filler,
   ChartData,
   ChartOptions,
 } from 'chart.js';
@@ -25,6 +27,7 @@ ChartJS.register(
   Title,
   Tooltip,
   Legend,
+  Filler,
   annotationPlugin,
   zoomPlugin
 );
@@ -34,18 +37,23 @@ interface MainChartProps {
     data: {
       raw: {
         target: number[];
+        bounds: {
+          50: { upper: number[]; lower: number[]; };
+          75: { upper: number[]; lower: number[]; };
+          90: { upper: number[]; lower: number[]; };
+        };
       };
     };
     metadata: {
       raw: {
         last_known_step_index: number;
         id: number;
-        name: string;  // Add name property
+        name: string;
       };
     };
   };
   startAt: string;
-  theme?: string; // Add theme prop to trigger re-renders when theme changes
+  theme?: string;
 }
 
 const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
@@ -66,19 +74,16 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
   }
   const chartRef = useRef<ChartJS<'line'>>(null);
   const [crosshairPosition, setCrosshairPosition] = useState<{ x: number; y: number } | null>(null);
-  const [hoveredData, setHoveredData] = useState<{ timePoint: string; value: number } | null>(null);
+  const [hoveredData, setHoveredData] = useState<{ timePoint: string; value: number; bounds?: { upper50: number; lower50: number; upper75: number; lower75: number; upper90: number; lower90: number; } } | null>(null);
   
   // Range selection state
   const [isSelecting, setIsSelecting] = useState(false);
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
   const [selectionEnd, setSelectionEnd] = useState<number | null>(null);
   const [selectionRect, setSelectionRect] = useState<{ x: number; width: number } | null>(null);
-  
-  // Zoom state to persist across re-renders
-  // (Removed zoomState, not needed)
 
-  // Apply zoom state when chart is ready
-  // (Removed zoomState effect)
+  const primaryColor = React.useMemo(() => getDaisyUIColor('bg-primary'), [theme]);
+  const secondaryColor = React.useMemo(() => getDaisyUIColor('bg-secondary'), [theme]);
 
   const timePoints = React.useMemo(() => {
     return Array.from(
@@ -96,8 +101,6 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
       }
     );
   }, [startAt, data.data.raw.target.length]);
-
-  // ...existing code...
 
   const handleChartHover = React.useCallback((event: any) => {
     const chart = chartRef.current;
@@ -153,9 +156,18 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
         return prev;
       });
       setHoveredData(prev => {
+        const idx = dataPoints.length - 1;
         const newHovered = {
-          timePoint: timePoints[dataPoints.length - 1],
-          value: data.data.raw.target[dataPoints.length - 1],
+          timePoint: timePoints[idx],
+          value: data.data.raw.target[idx],
+          bounds: idx > data.metadata.raw.last_known_step_index ? {
+            upper50: data.data.raw.bounds[50].upper[idx],
+            lower50: data.data.raw.bounds[50].lower[idx],
+            upper75: data.data.raw.bounds[75].upper[idx],
+            lower75: data.data.raw.bounds[75].lower[idx],
+            upper90: data.data.raw.bounds[90].upper[idx],
+            lower90: data.data.raw.bounds[90].lower[idx],
+          } : undefined,
         };
         if (!prev || prev.timePoint !== newHovered.timePoint || prev.value !== newHovered.value) {
           return newHovered;
@@ -180,6 +192,14 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
         const newHovered = {
           timePoint: timePoints[closestIndex],
           value: data.data.raw.target[closestIndex],
+          bounds: closestIndex > data.metadata.raw.last_known_step_index ? {
+            upper50: data.data.raw.bounds[50].upper[closestIndex],
+            lower50: data.data.raw.bounds[50].lower[closestIndex],
+            upper75: data.data.raw.bounds[75].upper[closestIndex],
+            lower75: data.data.raw.bounds[75].lower[closestIndex],
+            upper90: data.data.raw.bounds[90].upper[closestIndex],
+            lower90: data.data.raw.bounds[90].lower[closestIndex],
+          } : undefined,
         };
         if (!prev || prev.timePoint !== newHovered.timePoint || prev.value !== newHovered.value) {
           return newHovered;
@@ -281,17 +301,96 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
     };
   }, [isSelecting, handleMouseUp]);
 
-  const chartData: ChartData<'line'> = {
-    labels: timePoints,
-    datasets: [{
-      label: 'スコア',
-      data: data.data.raw.target,
-      borderColor: 'rgb(75, 192, 192)',
-      tension: 0.1,
-      pointRadius: 0,
-      borderWidth: 1.5, // Make line thinner
-    }]
-  };
+  const ci75Alpha = 0.3;
+  const ci90Alpha = 0.25;
+  const ciColor = secondaryColor;
+  
+  const chartData: ChartData<'line'> = React.useMemo(() => {
+    const datasets = [
+      {
+        label: 'スコア',
+        data: data.data.raw.target,
+        borderColor: getColorWithAlpha(primaryColor, 1),
+        tension: 0.1,
+        borderWidth: 3.5,
+        borderDash: [5, 2],
+        pointStyle: 'circle',
+        pointRadius: 0,
+        pointBorderColor: getColorWithAlpha(primaryColor, 1),
+        pointBackgroundColor: getColorWithAlpha(primaryColor, 1),
+        pointHoverRadius: 5,
+      },
+      // 90% confidence interval
+      {
+        label: '90% 信頼区間下限',
+        data: data.data.raw.bounds[90].lower.map((val, idx) => 
+          idx <= data.metadata.raw.last_known_step_index ? null : val
+        ),
+        borderColor: 'transparent',
+        backgroundColor: getColorWithAlpha(ciColor, ci90Alpha),
+        tension: 0.1,
+        borderWidth: 0,
+        pointStyle: 'circle',
+        pointRadius: 0,
+        pointBorderColor: getColorWithAlpha(ciColor, 0.5),
+        pointBackgroundColor: getColorWithAlpha(ciColor, 0.5),
+        pointHoverRadius: 4,
+      },
+      {
+        label: '90% 信頼区間上限',
+        data: data.data.raw.bounds[90].upper.map((val, idx) => 
+          idx <= data.metadata.raw.last_known_step_index ? null : val
+        ),
+        borderColor: 'transparent',
+        backgroundColor: getColorWithAlpha(ciColor, ci90Alpha),
+        tension: 0.1,
+        borderWidth: 0,
+        fill: '-1',
+        pointStyle: 'circle',
+        pointRadius: 0,
+        pointBorderColor: getColorWithAlpha(ciColor, 0.5),
+        pointBackgroundColor: getColorWithAlpha(ciColor, 0.5),
+        pointHoverRadius: 4,
+      },
+      // 75% confidence interval
+      {
+        label: '75% 信頼区間下限',
+        data: data.data.raw.bounds[75].lower.map((val, idx) => 
+          idx <= data.metadata.raw.last_known_step_index ? null : val
+        ),
+        borderColor: 'transparent',
+        backgroundColor: getColorWithAlpha(ciColor, ci75Alpha),
+        tension: 0.1,
+        borderWidth: 0,
+        pointStyle: 'circle',
+        pointRadius: 0,
+        pointBorderColor: getColorWithAlpha(ciColor, 0.8),
+        pointBackgroundColor: getColorWithAlpha(ciColor, 0.8),
+        pointHoverRadius: 4,
+      },
+      {
+        label: '75% 信頼区間上限',
+        data: data.data.raw.bounds[75].upper.map((val, idx) => 
+          idx <= data.metadata.raw.last_known_step_index ? null : val
+        ),
+        borderColor: 'transparent',
+        backgroundColor: getColorWithAlpha(ciColor, ci75Alpha),
+        tension: 0.1,
+        borderWidth: 0,
+        fill: '-1',
+        pointStyle: 'circle',
+        pointRadius: 0,
+        pointBorderColor: getColorWithAlpha(ciColor, 0.8),
+        pointBackgroundColor: getColorWithAlpha(ciColor, 0.8),
+        pointHoverRadius: 4,
+      },
+    ];
+    
+    return {
+      labels: timePoints,
+      datasets
+    };
+  }, [timePoints, data, primaryColor]);
 
   const chartOptions = React.useMemo<ChartOptions<'line'>>(() => {
     const textColor = (() => {
@@ -320,16 +419,40 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
           position: 'bottom',
           labels: {
             color: textColor,
-            generateLabels: () => [{
-              text: '予測範囲',
-              fillStyle: 'rgba(103, 220, 209, 0.1)',
-              strokeStyle: 'rgba(103, 220, 209, 0.6)',
-              fontColor: textColor,
-              lineWidth: 2,
-              pointStyle: 'rect',
-              pointStyleWidth: 15,
-              pointStyleHeight: 15,
-            }]
+            generateLabels: () => [
+              {
+                text: 'スコア',
+                fillStyle: getColorWithAlpha(primaryColor, 1),
+                strokeStyle: getColorWithAlpha(primaryColor, 1),
+                fontColor: textColor,
+                lineWidth: 2,
+              },
+              {
+                text: '75% 信頼区間',
+                fillStyle: getColorWithAlpha(ciColor, 0.5),
+                strokeStyle: getColorWithAlpha(secondaryColor, 1),
+                fontColor: textColor,
+                lineWidth: 2,
+              },
+              {
+                text: '90% 信頼区間',
+                fillStyle: getColorWithAlpha(ciColor, 0.3),
+                strokeStyle: getColorWithAlpha(secondaryColor, 1),
+                fontColor: textColor,
+                lineWidth: 2,
+              },
+              {
+                text: '予測範囲',
+                fillStyle: getColorWithAlpha(primaryColor, 0.2),
+                strokeStyle: 'rgb(255, 99, 132)',
+                fontColor: textColor,
+                lineWidth: 2,
+                pointStyle: 'rect',
+                pointStyleWidth: 15,
+                pointStyleHeight: 15,
+                lineDash: [5, 3],
+              }
+            ]
           }
         },
         annotation: {
@@ -346,14 +469,14 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
               type: 'box',
               xMin: timePoints[data.metadata.raw.last_known_step_index],
               xMax: timePoints[timePoints.length - 1],
-              backgroundColor: 'rgba(103, 220, 209, 0.1)',
+              backgroundColor: getColorWithAlpha(primaryColor, 0.1),
               borderColor: 'rgba(200, 200, 200, 0.2)',
             }
           }
         },
         title: {
           display: true,
-          text: data.metadata.raw.name ? `${data.metadata.raw.name} - スコア推移予測` : 'スコア推移予測',
+          text:　'スコア推移予測',
           color: textColor,
           padding: {
             bottom: 10
@@ -423,7 +546,12 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
           }
         }
       },
-      interaction: { mode: 'index', intersect: false }
+      interaction: { mode: 'index', intersect: false },
+      elements: {
+        line: {
+          tension: 0.1,
+        }
+      },
     };
 
     if (zoomState) {
@@ -435,7 +563,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
     }
 
     return options;
-  }, [zoomState, startAt, data.data.raw.target.length, theme, timePoints, data.metadata.raw.last_known_step_index, data.metadata.raw.name]);
+  }, [zoomState, startAt, data.data.raw.target.length, theme, timePoints, data.metadata.raw.last_known_step_index, data.metadata.raw.name, primaryColor]);
 
   return (
     <div className="relative w-full">
@@ -497,20 +625,20 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
             />
             {/* Custom tooltip */}
             <div
-              className="absolute pointer-events-none bg-base-100 border border-base-300 text-base-content rounded-lg shadow-lg p-3 z-20 min-w-[120px] sm:min-w-[160px] max-w-[70vw]"
+              className="absolute pointer-events-none bg-base-100 border border-base-300 text-base-content rounded-lg shadow-lg p-3 z-20 min-w-[180px] sm:min-w-[220px] max-w-[70vw]"
               style={{
                 left: (() => {
                   const containerWidth = window.innerWidth;
-                  const tooltipWidth = window.innerWidth < 640 ? 120 : 160;
+                  const tooltipWidth = window.innerWidth < 640 ? 180 : 220;
                   if (window.innerWidth < 640) {
-                    if (crosshairPosition.x > containerWidth * 0.5) {
+                    if (crosshairPosition.x > containerWidth * 0.4) {
                       return Math.max(10, crosshairPosition.x - tooltipWidth - 10);
                     } else {
                       return Math.min(crosshairPosition.x + 10, containerWidth - tooltipWidth - 10);
                     }
                   }
-                  return crosshairPosition.x > containerWidth * 0.6 
-                    ? crosshairPosition.x - tooltipWidth - 10
+                  return crosshairPosition.x > containerWidth * 0.5 
+                    ? crosshairPosition.x - tooltipWidth - 20
                     : crosshairPosition.x + 10;
                 })(),
                 top: Math.max(crosshairPosition.y - 60, 10)
@@ -524,6 +652,14 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
                 <span className="sm:hidden">スコア:</span>
                 <br className="sm:hidden" />
                 <span className="font-mono">{Math.round(hoveredData.value).toLocaleString()}</span>
+                {hoveredData.bounds && (
+                  <>
+                    <div className="mt-2 text-xs">
+                      <div>75%信頼区間: {Math.round(hoveredData.bounds.lower75).toLocaleString()} - {Math.round(hoveredData.bounds.upper75).toLocaleString()}</div>
+                      <div>90%信頼区間: {Math.round(hoveredData.bounds.lower90).toLocaleString()} - {Math.round(hoveredData.bounds.upper90).toLocaleString()}</div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </>
