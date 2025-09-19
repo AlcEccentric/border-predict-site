@@ -235,22 +235,10 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
         const neighborsSorted = values.filter(v => !v.isTarget).sort((a, b) => b.value - a.value);
         values = target ? [target, ...neighborsSorted] : neighborsSorted;
 
-        setCrosshairPosition(prev => {
-            const newCrosshair = { x: snappedX, y: mouseY - rect.top };
-            if (!prev || prev.x !== newCrosshair.x || prev.y !== newCrosshair.y) {
-                return newCrosshair;
-            }
-            return prev;
-        });
-        setHoveredData(prev => {
-            const newHovered = {
-                percentagePoint: percentPoints[dataIndex],
-                values
-            };
-            if (!prev || prev.percentagePoint !== newHovered.percentagePoint || JSON.stringify(prev.values) !== JSON.stringify(newHovered.values)) {
-                return newHovered;
-            }
-            return prev;
+        setCrosshairPosition({ x: snappedX, y: mouseY - rect.top });
+        setHoveredData({
+            percentagePoint: percentPoints[dataIndex],
+            values
         });
     };
 
@@ -382,10 +370,7 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                 data: visibleNeighbors.target ? normalizedData.target.slice(zoomState ? zoomState.min : 0, (zoomState ? zoomState.max + 1 : percentagePoints.length)) : [],
                 borderColor: COLORS.target,
                 tension: 0.1,
-                pointRadius: (zoomState
-                    ? normalizedData.target.slice(zoomState.min, zoomState.max + 1)
-                    : normalizedData.target
-                ).map((_, idx) => (crosshairIndex !== null && crosshairIndex === idx ? 4 : 0)),
+                pointRadius: 0,
                 pointBackgroundColor: COLORS.target,
                 borderWidth: 3,
                 borderDash: [],
@@ -399,10 +384,7 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                         : [],
                     borderColor: COLORS.neighbors[index],
                     tension: 0.1,
-                    pointRadius: (zoomState
-                        ? data.slice(zoomState.min, zoomState.max + 1)
-                        : data
-                    ).map((_, idx) => (crosshairIndex !== null && crosshairIndex === idx ? 4 : 0)),
+                    pointRadius: 0,
                     pointBackgroundColor: COLORS.neighbors[index],
                     borderWidth: 1.5,
                     borderDash: [6, 4],
@@ -594,6 +576,29 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                                         zIndex: 10
                                     }}
                                 />
+                                {/* Custom crosshair dots */}
+                                {hoveredData.values.map((item, index) => {
+                                    const chart = chartRef.current;
+                                    if (!chart || crosshairIndex === null) return null;
+                                    
+                                    const datasetIndex = item.isTarget ? 0 : Object.keys(normalizedData.neighbors).indexOf(item.name.replace('近傍', '')) + 1;
+                                    const meta = chart.getDatasetMeta(datasetIndex);
+                                    if (!meta || !meta.data[crosshairIndex]) return null;
+                                    
+                                    const point = meta.data[crosshairIndex];
+                                    return (
+                                        <div
+                                            key={index}
+                                            className="absolute pointer-events-none w-2 h-2 rounded-full"
+                                            style={{
+                                                left: point.x - 4,
+                                                top: point.y - 4,
+                                                backgroundColor: item.color,
+                                                zIndex: 15
+                                            }}
+                                        />
+                                    );
+                                })}
                                 {/* Custom tooltip */}
                                 <div
                                     className="absolute pointer-events-none bg-base-100 border border-base-300 text-base-content rounded-lg shadow-lg p-3 z-20 min-w-[160px] sm:min-w-[200px] max-w-[90vw]"
