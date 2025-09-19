@@ -10,10 +10,6 @@ const FAQ: React.FC<FAQProps> = ({ eventType, internalEventType }) => {
     const normalInternalTypes = [18];
 
     // Precision blocks
-    let anniversaryBlock = null;
-    let normalBlock = null;
-    let type42KnnBlock = null;
-    let type33KnnBlock = null;
     let defaultBlock = (
         <div className="mt-4">
             <h4 className="text-lg font-semibold mb-2">通常イベント</h4>
@@ -22,6 +18,7 @@ const FAQ: React.FC<FAQProps> = ({ eventType, internalEventType }) => {
             </p>
         </div>
     );
+    let anniversaryBlock = null;
     if (eventType === 5 && internalEventType === 5) {
         anniversaryBlock = (
             <div className="mt-4">
@@ -101,6 +98,7 @@ const FAQ: React.FC<FAQProps> = ({ eventType, internalEventType }) => {
             </div>
         );
     }
+    let type42KnnBlock = null;
     if (eventType === 4 && typeof internalEventType === 'number' && [22, 23].includes(internalEventType)) {
         type42KnnBlock = (
             <div className="mt-4">
@@ -142,6 +140,7 @@ const FAQ: React.FC<FAQProps> = ({ eventType, internalEventType }) => {
             </div>
         );
     }
+    let type33KnnBlock = null;
     if (eventType === 3 && typeof internalEventType === 'number' && [3].includes(internalEventType)) {
         type33KnnBlock = (
             <div className="mt-4">
@@ -178,6 +177,7 @@ const FAQ: React.FC<FAQProps> = ({ eventType, internalEventType }) => {
             </div>
         );
     }
+    let normalBlock = null;
     if (eventType === 3 && typeof internalEventType === 'number' && normalInternalTypes.includes(internalEventType)) {
         normalBlock = (
             <div className="mt-4">
