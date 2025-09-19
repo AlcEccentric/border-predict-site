@@ -34,15 +34,16 @@ const UpdatesButton: React.FC = () => {
                             <h4 className="font-semibold text-primary mb-1">信頼区間の表示を追加</h4>
                             <p className="text-base-content/80">
                                 メイングラフに75%・90%の信頼区間を表示するようになりました。
-                                これまでのFAQの精度表示よりも、直感的でわかりやすい予測精度の表現です。
+                                以前は進行度に応じた精度情報をサイトの下部に表示していましたが、信頼区間を表示することで、
+                                より直感的に予測精度を理解できるようになりました。
                             </p>
                         </div>
                         
                         <div className="border-l-4 border-secondary pl-3">
-                            <h4 className="font-semibold text-secondary mb-1">正規化アルゴリズムを改善</h4>
+                            <h4 className="font-semibold text-secondary mb-1">正規化基準の変更</h4>
                             <p className="text-base-content/80">
-                                従来の固定7.25日基準から、イベントの実際の長さに合わせた方式に変更しました。
-                                近傍チャートでの比較がより直感的になっています。
+                                これまでは固定の7.25日を基準にデータを正規化していましたが、今後は進行中のイベントの開催期間を基準とする方式に変更しました。
+                                これにより、近傍グラフでの比較がより直感的になっています。
                             </p>
                         </div>
                     </div>

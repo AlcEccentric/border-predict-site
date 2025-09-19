@@ -362,7 +362,7 @@ const FAQ: React.FC<FAQProps> = ({ eventType, internalEventType }) => {
                 <div className="collapse collapse-plus bg-base-200">
                     <input type="checkbox" />
                     <div className="collapse-title text-xl font-bold bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 border-l-4 border-primary">
-                        データソース・不具合報告
+                        データ提供元・不具合報告
                     </div>
                     <div className="collapse-content">
                         <p>
@@ -375,20 +375,17 @@ const FAQ: React.FC<FAQProps> = ({ eventType, internalEventType }) => {
                             <strong>ベータ版について:</strong>
                             <br />このサイトは現在ベータ版として公開されており、テスト段階にあります。
                             予測精度の向上や機能の改善を継続的に行っています。
-                            また、ウェブサイト自体にもバグや改善すべき点が存在する可能性があります。
-                            不具合や改善点にお気づきの場合は、お気軽にご連絡ください。
+                            また、ウェブサイト自体にも不具合や改善の余地がある場合があります。
                         </p>
                         <p className="mt-2">
                             <strong>お問い合わせ:</strong>
-                            <br />不具合報告や質問等は、
-                            <a href="mailto:yuenimillionlive@proton.me" className="link link-primary">
-                                yuenimillionlive@proton.me
+                            <br />不具合や改善点にお気づきの方は、
+                            <a href="https://marshmallow-qa.com/mv4om4pbdffcxqe?t=S6VByN&utm_medium=url_text&utm_source=promotion"
+                                target="_blank"
+                                className="link link-primary">
+                                    マシュマロから
                             </a>
-                            または
-                            <a href="https://twitter.com/amakabeP" target="_blank" rel="noopener noreferrer" className="link link-primary">
-                                @amakabeP
-                            </a>
-                            までご連絡ください。
+                            お気軽にメッセージをお送りください。
                         </p>
                     </div>
                 </div>
