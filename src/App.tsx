@@ -195,7 +195,7 @@ const App: React.FC = () => {
             <CardContainer className="mb-8">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                     <h1 className="text-2xl sm:text-3xl font-bold flex flex-col gap-2">
-                        <span>ミリシタ・ボーダー予想 (ベータ版)</span>
+                        <span>ミリシタ・ボーダー予想</span>
                         <span className="text-xl sm:text-2xl text-gray-500 break-words">{eventInfo?.EventName}</span>
                     </h1>
                     <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
