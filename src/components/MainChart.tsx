@@ -32,26 +32,10 @@ ChartJS.register(
   zoomPlugin
 );
 
+import { PredictionData } from '../types';
+
 interface MainChartProps {
-  data: {
-    data: {
-      raw: {
-        target: number[];
-        bounds: {
-          50: { upper: number[]; lower: number[]; };
-          75: { upper: number[]; lower: number[]; };
-          90: { upper: number[]; lower: number[]; };
-        };
-      };
-    };
-    metadata: {
-      raw: {
-        last_known_step_index: number;
-        id: number;
-        name: string;
-      };
-    };
-  };
+  data: PredictionData;
   startAt: string;
   theme?: string;
 }
@@ -160,7 +144,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
         const newHovered = {
         timePoint: timePoints[idx],
         value: data.data.raw.target[idx],
-        bounds: idx > data.metadata.raw.last_known_step_index ? {
+        bounds: idx > data.metadata.raw.last_known_step_index && data.data.raw.bounds ? {
           upper50: data.data.raw.bounds[50].upper[idx],
           lower50: data.data.raw.bounds[50].lower[idx],
           upper75: data.data.raw.bounds[75].upper[idx],
@@ -192,7 +176,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
         const newHovered = {
         timePoint: timePoints[closestIndex],
         value: data.data.raw.target[closestIndex],
-        bounds: closestIndex > data.metadata.raw.last_known_step_index ? {
+        bounds: closestIndex > data.metadata.raw.last_known_step_index && data.data.raw.bounds ? {
           upper50: data.data.raw.bounds[50].upper[closestIndex],
           lower50: data.data.raw.bounds[50].lower[closestIndex],
           upper75: data.data.raw.bounds[75].upper[closestIndex],
@@ -323,9 +307,9 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
       // 90% confidence interval
       {
         label: '90% 信頼区間下限',
-        data: data.data.raw.bounds[90].lower.map((val, idx) => 
+        data: data.data.raw.bounds?.[90]?.lower.map((val, idx) => 
           idx <= data.metadata.raw.last_known_step_index ? null : val
-        ),
+        ) || [],
         borderColor: 'transparent',
         backgroundColor: getColorWithAlpha(ciColor, ci90Alpha),
         tension: 0.1,
@@ -338,9 +322,9 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
       },
       {
         label: '90% 信頼区間上限',
-        data: data.data.raw.bounds[90].upper.map((val, idx) => 
+        data: data.data.raw.bounds?.[90]?.upper.map((val, idx) => 
           idx <= data.metadata.raw.last_known_step_index ? null : val
-        ),
+        ) || [],
         borderColor: 'transparent',
         backgroundColor: getColorWithAlpha(ciColor, ci90Alpha),
         tension: 0.1,
@@ -355,9 +339,9 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
       // 75% confidence interval
       {
         label: '75% 信頼区間下限',
-        data: data.data.raw.bounds[75].lower.map((val, idx) => 
+        data: data.data.raw.bounds?.[75]?.lower.map((val, idx) => 
           idx <= data.metadata.raw.last_known_step_index ? null : val
-        ),
+        ) || [],
         borderColor: 'transparent',
         backgroundColor: getColorWithAlpha(ciColor, ci75Alpha),
         tension: 0.1,
@@ -370,9 +354,9 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
       },
       {
         label: '75% 信頼区間上限',
-        data: data.data.raw.bounds[75].upper.map((val, idx) => 
+        data: data.data.raw.bounds?.[75]?.upper.map((val, idx) => 
           idx <= data.metadata.raw.last_known_step_index ? null : val
-        ),
+        ) || [],
         borderColor: 'transparent',
         backgroundColor: getColorWithAlpha(ciColor, ci75Alpha),
         tension: 0.1,
