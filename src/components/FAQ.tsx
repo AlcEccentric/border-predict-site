@@ -155,15 +155,6 @@ const FAQ: React.FC = () => {
                             <a href="https://www.matsurihi.me/" target="_blank" rel="noopener noreferrer" className="link link-primary">
                             https://www.matsurihi.me
                             </a> より取得しています。
-                        </p>
-                        <p className="mt-2">
-                            <strong>ベータ版について:</strong>
-                            <br />このサイトは現在ベータ版として公開されており、テスト段階にあります。
-                            予測精度の向上や機能の改善を継続的に行っています。
-                            また、ウェブサイト自体にも不具合や改善の余地がある場合があります。
-                        </p>
-                        <p className="mt-2">
-                            <strong>お問い合わせ:</strong>
                             <br />不具合や改善点にお気づきの方は、
                             <a href="https://marshmallow-qa.com/mv4om4pbdffcxqe?t=S6VByN&utm_medium=url_text&utm_source=promotion"
                                 target="_blank"

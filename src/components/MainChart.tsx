@@ -45,14 +45,16 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
   const [zoomState, setZoomState] = useState<{ min: string; max: string } | null>(null);
   const isZoomed = !!zoomState;
 
-  // ...existing code...
+  // Cross hair position
   function getTopPercent() {
+    if (window.innerWidth < 380) return '6.9%';
     if (window.innerWidth < 640) return '6.9%';
     if (window.innerWidth < 768) return '6.2%';
     return '3.8%';
   }
   function getHeightPercent() {
-    if (window.innerWidth < 640) return '60.5%';
+    if (window.innerWidth < 380) return '48.3%';
+    if (window.innerWidth < 640) return '54.3%';
     if (window.innerWidth < 768) return '66.6%';
     return '78%';
   }
@@ -556,7 +558,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
       {/* Zoom note and zoom out button as floating badges at top-left, avoiding y axis */}
       {!isZoomed && (
         <div
-          className="absolute left-20 top-4 px-3 py-1 rounded-md bg-base-200 text-base-content/80 shadow text-xs z-30"
+          className="absolute left-20 top-4 px-3 py-1 rounded-md bg-base-200 text-base-content/80 shadow text-xs z-10"
           style={{ pointerEvents: 'none', fontWeight: 500 }}
         >
           <span style={{ fontSize: '0.5em', verticalAlign: 'middle', marginRight: '0.1em' }}></span>範囲選択でズーム
@@ -567,7 +569,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
           onClick={() => {
             setZoomState(null);
           }}
-          className="absolute left-20 top-4 px-2 py-1 rounded-md bg-base-200 text-base-content shadow transition hover:bg-primary hover:text-white z-30 text-xs"
+          className="absolute left-20 top-4 px-2 py-1 rounded-md bg-base-200 text-base-content shadow transition hover:bg-primary hover:text-white z-10 text-xs"
           style={{ fontSize: '0.85rem', fontWeight: 500, padding: '0.25rem 0.5rem' }}
         >
           <span className="inline-block align-middle mr-1" style={{ fontSize: '1em' }}>⤺</span> 全体表示
@@ -689,7 +691,14 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
                     ? crosshairPosition.x - tooltipWidth - 20
                     : crosshairPosition.x + 10;
                 })(),
-                top: Math.max(crosshairPosition.y - 60, 10)
+                top: (() => {
+                  const baseTop = Math.max(crosshairPosition.y - 60, 10);
+                  // On mobile, if tooltip would overlap with zoom instruction (top-4), move it higher
+                  if (window.innerWidth < 640 && baseTop < 50) {
+                    return Math.max(baseTop - 40, 10);
+                  }
+                  return baseTop;
+                })()
               }}
             >
               <div className="text-sm font-semibold mb-1">
