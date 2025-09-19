@@ -220,7 +220,7 @@ const App: React.FC = () => {
             )}
 
             <CardContainer>
-                <FAQ eventType={eventInfo.EventType} internalEventType={eventInfo.InternalEventType} />
+                <FAQ />
             </CardContainer>
             
             <UpdatesButton />
