@@ -139,6 +139,7 @@ const BorderTabs: React.FC<BorderTabsProps> = ({
                             className="w-full"
                         >
                             <MainChart
+                                key={activeTab}
                                 data={activeTab === '100' ? prediction100 : prediction2500}
                                 startAt={startAt}
                                 theme={theme}

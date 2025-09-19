@@ -156,18 +156,18 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
         return prev;
       });
       setHoveredData(prev => {
-        const idx = dataPoints.length - 1;
+      const idx = dataPoints.length - 1;
         const newHovered = {
-          timePoint: timePoints[idx],
-          value: data.data.raw.target[idx],
-          bounds: idx > data.metadata.raw.last_known_step_index ? {
-            upper50: data.data.raw.bounds[50].upper[idx],
-            lower50: data.data.raw.bounds[50].lower[idx],
-            upper75: data.data.raw.bounds[75].upper[idx],
-            lower75: data.data.raw.bounds[75].lower[idx],
-            upper90: data.data.raw.bounds[90].upper[idx],
-            lower90: data.data.raw.bounds[90].lower[idx],
-          } : undefined,
+        timePoint: timePoints[idx],
+        value: data.data.raw.target[idx],
+        bounds: idx > data.metadata.raw.last_known_step_index ? {
+          upper50: data.data.raw.bounds[50].upper[idx],
+          lower50: data.data.raw.bounds[50].lower[idx],
+          upper75: data.data.raw.bounds[75].upper[idx],
+          lower75: data.data.raw.bounds[75].lower[idx],
+          upper90: data.data.raw.bounds[90].upper[idx],
+          lower90: data.data.raw.bounds[90].lower[idx],
+        } : undefined,
         };
         if (!prev || prev.timePoint !== newHovered.timePoint || prev.value !== newHovered.value) {
           return newHovered;
@@ -190,16 +190,16 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
       });
       setHoveredData(prev => {
         const newHovered = {
-          timePoint: timePoints[closestIndex],
-          value: data.data.raw.target[closestIndex],
-          bounds: closestIndex > data.metadata.raw.last_known_step_index ? {
-            upper50: data.data.raw.bounds[50].upper[closestIndex],
-            lower50: data.data.raw.bounds[50].lower[closestIndex],
-            upper75: data.data.raw.bounds[75].upper[closestIndex],
-            lower75: data.data.raw.bounds[75].lower[closestIndex],
-            upper90: data.data.raw.bounds[90].upper[closestIndex],
-            lower90: data.data.raw.bounds[90].lower[closestIndex],
-          } : undefined,
+        timePoint: timePoints[closestIndex],
+        value: data.data.raw.target[closestIndex],
+        bounds: closestIndex > data.metadata.raw.last_known_step_index ? {
+          upper50: data.data.raw.bounds[50].upper[closestIndex],
+          lower50: data.data.raw.bounds[50].lower[closestIndex],
+          upper75: data.data.raw.bounds[75].upper[closestIndex],
+          lower75: data.data.raw.bounds[75].lower[closestIndex],
+          upper90: data.data.raw.bounds[90].upper[closestIndex],
+          lower90: data.data.raw.bounds[90].lower[closestIndex],
+        } : undefined,
         };
         if (!prev || prev.timePoint !== newHovered.timePoint || prev.value !== newHovered.value) {
           return newHovered;
@@ -623,6 +623,67 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
                 zIndex: 10
               }}
             />
+            {/* Custom crosshair dots for all datasets */}
+            {(() => {
+              const chart = chartRef.current;
+              if (!chart) return null;
+              
+              const dots = [];
+              const meta0 = chart.getDatasetMeta(0); // Main line
+              const dataPoints0 = meta0.data;
+              
+              // Find closest data point index
+              let closestIndex = -1;
+              let minDistance = Infinity;
+              dataPoints0.forEach((point, index) => {
+                const distance = Math.abs(point.x - crosshairPosition.x);
+                if (distance < minDistance) {
+                  minDistance = distance;
+                  closestIndex = index;
+                }
+              });
+              
+              if (closestIndex === -1) return null;
+              
+              // Add dot for main trajectory
+              if (dataPoints0[closestIndex]) {
+                const point = dataPoints0[closestIndex];
+                dots.push(
+                  <div
+                    key="main"
+                    className="absolute pointer-events-none w-2 h-2 rounded-full"
+                    style={{
+                      left: point.x - 4,
+                      top: point.y - 4,
+                      backgroundColor: getColorWithAlpha(primaryColor, 1),
+                      zIndex: 15
+                    }}
+                  />
+                );
+              }
+              
+              // Add dots for confidence interval lines (if they have data at this index)
+              for (let i = 1; i < chart.data.datasets.length; i++) {
+                const meta = chart.getDatasetMeta(i);
+                if (meta && meta.data[closestIndex] && chart.data.datasets[i].data[closestIndex] !== null) {
+                  const point = meta.data[closestIndex];
+                  dots.push(
+                    <div
+                      key={i}
+                      className="absolute pointer-events-none w-2 h-2 rounded-full"
+                      style={{
+                        left: point.x - 4,
+                        top: point.y - 4,
+                        backgroundColor: getColorWithAlpha(secondaryColor, 0.8),
+                        zIndex: 15
+                      }}
+                    />
+                  );
+                }
+              }
+              
+              return dots;
+            })()}
             {/* Custom tooltip */}
             <div
               className="absolute pointer-events-none bg-base-100 border border-base-300 text-base-content rounded-lg shadow-lg p-3 z-20 min-w-[180px] sm:min-w-[220px] max-w-[70vw]"
