@@ -42,8 +42,8 @@ const UpdatesButton: React.FC = () => {
                         <div className="border-l-4 border-secondary pl-3">
                             <h4 className="font-semibold text-secondary mb-1">正規化基準の変更</h4>
                             <p className="text-base-content/80">
-                                これまでは固定の7.25日を基準にデータを正規化していましたが、今後は進行中のイベントの開催期間を基準とする方式に変更しました。
-                                これにより、近傍グラフでの比較がより直感的になっています。
+                                これまでは7.25日を基準にデータを正規化していましたが、今後は進行中のイベント期間を基準に正規化するように変更しました。
+                                これにより、近傍グラフでの比較がより直感的になります。
                             </p>
                         </div>
                     </div>
