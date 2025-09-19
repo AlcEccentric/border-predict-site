@@ -350,7 +350,7 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
 
             {/* FAQ Section - Independent component at the bottom */}
             <CardContainer>
-                <FAQ eventType={5} internalEventType={5} />
+                <FAQ />
             </CardContainer>
         </div>
     );
