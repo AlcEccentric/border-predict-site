@@ -30,28 +30,38 @@ const UpdatesButton: React.FC = () => {
                     </div>
                     
                     <div className="space-y-3 text-sm">
+
+                        <div className="border-l-4 border-accent pl-3">
+                            <h4 className="font-semibold text-accent mb-1">Twitter/X ボット公開</h4>
+                            <p className="text-base-content/80">
+                                通常イベントの予測結果を2時間ごとに投稿するTwitter/Xボットを公開しました！
+                                <a href="https://x.com/YueniMillionB1" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline ml-1">
+                                    @YueniMillionB1
+                                </a>
+                                をフォローして、最新の予測をチェックしてみてください。
+                            </p>
+                        </div>
+                        
                         <div className="border-l-4 border-primary pl-3">
                             <h4 className="font-semibold text-primary mb-1">信頼区間の表示を追加</h4>
                             <p className="text-base-content/80">
                                 メイングラフに75%・90%の信頼区間を表示するようになりました。
                                 以前は進行度に応じた精度情報をサイトの下部に表示していましたが、信頼区間を表示することで、
                                 より直感的に予測精度を理解できるようになりました。
+                                詳細は「解説」セクションの「予測精度について」をご確認ください。
                             </p>
                         </div>
                         
                         <div className="border-l-4 border-secondary pl-3">
                             <h4 className="font-semibold text-secondary mb-1">正規化基準の変更</h4>
                             <p className="text-base-content/80">
-                                これまでは7.25日を基準にデータを正規化していましたが、今後は進行中のイベント期間を基準に正規化するように変更しました。
-                                これにより、近傍グラフでの比較がより直感的になります。
+                                これまでは固定の7.25日を基準にデータを正規化していましたが、今後は進行中のイベントの開催期間を基準とする方式に変更しました。
+                                これにより、近傍グラフでの比較がより直感的になっています。
+                                詳細は「解説」セクションの「スコアの正規化方法について」をご確認ください。
                             </p>
                         </div>
-                    </div>
-                    
-                    <div className="mt-3 pt-3 border-t border-base-300">
-                        <p className="text-xs text-base-content/60">
-                            詳細は「解説」セクションの「予測精度について」と「スコアの正規化方法について」をご確認ください
-                        </p>
+
+                        
                     </div>
                 </div>
             )}
