@@ -47,12 +47,12 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
 
   // ...existing code...
   function getTopPercent() {
-    if (window.innerWidth < 640) return '6.7%';
+    if (window.innerWidth < 640) return '6.9%';
     if (window.innerWidth < 768) return '6.2%';
     return '3.8%';
   }
   function getHeightPercent() {
-    if (window.innerWidth < 640) return '60.6%';
+    if (window.innerWidth < 640) return '60.5%';
     if (window.innerWidth < 768) return '66.6%';
     return '78%';
   }
@@ -516,14 +516,16 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
           ticks: {
             color: textColor,
             callback: function(value) {
-              if (window.innerWidth < 640) {
-                if (typeof value === 'number' && value >= 10000) {
-                  return Math.round(value / 10000) + '万';
-                }
-                return value;
-              }
               if (typeof value === 'number') {
-                return value.toLocaleString();
+                if (value >= 100000000) {
+                  return Math.round(value / 100000000) + '億';
+                } else if (value >= 10000) {
+                  return Math.round(value / 10000) + '万';
+                } else if (value >= 1000) {
+                  return Math.round(value / 1000) + 'K';
+                } else {
+                  return Math.round(value).toString();
+                }
               }
               return value;
             }
@@ -554,10 +556,10 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
       {/* Zoom note and zoom out button as floating badges at top-left, avoiding y axis */}
       {!isZoomed && (
         <div
-          className="absolute left-24 top-4 px-3 py-1 rounded-md bg-base-200 text-base-content/80 shadow text-xs z-30"
+          className="absolute left-20 top-4 px-3 py-1 rounded-md bg-base-200 text-base-content/80 shadow text-xs z-30"
           style={{ pointerEvents: 'none', fontWeight: 500 }}
         >
-          <span style={{ fontSize: '1.1em', verticalAlign: 'middle', marginRight: '0.3em' }}>🔍</span>範囲選択でズーム
+          <span style={{ fontSize: '0.5em', verticalAlign: 'middle', marginRight: '0.1em' }}></span>範囲選択でズーム
         </div>
       )}
       {isZoomed && (
@@ -565,7 +567,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
           onClick={() => {
             setZoomState(null);
           }}
-          className="absolute left-24 top-4 px-2 py-1 rounded-md bg-base-200 text-base-content shadow transition hover:bg-primary hover:text-white z-30 text-xs"
+          className="absolute left-20 top-4 px-2 py-1 rounded-md bg-base-200 text-base-content shadow transition hover:bg-primary hover:text-white z-30 text-xs"
           style={{ fontSize: '0.85rem', fontWeight: 500, padding: '0.25rem 0.5rem' }}
         >
           <span className="inline-block align-middle mr-1" style={{ fontSize: '1em' }}>⤺</span> 全体表示
@@ -673,11 +675,12 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
               className="absolute pointer-events-none bg-base-100 border border-base-300 text-base-content rounded-lg shadow-lg p-3 z-20 min-w-[180px] sm:min-w-[220px] max-w-[70vw]"
               style={{
                 left: (() => {
+                  {/* Main tooltip position */}
                   const containerWidth = window.innerWidth;
                   const tooltipWidth = window.innerWidth < 640 ? 180 : 220;
                   if (window.innerWidth < 640) {
                     if (crosshairPosition.x > containerWidth * 0.4) {
-                      return Math.max(10, crosshairPosition.x - tooltipWidth - 10);
+                      return Math.max(10, crosshairPosition.x - tooltipWidth - 65);
                     } else {
                       return Math.min(crosshairPosition.x + 10, containerWidth - tooltipWidth - 10);
                     }

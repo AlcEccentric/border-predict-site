@@ -504,10 +504,10 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                         {/* Zoom note and zoom out button as floating badges at top-left, offset to avoid y axis */}
                         {!isZoomed && (
                             <div
-                                className="absolute left-16 top-4 px-3 py-1 rounded-md bg-base-200 text-base-content/80 shadow text-xs z-30"
+                                className="absolute left-12 top-4 px-3 py-1 rounded-md bg-base-200 text-base-content/80 shadow text-xs z-30"
                                 style={{ pointerEvents: 'none', fontWeight: 500 }}
                             >
-                                <span style={{ fontSize: '1.1em', verticalAlign: 'middle', marginRight: '0.3em' }}>🔍</span>範囲選択でズーム
+                                <span style={{ fontSize: '0.5em', verticalAlign: 'middle', marginRight: '0.1em' }}></span>範囲選択でズーム
                             </div>
                         )}
                         {isZoomed && (
