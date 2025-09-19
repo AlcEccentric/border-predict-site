@@ -10,6 +10,7 @@ const FAQ: React.FC<FAQProps> = ({ eventType, internalEventType }) => {
     const normalInternalTypes = [18];
 
     // Precision blocks
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let defaultBlock = (
         <div className="mt-4">
             <h4 className="text-lg font-semibold mb-2">通常イベント</h4>
@@ -18,6 +19,7 @@ const FAQ: React.FC<FAQProps> = ({ eventType, internalEventType }) => {
             </p>
         </div>
     );
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let anniversaryBlock = null;
     if (eventType === 5 && internalEventType === 5) {
         anniversaryBlock = (
@@ -98,6 +100,7 @@ const FAQ: React.FC<FAQProps> = ({ eventType, internalEventType }) => {
             </div>
         );
     }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let type42KnnBlock = null;
     if (eventType === 4 && typeof internalEventType === 'number' && [22, 23].includes(internalEventType)) {
         type42KnnBlock = (
@@ -140,6 +143,7 @@ const FAQ: React.FC<FAQProps> = ({ eventType, internalEventType }) => {
             </div>
         );
     }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let type33KnnBlock = null;
     if (eventType === 3 && typeof internalEventType === 'number' && [3].includes(internalEventType)) {
         type33KnnBlock = (
@@ -177,6 +181,7 @@ const FAQ: React.FC<FAQProps> = ({ eventType, internalEventType }) => {
             </div>
         );
     }
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     let normalBlock = null;
     if (eventType === 3 && typeof internalEventType === 'number' && normalInternalTypes.includes(internalEventType)) {
         normalBlock = (
