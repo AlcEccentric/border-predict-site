@@ -42,7 +42,7 @@ const App: React.FC = () => {
 
     // Helper function to determine if it's a normal event (types 3, 4, 11, 13)
     const isNormalEvent = (eventType: number) => {
-        return [3, 4, 11, 13].includes(eventType);
+        return [3, 4].includes(eventType);
     };
 
     // Helper function to determine if it's a Type 5 event
