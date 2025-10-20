@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import EventModal from './components/EventModal';
+import MaintenancePage from './components/MaintenancePage';
 import { EventInfo, PredictionData, IdolPredictionData } from './types';
 import { isEventOngoing } from './utils/dateUtils';
 import BorderTabs from './components/BorderTabs';
@@ -33,6 +34,10 @@ const App: React.FC = () => {
     const baseUrl = 'https://cdn.yuenimillion.live/data'; // Production URL
     const isDebug = false;
     const debugSuffix = isDebug ? '?debug' : '';
+    
+    // Maintenance mode configuration
+    const isMaintenanceMode = true; // Set to true to enable maintenance mode
+    const maintenanceEndTime = '2025-10-21 15:00 JST'; // Customize maintenance end time
     const [theme, setTheme] = useState(() => {
         const savedTheme = localStorage.getItem('theme') || themes[1];
         // Set initial theme immediately
@@ -149,6 +154,11 @@ const App: React.FC = () => {
         setShowNeighbors(newShowNeighbors);
         localStorage.setItem('normalEventShowNeighbors', newShowNeighbors.toString());
     };
+
+    // Check maintenance mode first
+    if (isMaintenanceMode) {
+        return <MaintenancePage endTime={maintenanceEndTime} />;
+    }
 
     if (loading) {
         return <div>Loading... (｀・ω・´)</div>;
