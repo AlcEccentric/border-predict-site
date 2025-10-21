@@ -37,7 +37,7 @@ const App: React.FC = () => {
     
     // Maintenance mode configuration
     const isMaintenanceMode = true; // Set to true to enable maintenance mode
-    const maintenanceEndTime = '2025-10-21 15:00 JST'; // Customize maintenance end time
+    const maintenanceEndTime = '2025-10-22 15:00 JST'; // Customize maintenance end time
     const [theme, setTheme] = useState(() => {
         const savedTheme = localStorage.getItem('theme') || themes[1];
         // Set initial theme immediately
