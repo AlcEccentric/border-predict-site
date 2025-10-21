@@ -21,6 +21,7 @@ const App: React.FC = () => {
     const [prediction2500, setPrediction2500] = useState<PredictionData | null>(null);
     const [idolPredictions, setIdolPredictions] = useState<Map<number, IdolPredictionData>>(new Map());
     const [loading, setLoading] = useState(true);
+    const [predictionDataValid, setPredictionDataValid] = useState(true);
     const [activeTab, setActiveTab] = useState(() => {
         const savedActiveTab = localStorage.getItem('activeTab');
         return savedActiveTab || '100';
@@ -36,8 +37,8 @@ const App: React.FC = () => {
     const debugSuffix = isDebug ? '?debug' : '';
     
     // Maintenance mode configuration
-    const isMaintenanceMode = true; // Set to true to enable maintenance mode
-    const maintenanceEndTime = '2025-10-22 15:00 JST'; // Customize maintenance end time
+    const isMaintenanceMode = false; // Set to true to enable maintenance mode
+    const maintenanceEndTime = '2025-10-21 15:00 JST'; // Customize maintenance end time
     const [theme, setTheme] = useState(() => {
         const savedTheme = localStorage.getItem('theme') || themes[1];
         // Set initial theme immediately
@@ -66,10 +67,54 @@ const App: React.FC = () => {
                 const eventInfoData = await eventInfoResponse.json();
                 setEventInfo(eventInfoData);
 
+                // Helper function to check if prediction data is valid (newer than event start)
+                const validatePredictionData = async (url: string, eventStartTime: string): Promise<boolean> => {
+                    try {
+                        const response = await fetch(url, { method: 'HEAD' });
+                        if (!response.ok) return false;
+                        
+                        const lastModified = response.headers.get('Last-Modified');
+                        if (!lastModified) return true; // If no Last-Modified header, assume valid
+                        
+                        const predictionModifiedTime = new Date(lastModified);
+                        const eventStart = new Date(eventStartTime);
+                        
+                        if (predictionModifiedTime < eventStart) {
+                            console.error(`Prediction data is outdated. Event started at ${eventStart.toISOString()}, but predictions were last modified at ${predictionModifiedTime.toISOString()}`);
+                            return false;
+                        }
+                        
+                        return true;
+                    } catch (error) {
+                        console.error('Error checking prediction data validity:', error);
+                        return false;
+                    }
+                };
+
                 if (isNormalEvent(eventInfoData.EventType)) {
+                    // Check if prediction data is valid before loading
+                    const pred100Url = `${baseUrl}/prediction/0/100.0/predictions.json${debugSuffix}`;
+                    const pred2500Url = `${baseUrl}/prediction/0/2500.0/predictions.json${debugSuffix}`;
+                    
+                    const [is100Valid, is2500Valid] = await Promise.all([
+                        validatePredictionData(pred100Url, eventInfoData.StartAt),
+                        validatePredictionData(pred2500Url, eventInfoData.StartAt)
+                    ]);
+
+                    // Use the original variables for production, or switch to test variables for testing
+                    const finalIs100Valid = is100Valid; // Change right value to false for testing
+                    const finalIs2500Valid = is2500Valid; // Change to testIs2500Valid for testing
+                    
+                    if (!finalIs100Valid || !finalIs2500Valid) {
+                        console.error('Prediction data is outdated, showing no-event page');
+                        setPredictionDataValid(false);
+                        setLoading(false);
+                        return;
+                    }
+                    
                     // Load normal event predictions (idol 0) - CDN will cache for 1 hour
-                    const pred100Response = await fetch(`${baseUrl}/prediction/0/100.0/predictions.json${debugSuffix}`);
-                    const pred2500Response = await fetch(`${baseUrl}/prediction/0/2500.0/predictions.json${debugSuffix}`);
+                    const pred100Response = await fetch(pred100Url);
+                    const pred2500Response = await fetch(pred2500Url);
                     
                     if (pred100Response.ok && pred2500Response.ok) {
                         setPrediction100(await pred100Response.json());
@@ -78,6 +123,17 @@ const App: React.FC = () => {
                         console.warn('Failed to load normal event predictions');
                     }
                 } else if (isType5Event(eventInfoData.EventType)) {
+                    // Check a sample prediction file to validate data freshness
+                    const samplePredictionUrl = `${baseUrl}/prediction/1/100.0/predictions.json${debugSuffix}`;
+                    const isValid = await validatePredictionData(samplePredictionUrl, eventInfoData.StartAt);
+                    
+                    if (!isValid) {
+                        console.error('Type 5 prediction data is outdated, showing no-event page');
+                        setPredictionDataValid(false);
+                        setLoading(false);
+                        return;
+                    }
+                    
                     // Load Type 5 event predictions for all idols
                     const idolPredictionsMap = new Map<number, IdolPredictionData>();
                     
@@ -164,7 +220,7 @@ const App: React.FC = () => {
         return <div>Loading... (｀・ω・´)</div>;
     }
 
-    if (!eventInfo || !isEventOngoing(eventInfo.StartAt, eventInfo.EndAt)) {
+    if (!eventInfo || !isEventOngoing(eventInfo.StartAt, eventInfo.EndAt) || !predictionDataValid) {
         return <EventModal />;
     }
 
