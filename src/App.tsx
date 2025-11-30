@@ -220,7 +220,7 @@ const App: React.FC = () => {
         return <div>Loading... (｀・ω・´)</div>;
     }
 
-    if (!eventInfo || !isEventOngoing(eventInfo.StartAt, eventInfo.EndAt) || !predictionDataValid) {
+    if (!eventInfo || !isEventOngoing(eventInfo.StartAt, eventInfo.EndAt)) {
         return <EventModal />;
     }
 
@@ -238,6 +238,10 @@ const App: React.FC = () => {
                 </div>
             </div>
         );
+    }
+
+    if (!predictionDataValid) {
+        return <EventModal />;
     }
 
     // Render Type 5 event page
