@@ -228,13 +228,13 @@ const App: React.FC = () => {
     const eventStart = new Date(eventInfo.StartAt);
     const nowTime = new Date();
     const hoursSinceStart = (nowTime.getTime() - eventStart.getTime()) / (1000 * 60 * 60);
-    if (!isDebug && hoursSinceStart < 36) {
+    if (!isDebug && hoursSinceStart < 42) {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center">
                 <div className="bg-base-200 rounded-lg shadow-lg p-8 max-w-md text-center">
                     <h2 className="text-xl font-bold mb-4">予測データ準備中</h2>
-                    <p className="mb-2">イベント開始から36時間分のデータが必要です。</p>
-                    <p className="text-base-content/70">恐れ入りますが、イベント開始から36時間経過後にご利用ください。</p>
+                    <p className="mb-2">イベント開始から42時間分のデータが必要です。</p>
+                    <p className="text-base-content/70">恐れ入りますが、イベント開始から42時間経過後にご利用ください。</p>
                 </div>
             </div>
         );
