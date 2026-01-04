@@ -725,25 +725,23 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                 {/* Outlier warning: show when current event's recent scores are consistently
                     higher or lower than all neighbor events at the same points */}
                 {isOutlier && (
-                    <div className="mb-3 p-3 rounded-md bg-warning/10 border border-warning text-warning">
+                    <div className="mb-3 p-3 rounded-md bg-warning/20 border border-warning text-base-content">
                         <div className="flex items-start gap-3">
-                            <AlertTriangle size={18} />
+                            <AlertTriangle size={18} className="text-warning" />
                             <div className="text-sm">
                                 <div className="font-semibold">予測精度に注意</div>
                                 <div className="mt-1">
                                     {outlierDirection === 'low' ? (
                                         <>
                                             今回のイベントでは、このボーダーのスコアが、過去の近傍データと比べて全体的に
-                                            <span className="font-bold px-1">低め</span>
-                                            となっているため、予測値は実際より
+                                            低めとなっているため、予測値は実際より
                                             <span className="font-bold px-1">高め</span>
                                             になる可能性があります。あくまで参考程度にとどめてください。
                                         </>
                                     ) : (
                                         <>
                                             今回のイベントでは、このボーダーのスコアが、過去の近傍データと比べて全体的に
-                                            <span className="font-bold px-1">高め</span>
-                                            となっているため、予測値は実際より
+                                            高めとなっているため、予測値は実際より
                                             <span className="font-bold px-1">低め</span>
                                             になる可能性があります。あくまで参考程度にとどめてください。
                                         </>
