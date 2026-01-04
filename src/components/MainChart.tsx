@@ -47,16 +47,16 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
 
   // Cross hair position
   function getTopPercent() {
-    if (window.innerWidth < 380) return '6.9%';
+    if (window.innerWidth < 548) return '6.9%';
     if (window.innerWidth < 640) return '6.9%';
     if (window.innerWidth < 768) return '6.2%';
     return '3.8%';
   }
   function getHeightPercent() {
-    if (window.innerWidth < 380) return '48.3%';
-    if (window.innerWidth < 640) return '54.3%';
-    if (window.innerWidth < 768) return '66.6%';
-    return '78%';
+    if (window.innerWidth < 548) return '55.4%';
+    if (window.innerWidth < 640) return '61.8%';
+    if (window.innerWidth < 768) return '67.3%';
+    return '78.5%';
   }
   const chartRef = useRef<ChartJS<'line'>>(null);
   const [crosshairPosition, setCrosshairPosition] = useState<{ x: number; y: number } | null>(null);
