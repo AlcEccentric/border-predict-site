@@ -153,6 +153,69 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
         }), { target: true })
     );
 
+    // Outlier detection: whether the current event's recent scores are
+    // consistently higher or lower than all neighbor events at the same points.
+    const [isOutlier, setIsOutlier] = useState(false);
+    const [outlierDirection, setOutlierDirection] = useState<'high' | 'low' | null>(null);
+
+    React.useEffect(() => {
+        try {
+            const target = normalizedData.target;
+            const neighborEntries = Object.entries(normalizedData.neighbors);
+            if (!target || target.length === 0 || neighborEntries.length === 0) {
+                setIsOutlier(false);
+                setOutlierDirection(null);
+                return;
+            }
+
+            // Decide how many recent points to check: 5% of length, at least 3
+            const recentCount = Math.max(3, Math.floor(target.length * 0.05));
+            const startIdx = Math.max(0, target.length - recentCount);
+
+            // For each recent index, compute the neighbors' min/max
+            let allAbove = true;
+            let allBelow = true;
+
+            for (let i = startIdx; i < target.length; i++) {
+                const tVal = target[i];
+                const neighborVals: number[] = [];
+                neighborEntries.forEach(([, arr]) => {
+                    const v = arr[i];
+                    if (typeof v === 'number' && !isNaN(v)) neighborVals.push(v);
+                });
+
+                if (neighborVals.length === 0) {
+                    // If neighbors don't have data at this index, skip this index
+                    continue;
+                }
+
+                const maxNeighbor = Math.max(...neighborVals);
+                const minNeighbor = Math.min(...neighborVals);
+
+                if (!(tVal > maxNeighbor)) allAbove = false;
+                if (!(tVal < minNeighbor)) allBelow = false;
+
+                // Early exit if neither condition can hold
+                if (!allAbove && !allBelow) break;
+            }
+
+            if (allAbove) {
+                setIsOutlier(true);
+                setOutlierDirection('high');
+            } else if (allBelow) {
+                setIsOutlier(true);
+                setOutlierDirection('low');
+            } else {
+                setIsOutlier(false);
+                setOutlierDirection(null);
+            }
+        } catch (e) {
+            // In case of unexpected data shapes, don't block the UI
+            setIsOutlier(false);
+            setOutlierDirection(null);
+        }
+    }, [normalizedData]);
+
     // Percentage points for chart labels and zoom logic
 
     const toggleNeighbor = (key: string) => {
@@ -647,7 +710,25 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                         )}
                     </div>
                 </div>
-                
+
+                {/* Outlier warning: show when current event's recent scores are consistently
+                    higher or lower than all neighbor events at the same points */}
+                {isOutlier && (
+                    <div className="mb-3 p-3 rounded-md bg-warning/10 border border-warning text-warning">
+                        <div className="flex items-start gap-3">
+                            <AlertTriangle size={18} />
+                            <div className="text-sm">
+                                <div className="font-semibold">予測精度に注意</div>
+                                <div className="mt-1">
+                                    今回のイベントでは、このボーダーでのスコアが過去の同タイプのイベントより全体的に
+                                    <span className="font-bold px-1">{outlierDirection === 'high' ? '高め' : '低め'}</span>
+                                    のため、参考程度にとどめてください。
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 <div className="bg-base-100 rounded-xl p-4">
                     <h3 className="text-lg font-bold mb-4">近傍イベント</h3>
                     <ul className="w-full p-0 gap-2 space-y-2">
