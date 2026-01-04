@@ -159,24 +159,28 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
     const [outlierDirection, setOutlierDirection] = useState<'high' | 'low' | null>(null);
 
     React.useEffect(() => {
+        // Compare against all neighbors within a small window ending at lastKnownIndex.
+        // This focuses the check on the most recent relevant steps used by prediction.
         try {
             const target = normalizedData.target;
             const neighborEntries = Object.entries(normalizedData.neighbors);
-            if (!target || target.length === 0 || neighborEntries.length === 0) {
+            if (!target || target.length === 0 || neighborEntries.length === 0 || typeof lastKnownIndex !== 'number') {
                 setIsOutlier(false);
                 setOutlierDirection(null);
                 return;
             }
 
-            // Decide how many recent points to check: 5% of length, at least 3
-            const recentCount = Math.max(3, Math.floor(target.length * 0.05));
-            const startIdx = Math.max(0, target.length - recentCount);
+            // Window size (number of steps before and including lastKnownIndex) to check.
+            // Use a small fixed window (3) to reflect recent behavior around the prediction point.
+            const windowRadius = 2; // checks lastKnownIndex-2 .. lastKnownIndex (3 points)
+            const startIdx = Math.max(0, lastKnownIndex - windowRadius);
+            const endIdx = Math.min(target.length - 1, lastKnownIndex);
 
-            // For each recent index, compute the neighbors' min/max
             let allAbove = true;
             let allBelow = true;
+            let checkedCount = 0;
 
-            for (let i = startIdx; i < target.length; i++) {
+            for (let i = startIdx; i <= endIdx; i++) {
                 const tVal = target[i];
                 const neighborVals: number[] = [];
                 neighborEntries.forEach(([, arr]) => {
@@ -189,6 +193,7 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                     continue;
                 }
 
+                checkedCount++;
                 const maxNeighbor = Math.max(...neighborVals);
                 const minNeighbor = Math.min(...neighborVals);
 
@@ -197,6 +202,13 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
 
                 // Early exit if neither condition can hold
                 if (!allAbove && !allBelow) break;
+            }
+
+            // Require at least one checked index to avoid false positives
+            if (checkedCount === 0) {
+                setIsOutlier(false);
+                setOutlierDirection(null);
+                return;
             }
 
             if (allAbove) {
@@ -210,11 +222,10 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                 setOutlierDirection(null);
             }
         } catch (e) {
-            // In case of unexpected data shapes, don't block the UI
             setIsOutlier(false);
             setOutlierDirection(null);
         }
-    }, [normalizedData]);
+    }, [normalizedData, lastKnownIndex]);
 
     // Percentage points for chart labels and zoom logic
 
@@ -720,9 +731,23 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                             <div className="text-sm">
                                 <div className="font-semibold">予測精度に注意</div>
                                 <div className="mt-1">
-                                    今回のイベントでは、このボーダーでのスコアが過去の同タイプのイベントより全体的に
-                                    <span className="font-bold px-1">{outlierDirection === 'high' ? '高め' : '低め'}</span>
-                                    のため、参考程度にとどめてください。
+                                    {outlierDirection === 'low' ? (
+                                        <>
+                                            今回のイベントでは、このボーダーのスコアが、過去の近傍データと比べて全体的に
+                                            <span className="font-bold px-1">低め</span>
+                                            となっているため、予測値は実際より
+                                            <span className="font-bold px-1">高め</span>
+                                            になる可能性があります。あくまで参考程度にとどめてください。
+                                        </>
+                                    ) : (
+                                        <>
+                                            今回のイベントでは、このボーダーのスコアが、過去の近傍データと比べて全体的に
+                                            <span className="font-bold px-1">高め</span>
+                                            となっているため、予測値は実際より
+                                            <span className="font-bold px-1">低め</span>
+                                            になる可能性があります。あくまで参考程度にとどめてください。
+                                        </>
+                                    )}
                                 </div>
                             </div>
                         </div>
