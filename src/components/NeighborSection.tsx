@@ -159,62 +159,59 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
     const [outlierDirection, setOutlierDirection] = useState<'high' | 'low' | null>(null);
 
     React.useEffect(() => {
-        // Compare against all neighbors within a small window ending at lastKnownIndex.
-        // This focuses the check on the most recent relevant steps used by prediction.
+        // New rule:
+        // - Only evaluate when there are more than 50 steps of data for current and all neighbors
+        // - Look at the last 50 data points
+        // - Current is an outlier if all these 50 points are consistently
+        //   above OR below every neighbor's corresponding last 50 points
         try {
+            const MIN_POINTS = 50;
             const target = normalizedData.target;
             const neighborEntries = Object.entries(normalizedData.neighbors);
-            if (!target || target.length === 0 || neighborEntries.length === 0 || typeof lastKnownIndex !== 'number') {
+
+            // Basic availability checks
+            if (!Array.isArray(target) || neighborEntries.length === 0) {
                 setIsOutlier(false);
                 setOutlierDirection(null);
                 return;
             }
 
-            // Window size (number of steps before and including lastKnownIndex) to check.
-            // Use a small fixed window (3) to reflect recent behavior around the prediction point.
-            const windowRadius = 2; // checks lastKnownIndex-2 .. lastKnownIndex (3 points)
-            const startIdx = Math.max(0, lastKnownIndex - windowRadius);
-            const endIdx = Math.min(target.length - 1, lastKnownIndex);
+            // Require strictly more than 50 steps for target and every neighbor
+            if (target.length <= MIN_POINTS) {
+                setIsOutlier(false);
+                setOutlierDirection(null);
+                return;
+            }
 
-            let allAbove = true;
-            let allBelow = true;
-            let checkedCount = 0;
+            // All neighbors must also have > 50 points
+            const allNeighborsLongEnough = neighborEntries.every(([, arr]) => Array.isArray(arr) && arr.length > MIN_POINTS);
+            if (!allNeighborsLongEnough) {
+                setIsOutlier(false);
+                setOutlierDirection(null);
+                return;
+            }
 
-            for (let i = startIdx; i <= endIdx; i++) {
-                const tVal = target[i];
-                const neighborVals: number[] = [];
-                neighborEntries.forEach(([, arr]) => {
-                    const v = arr[i];
-                    if (typeof v === 'number' && !isNaN(v)) neighborVals.push(v);
-                });
+            const tSeg = target.slice(-MIN_POINTS);
 
-                if (neighborVals.length === 0) {
-                    // If neighbors don't have data at this index, skip this index
-                    continue;
+            let allAboveAllNeighbors = true;
+            let allBelowAllNeighbors = true;
+
+            // Compare last-50 pointwise against each neighbor's last-50
+            for (let i = 0; i < MIN_POINTS; i++) {
+                const tVal = tSeg[i];
+                for (const [, arr] of neighborEntries) {
+                    const nVal = arr[arr.length - MIN_POINTS + i];
+                    if (!(tVal > nVal)) allAboveAllNeighbors = false;
+                    if (!(tVal < nVal)) allBelowAllNeighbors = false;
+                    if (!allAboveAllNeighbors && !allBelowAllNeighbors) break;
                 }
-
-                checkedCount++;
-                const maxNeighbor = Math.max(...neighborVals);
-                const minNeighbor = Math.min(...neighborVals);
-
-                if (!(tVal > maxNeighbor)) allAbove = false;
-                if (!(tVal < minNeighbor)) allBelow = false;
-
-                // Early exit if neither condition can hold
-                if (!allAbove && !allBelow) break;
+                if (!allAboveAllNeighbors && !allBelowAllNeighbors) break;
             }
 
-            // Require at least one checked index to avoid false positives
-            if (checkedCount === 0) {
-                setIsOutlier(false);
-                setOutlierDirection(null);
-                return;
-            }
-
-            if (allAbove) {
+            if (allAboveAllNeighbors) {
                 setIsOutlier(true);
                 setOutlierDirection('high');
-            } else if (allBelow) {
+            } else if (allBelowAllNeighbors) {
                 setIsOutlier(true);
                 setOutlierDirection('low');
             } else {
@@ -225,7 +222,7 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
             setIsOutlier(false);
             setOutlierDirection(null);
         }
-    }, [normalizedData, lastKnownIndex]);
+    }, [normalizedData]);
 
     // Percentage points for chart labels and zoom logic
 
