@@ -60,7 +60,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
   }
   const chartRef = useRef<ChartJS<'line'>>(null);
   const [crosshairPosition, setCrosshairPosition] = useState<{ x: number; y: number } | null>(null);
-  const [hoveredData, setHoveredData] = useState<{ timePoint: string; value: number; bounds?: { upper50: number; lower50: number; upper75: number; lower75: number; upper90: number; lower90: number; } } | null>(null);
+  const [hoveredData, setHoveredData] = useState<{ timePoint: string; value: number; bounds?: { upper75: number; lower75: number; upper90: number; lower90: number; } } | null>(null);
   
   // Range selection state
   const [isSelecting, setIsSelecting] = useState(false);
@@ -147,8 +147,6 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
         timePoint: timePoints[idx],
         value: data.data.raw.target[idx],
         bounds: idx > data.metadata.raw.last_known_step_index && data.data.raw.bounds ? {
-          upper50: data.data.raw.bounds[50].upper[idx],
-          lower50: data.data.raw.bounds[50].lower[idx],
           upper75: data.data.raw.bounds[75].upper[idx],
           lower75: data.data.raw.bounds[75].lower[idx],
           upper90: data.data.raw.bounds[90].upper[idx],
@@ -179,8 +177,6 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
         timePoint: timePoints[closestIndex],
         value: data.data.raw.target[closestIndex],
         bounds: closestIndex > data.metadata.raw.last_known_step_index && data.data.raw.bounds ? {
-          upper50: data.data.raw.bounds[50].upper[closestIndex],
-          lower50: data.data.raw.bounds[50].lower[closestIndex],
           upper75: data.data.raw.bounds[75].upper[closestIndex],
           lower75: data.data.raw.bounds[75].lower[closestIndex],
           upper90: data.data.raw.bounds[90].upper[closestIndex],

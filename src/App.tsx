@@ -31,9 +31,12 @@ const App: React.FC = () => {
         return savedShowNeighbors === 'true';
     });
     const themes = ['nord', 'cupcake', 'dim', 'aqua', 'sunset'];
-    // Configuration for data source - set to local for development, remote for production
     const baseUrl = 'https://cdn.yuenimillion.live/data'; // Production URL
-    const isDebug = false;
+    // Debug mode: launched via `npm run dev:debug` (sets VITE_DEBUG=1).
+    // Appends ?debug to fetches to bypass the CDN cache so the latest
+    // uncached predictions are rendered. Never enabled in a production build.
+    const isDebug = import.meta.env.VITE_DEBUG === '1'
+        || import.meta.env.VITE_DEBUG === 'true';
     const debugSuffix = isDebug ? '?debug' : '';
     
     // Maintenance mode configuration
