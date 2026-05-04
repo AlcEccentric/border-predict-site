@@ -338,28 +338,49 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
     // Touch scrubbing: drag a finger to move the crosshair. We dispatch a
     // synthetic mousemove on the chart canvas so Chart.js's own event
     // pipeline runs `onHover` with the latest captured state.
-    // Tooltip persists after touchend so the user can read it without their
-    // finger covering it; `mouseleave` still clears it on desktop.
+    // Direction detection means vertical drags still scroll the page; only
+    // horizontal drags claim the gesture.
     React.useEffect(() => {
         const el = chartContainerRef.current;
         if (!el) return;
-        const forwardToChart = (e: TouchEvent) => {
-            const touch = e.touches[0];
+        const SLOP = 8;
+        let startX = 0;
+        let startY = 0;
+        let mode: 'undecided' | 'scrub' | 'scroll' = 'undecided';
+
+        const dispatch = (clientX: number, clientY: number) => {
             const canvas = chartRef.current?.canvas;
-            if (!touch || !canvas) return;
-            if (e.cancelable) e.preventDefault();
+            if (!canvas) return;
             canvas.dispatchEvent(new MouseEvent('mousemove', {
-                clientX: touch.clientX,
-                clientY: touch.clientY,
-                bubbles: true,
-                cancelable: true,
+                clientX, clientY, bubbles: true, cancelable: true,
             }));
         };
-        el.addEventListener('touchstart', forwardToChart, { passive: false });
-        el.addEventListener('touchmove', forwardToChart, { passive: false });
+        const onStart = (e: TouchEvent) => {
+            const touch = e.touches[0];
+            if (!touch) return;
+            startX = touch.clientX;
+            startY = touch.clientY;
+            mode = 'undecided';
+            dispatch(touch.clientX, touch.clientY);
+        };
+        const onMove = (e: TouchEvent) => {
+            const touch = e.touches[0];
+            if (!touch) return;
+            if (mode === 'undecided') {
+                const dx = Math.abs(touch.clientX - startX);
+                const dy = Math.abs(touch.clientY - startY);
+                if (Math.max(dx, dy) < SLOP) return;
+                mode = dx > dy ? 'scrub' : 'scroll';
+            }
+            if (mode === 'scroll') return;
+            if (e.cancelable) e.preventDefault();
+            dispatch(touch.clientX, touch.clientY);
+        };
+        el.addEventListener('touchstart', onStart, { passive: false });
+        el.addEventListener('touchmove', onMove, { passive: false });
         return () => {
-            el.removeEventListener('touchstart', forwardToChart);
-            el.removeEventListener('touchmove', forwardToChart);
+            el.removeEventListener('touchstart', onStart);
+            el.removeEventListener('touchmove', onMove);
         };
     }, []);
 

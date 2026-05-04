@@ -254,20 +254,46 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
     // The crosshair intentionally stays visible after touchend so the user
     // can read the value without their finger covering the tooltip — matches
     // the neighbor chart's behavior. `mouseleave` still clears it on desktop.
+    //
+    // Direction detection: we only preventDefault (and thus block page scroll)
+    // once we know the gesture is primarily horizontal. Pure taps and
+    // vertical drags (page scroll) are left alone.
     React.useEffect(() => {
         const el = chartContainerRef.current;
         if (!el) return;
-        const onTouch = (e: TouchEvent) => {
+        const SLOP = 8; // px before we decide scrub vs scroll
+        let startX = 0;
+        let startY = 0;
+        let mode: 'undecided' | 'scrub' | 'scroll' = 'undecided';
+
+        const onStart = (e: TouchEvent) => {
             const touch = e.touches[0];
             if (!touch) return;
+            startX = touch.clientX;
+            startY = touch.clientY;
+            mode = 'undecided';
+            // Show the crosshair on tap-down, but don't preventDefault yet so
+            // the browser can still decide this is a scroll.
+            handleChartHover({ native: { clientX: touch.clientX, clientY: touch.clientY } });
+        };
+        const onMove = (e: TouchEvent) => {
+            const touch = e.touches[0];
+            if (!touch) return;
+            if (mode === 'undecided') {
+                const dx = Math.abs(touch.clientX - startX);
+                const dy = Math.abs(touch.clientY - startY);
+                if (Math.max(dx, dy) < SLOP) return; // still a tap, wait
+                mode = dx > dy ? 'scrub' : 'scroll';
+            }
+            if (mode === 'scroll') return; // let the browser handle the scroll
             if (e.cancelable) e.preventDefault();
             handleChartHover({ native: { clientX: touch.clientX, clientY: touch.clientY } });
         };
-        el.addEventListener('touchstart', onTouch, { passive: false });
-        el.addEventListener('touchmove', onTouch, { passive: false });
+        el.addEventListener('touchstart', onStart, { passive: false });
+        el.addEventListener('touchmove', onMove, { passive: false });
         return () => {
-            el.removeEventListener('touchstart', onTouch);
-            el.removeEventListener('touchmove', onTouch);
+            el.removeEventListener('touchstart', onStart);
+            el.removeEventListener('touchmove', onMove);
         };
     }, [handleChartHover]);
 
