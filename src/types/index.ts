@@ -59,7 +59,6 @@ export interface PredictionData {
         raw: {
             target: number[];
             bounds?: {
-                50: { upper: number[]; lower: number[]; };
                 75: { upper: number[]; lower: number[]; };
                 90: { upper: number[]; lower: number[]; };
             };
