@@ -1,5 +1,5 @@
 import React from 'react';
-import { Info, TrendingUp, Users, RefreshCw, Sliders, Heart } from 'lucide-react';
+import { Info, TrendingUp, Users, RefreshCw, Sliders, Heart, type LucideIcon } from 'lucide-react';
 
 /**
  * Each entry renders one collapse panel. Keeping the metadata in a list
@@ -9,7 +9,7 @@ import { Info, TrendingUp, Users, RefreshCw, Sliders, Heart } from 'lucide-react
 const sections: Array<{
     id?: string;
     title: string;
-    icon: React.ComponentType<{ size?: number; className?: string }>;
+    icon: LucideIcon;
     defaultOpen?: boolean;
     content: React.ReactNode;
 }> = [
