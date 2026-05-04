@@ -4,7 +4,8 @@ import CardContainer from './CardContainer';
 import IdolSelector from './IdolSelector';
 import Type5MainChart from './Type5MainChart';
 import Type5NeighborSection from './Type5NeighborSection';
-import ThemeSelector from './ThemeSelector';
+import Banner from './Banner';
+import UpdatesButton from './UpdatesButton';
 import FAQ from './FAQ';
 import { IdolPredictionData, EventInfo } from '../types';
 import { getIdolName } from '../utils/idolData';
@@ -125,23 +126,18 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
     const score1000 = getScoreForIdol(selectedIdol, '1000');
 
     return (
-        <div className="container mx-auto px-4 py-8">
-            {/* Header */}
-            <CardContainer className="mb-8">
-                <div className="flex justify-between items-center">
-                    <div className="text-center flex-1">
-                        <h1 className="text-3xl font-bold">
-                            ミリシタ・ボーダー予想
-                        </h1>
-                        <h2 className="text-2xl font-bold mt-2">
-                            {eventInfo.EventName}
-                        </h2>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <ThemeSelector theme={theme} setTheme={setTheme} />
-                    </div>
+        <div className="min-h-screen">
+            <Banner theme={theme} setTheme={setTheme} />
+            <div className="container mx-auto px-4 py-8">
+                {/* Event title */}
+                <div className="mb-6 pb-4 border-b border-base-300 text-center">
+                    <h1 className="text-xl sm:text-2xl font-bold">
+                        ミリシタ・ボーダー予想
+                    </h1>
+                    <p className="text-base sm:text-lg text-base-content/70 break-words mt-1">
+                        {eventInfo.EventName}
+                    </p>
                 </div>
-            </CardContainer>
 
             {/* Idol Selector */}
             <IdolSelector
@@ -352,6 +348,8 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
             <CardContainer>
                 <FAQ />
             </CardContainer>
+            </div>
+            <UpdatesButton />
         </div>
     );
 };

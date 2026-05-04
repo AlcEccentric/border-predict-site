@@ -45,20 +45,8 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
   const [zoomState, setZoomState] = useState<{ min: string; max: string } | null>(null);
   const isZoomed = !!zoomState;
 
-  // Cross hair position
-  function getTopPercent() {
-    if (window.innerWidth < 548) return '6.9%';
-    if (window.innerWidth < 640) return '6.9%';
-    if (window.innerWidth < 768) return '6.2%';
-    return '3.8%';
-  }
-  function getHeightPercent() {
-    if (window.innerWidth < 548) return '55.4%';
-    if (window.innerWidth < 640) return '61.8%';
-    if (window.innerWidth < 768) return '67.3%';
-    return '78.5%';
-  }
   const chartRef = useRef<ChartJS<'line'>>(null);
+  const chartContainerRef = useRef<HTMLDivElement>(null);
   const [crosshairPosition, setCrosshairPosition] = useState<{ x: number; y: number } | null>(null);
   const [hoveredData, setHoveredData] = useState<{ timePoint: string; value: number; bounds?: { upper75: number; lower75: number; upper90: number; lower90: number; } } | null>(null);
   
@@ -94,6 +82,25 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
 
     const rect = chart.canvas.getBoundingClientRect();
     const x = event.native.clientX - rect.left;
+    const y = event.native.clientY - rect.top;
+
+    // Ignore events that land outside the plot rectangle — the container
+    // div is slightly larger than the axes + plot area, so edges and margins
+    // shouldn't snap to the first/last data point.
+    const area = chart.chartArea;
+    if (area && (x < area.left || x > area.right || y < area.top || y > area.bottom)) {
+      // Sync-clear: both React state and Chart.js's own hover state, so the
+      // canvas-drawn hover dots (pointHoverRadius) go away with the crosshair.
+      // Using state setters directly (rather than calling handleChartLeave)
+      // avoids stale-closure issues with the outer useCallback dependencies.
+      setCrosshairPosition(prev => (prev !== null ? null : prev));
+      setHoveredData(prev => (prev !== null ? null : prev));
+      if (chart.getActiveElements().length > 0) {
+        chart.setActiveElements([]);
+        chart.update('none');
+      }
+      return;
+    }
 
     const meta = chart.getDatasetMeta(0);
     const dataPoints = meta.data;
@@ -112,56 +119,12 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
       }
     });
 
-    // Compute dynamic threshold: half of the distance to neighbor
-    const threshold = (() => {
-      if (closestIndex === 0 && dataPoints.length > 1) {
-        return Math.abs(dataPoints[1].x - dataPoints[0].x) / 2;
-      }
-      if (closestIndex === dataPoints.length - 1 && dataPoints.length > 1) {
-        return Math.abs(dataPoints[dataPoints.length - 1].x - dataPoints[dataPoints.length - 2].x) / 2;
-      }
-      if (closestIndex > 0) {
-        const prevX = dataPoints[closestIndex - 1].x;
-        const currX = dataPoints[closestIndex].x;
-        return Math.abs(currX - prevX) / 2;
-      }
-      return 20; // Fallback default
-    })();
-
-    // Show crosshair at last tick if mouse is within 5px to the right of the last tick position
-    const lastTickX = dataPoints[dataPoints.length - 1].x;
-    if (x > lastTickX && x <= lastTickX + 5) {
-      setCrosshairPosition(prev => {
-        const newCrosshair = {
-          x: lastTickX,
-          y: dataPoints[dataPoints.length - 1].y,
-        };
-        if (!prev || prev.x !== newCrosshair.x || prev.y !== newCrosshair.y) {
-          return newCrosshair;
-        }
-        return prev;
-      });
-      setHoveredData(prev => {
-      const idx = dataPoints.length - 1;
-        const newHovered = {
-        timePoint: timePoints[idx],
-        value: data.data.raw.target[idx],
-        bounds: idx > data.metadata.raw.last_known_step_index && data.data.raw.bounds ? {
-          upper75: data.data.raw.bounds[75].upper[idx],
-          lower75: data.data.raw.bounds[75].lower[idx],
-          upper90: data.data.raw.bounds[90].upper[idx],
-          lower90: data.data.raw.bounds[90].lower[idx],
-        } : undefined,
-        };
-        if (!prev || prev.timePoint !== newHovered.timePoint || prev.value !== newHovered.value) {
-          return newHovered;
-        }
-        return prev;
-      });
-      return;
-    }
-
-    if (minDistance <= threshold) {
+    // Snap to the closest data point. The previous threshold logic hid the
+    // tooltip whenever the cursor landed between two points, which caused
+    // touch taps to flicker on/off (a finger is never as precise as a
+    // mouse). On a line chart with discrete points, always snapping is the
+    // expected behavior.
+    if (closestIndex !== -1) {
       setCrosshairPosition(prev => {
         const newCrosshair = {
           x: dataPoints[closestIndex].x,
@@ -188,9 +151,6 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
         }
         return prev;
       });
-    } else {
-      setCrosshairPosition(prev => (prev !== null ? null : prev));
-      setHoveredData(prev => (prev !== null ? null : prev));
     }
   }, [timePoints, data]);
 
@@ -198,6 +158,13 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
   const handleChartLeave = () => {
     setCrosshairPosition(null);
     setHoveredData(null);
+    // Also clear Chart.js's own hover state so its canvas-drawn hover dots
+    // (pointHoverRadius) don't linger after our React state is cleared.
+    const chart = chartRef.current;
+    if (chart) {
+      chart.setActiveElements([]);
+      chart.update('none');
+    }
   };
 
 
@@ -282,6 +249,65 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
       window.removeEventListener('mouseup', onMouseUp);
     };
   }, [isSelecting, handleMouseUp]);
+
+    // Touch scrubbing: drag a finger across the chart to move the crosshair.
+    // The crosshair intentionally stays visible after touchend so the user
+    // can read the value without their finger covering the tooltip — matches
+    // the neighbor chart's behavior. `mouseleave` still clears it on desktop.
+    React.useEffect(() => {
+        const el = chartContainerRef.current;
+        if (!el) return;
+        const onTouch = (e: TouchEvent) => {
+            const touch = e.touches[0];
+            if (!touch) return;
+            if (e.cancelable) e.preventDefault();
+            handleChartHover({ native: { clientX: touch.clientX, clientY: touch.clientY } });
+        };
+        el.addEventListener('touchstart', onTouch, { passive: false });
+        el.addEventListener('touchmove', onTouch, { passive: false });
+        return () => {
+            el.removeEventListener('touchstart', onTouch);
+            el.removeEventListener('touchmove', onTouch);
+        };
+    }, [handleChartHover]);
+
+    // Dismiss the crosshair when the pointer moves or taps outside the plot
+    // rectangle. `mousemove` covers desktop hover (Chart.js's own onHover
+    // doesn't reliably fire in every pixel of the axis/legend margins);
+    // `click` + `touchend` cover touch taps (iOS Safari suppresses `click`
+    // on non-interactive targets, so `touchend` is the reliable path there).
+    React.useEffect(() => {
+        const isOutsidePlot = (clientX: number, clientY: number) => {
+            const chart = chartRef.current;
+            const area = chart?.chartArea;
+            if (!chart || !area) return false;
+            const canvasRect = chart.canvas.getBoundingClientRect();
+            return (
+                clientX < canvasRect.left + area.left ||
+                clientX > canvasRect.left + area.right ||
+                clientY < canvasRect.top + area.top ||
+                clientY > canvasRect.top + area.bottom
+            );
+        };
+        const onMove = (e: MouseEvent) => {
+            if (isOutsidePlot(e.clientX, e.clientY)) handleChartLeave();
+        };
+        const onClick = (e: MouseEvent) => {
+            if (isOutsidePlot(e.clientX, e.clientY)) handleChartLeave();
+        };
+        const onTouchEnd = (e: TouchEvent) => {
+            const touch = e.changedTouches[0];
+            if (touch && isOutsidePlot(touch.clientX, touch.clientY)) handleChartLeave();
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('click', onClick);
+        document.addEventListener('touchend', onTouchEnd);
+        return () => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('click', onClick);
+            document.removeEventListener('touchend', onTouchEnd);
+        };
+    }, []);
 
   const ci75Alpha = 0.3;
   const ci90Alpha = 0.25;
@@ -491,28 +517,48 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
           ticks: {
             color: textColor,
             ...(window.innerWidth < 640 && { maxTicksLimit: 6, autoSkip: false }),
-            minRotation: window.innerWidth < 640 ? 45 : 30,
-            maxRotation: window.innerWidth < 640 ? 45 : 30,
+            // No rotation — we split the label into two lines (mm/dd / hh:mm).
+            minRotation: 0,
+            maxRotation: 0,
             callback: function(value, index, values) {
               const isLast = index === values.length - 1;
+              const raw = this.getLabelForValue(Number(value));
+              // Split "mm/dd hh:mm" into ["mm/dd", "hh:mm"] so Chart.js renders
+              // two lines. Falls back to the raw label if the format changes.
+              const asTwoLines = (label: string) => {
+                const parts = label.split(' ');
+                return parts.length === 2 ? parts : label;
+              };
               if (window.innerWidth < 640) {
                 const step = Math.ceil(values.length / 6);
                 if (index % step === 0 || isLast) {
-                  return this.getLabelForValue(Number(value));
+                  return asTwoLines(raw);
                 }
                 return '';
               }
-              return this.getLabelForValue(Number(value));
+              return asTwoLines(raw);
             }
           },
           // min/max will be set below
         },
         y: {
           beginAtZero: false,
-          title: { display: true, text: 'スコア', color: textColor },
+          // Draw the y-axis title only on desktop — on mobile we mirror the
+          // ticks inside the plot area to reclaim horizontal space.
+          title: {
+            display: window.innerWidth >= 640,
+            text: 'スコア',
+            color: textColor,
+          },
           grid: { color: 'rgba(200, 200, 200, 0.2)' },
           ticks: {
             color: textColor,
+            // Render tick labels inside the plot so the axis itself is thin
+            // and the chart can be wider. `padding` nudges the label away
+            // from the axis line; `z` keeps it above gridlines.
+            mirror: true,
+            padding: 4,
+            z: 1,
             callback: function(value) {
               if (typeof value === 'number') {
                 if (value >= 100000000) {
@@ -572,41 +618,53 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
         </button>
       )}
       <div 
-        className="relative w-full h-[360px] sm:h-[400px] md:h-[600px]" 
+        ref={chartContainerRef}
+        className="relative w-full h-[60vh] min-h-[360px] sm:h-[400px] md:h-[600px]" 
         onMouseLeave={handleChartLeave}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
       >
         <Line ref={chartRef} data={chartData} options={chartOptions} />
-        {/* Range selection rectangle */}
-        {selectionRect && isSelecting && (
-          <div
-            className="absolute pointer-events-none bg-primary/20 border border-primary"
-            style={{
-              left: selectionRect.x,
-              top: getTopPercent(),
-              width: selectionRect.width,
-              height: getHeightPercent(),
-              zIndex: 5
-            }}
-          />
-        )}
-        {/* Custom crosshair and tooltip */}
-        {crosshairPosition && hoveredData && !isSelecting && (
-          <>
-            {/* Vertical crosshair line */}
+        {/* Range selection rectangle — capped to the plot rectangle so it
+            tracks the real grid on zoom/resize. */}
+        {selectionRect && isSelecting && (() => {
+          const area = chartRef.current?.chartArea;
+          if (!area) return null;
+          return (
             <div
-              className="absolute pointer-events-none"
+              className="absolute pointer-events-none bg-primary/20 border border-primary"
               style={{
-                left: crosshairPosition.x,
-                top: getTopPercent(),
-                height: getHeightPercent(),
-                width: 1,
-                backgroundColor: 'rgba(255, 99, 132, 0.8)',
-                zIndex: 10
+                left: selectionRect.x,
+                top: area.top,
+                width: selectionRect.width,
+                height: area.bottom - area.top,
+                zIndex: 5
               }}
             />
+          );
+        })()}
+        {/* Custom crosshair and tooltip */}
+        {crosshairPosition && hoveredData && (
+          <>
+            {/* Vertical crosshair line, capped to the plot rectangle */}
+            {(() => {
+              const area = chartRef.current?.chartArea;
+              if (!area) return null;
+              return (
+                <div
+                  className="absolute pointer-events-none"
+                  style={{
+                    left: crosshairPosition.x,
+                    top: area.top,
+                    height: area.bottom - area.top,
+                    width: 1,
+                    backgroundColor: 'rgba(255, 99, 132, 0.8)',
+                    zIndex: 10
+                  }}
+                />
+              );
+            })()}
             {/* Custom crosshair dots for all datasets */}
             {(() => {
               const chart = chartRef.current;

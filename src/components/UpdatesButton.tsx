@@ -20,16 +20,17 @@ const UpdatesButton: React.FC = () => {
     };
 
     return (
-        <div className="fixed bottom-4 right-4 z-50">
+        <div className="fixed bottom-4 right-6 sm:right-4 z-50">
             {/* Single button with notification dot */}
             <div className="relative">
                 <button
                     onClick={handleToggle}
-                    className="btn btn-primary shadow-lg hover:shadow-xl transition-all duration-200 rounded-full px-4 py-2 text-sm font-medium"
+                    className="btn btn-primary shadow-lg hover:shadow-xl transition-all duration-200 rounded-full w-12 h-12 p-0 sm:w-auto sm:h-auto sm:px-4 sm:py-2 text-sm font-medium"
                     title="更新情報・Twitter/X ボット"
+                    aria-label="更新情報・Twitter/X ボット"
                 >
-                    {isExpanded ? <X size={16} className="mr-1" /> : <Info size={16} className="mr-1" />}
-                    更新情報 & Bot
+                    {isExpanded ? <X size={16} /> : <Info size={16} />}
+                    <span className="hidden sm:inline ml-1">更新情報 &amp; Bot</span>
                 </button>
                 
                 {/* Red notification dot */}
@@ -74,13 +75,11 @@ const UpdatesButton: React.FC = () => {
 
                         {/* Updates section */}
                         <div className="border-l-4 border-primary pl-4">
-                            <h4 className="font-bold text-primary mb-2">モデル更新情報 (2026/01/04)</h4>
+                            <h4 className="font-bold text-primary mb-2">更新情報 (2026/05/03)</h4>
                             <div className="pl-2">
-                                <h5 className="font-bold mb-1 text-sm">プラチナスターテールの対応</h5>
+                                <h5 className="font-bold mb-1 text-sm">予測精度とモバイル表示の改善</h5>
                                 <p className="text-sm text-base-content/80">
-                                    プラチナスターテールの予測に対応しました！
-                                    開催回数が少ないため、ルールが似ているプラチナスターチームやプラチナスタータイムのデータも併せて参考にし、予測に活かしています。
-　　　　　　　　　　　　　　　　　　　　　 <strong> ただし、チーム・タイムのデータを加えても十分とは言えません。あくまで参考程度に留めてください。</strong>
+                                    類似イベントの選定において、スコアの上昇率（傾き）をより重視するよう調整し、予測精度を改善しました。モバイル表示を改善しました。
                                 </p>
                             </div>
                         </div>

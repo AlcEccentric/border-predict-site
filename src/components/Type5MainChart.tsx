@@ -277,6 +277,82 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
   const handleChartLeave = React.useCallback(() => {
     setCrosshairPosition(null);
     setHoveredData(null);
+    // Also clear Chart.js's own hover state so its canvas-drawn hover dots
+    // (hoverRadius) don't linger after our React state is cleared.
+    const chart = chartRef.current;
+    if (chart) {
+      chart.setActiveElements([]);
+      chart.update('none');
+    }
+  }, []);
+
+  // Touch scrubbing: drag a finger to move the crosshair. We dispatch a
+  // synthetic MouseEvent on the canvas so Chart.js's own event pipeline
+  // runs `onHover` with the latest captured state, avoiding any duplication
+  // of hover logic. Must be attached via a non-passive native listener so
+  // we can preventDefault to stop the page from scrolling while scrubbing.
+  // Tooltip persists after touchend so the user can read it without their
+  // finger in the way; `mouseleave` still clears it on desktop.
+  const chartContainerRef = useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    const el = chartContainerRef.current;
+    if (!el) return;
+    const forwardToChart = (e: TouchEvent) => {
+      const touch = e.touches[0];
+      const canvas = chartRef.current?.canvas;
+      if (!touch || !canvas) return;
+      if (e.cancelable) e.preventDefault();
+      canvas.dispatchEvent(new MouseEvent('mousemove', {
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+        bubbles: true,
+        cancelable: true,
+      }));
+    };
+    el.addEventListener('touchstart', forwardToChart, { passive: false });
+    el.addEventListener('touchmove', forwardToChart, { passive: false });
+    return () => {
+      el.removeEventListener('touchstart', forwardToChart);
+      el.removeEventListener('touchmove', forwardToChart);
+    };
+  }, []);
+
+  // Dismiss the crosshair when the pointer moves or taps outside the plot
+  // rectangle. `mousemove` covers desktop hover (Chart.js's own onHover
+  // doesn't reliably fire in every pixel of the axis/legend margins);
+  // `click` + `touchend` cover touch taps (iOS Safari suppresses `click`
+  // on non-interactive targets, so `touchend` is the reliable path there).
+  React.useEffect(() => {
+    const isOutsidePlot = (clientX: number, clientY: number) => {
+      const chart = chartRef.current;
+      const area = chart?.chartArea;
+      if (!chart || !area) return false;
+      const canvasRect = chart.canvas.getBoundingClientRect();
+      return (
+        clientX < canvasRect.left + area.left ||
+        clientX > canvasRect.left + area.right ||
+        clientY < canvasRect.top + area.top ||
+        clientY > canvasRect.top + area.bottom
+      );
+    };
+    const onMove = (e: MouseEvent) => {
+      if (isOutsidePlot(e.clientX, e.clientY)) handleChartLeave();
+    };
+    const onClick = (e: MouseEvent) => {
+      if (isOutsidePlot(e.clientX, e.clientY)) handleChartLeave();
+    };
+    const onTouchEnd = (e: TouchEvent) => {
+      const touch = e.changedTouches[0];
+      if (touch && isOutsidePlot(touch.clientX, touch.clientY)) handleChartLeave();
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('click', onClick);
+    document.addEventListener('touchend', onTouchEnd);
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('click', onClick);
+      document.removeEventListener('touchend', onTouchEnd);
+    };
   }, []);
 
   // Range selection mouse handlers
@@ -563,6 +639,21 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
 
         const rect = chart.canvas.getBoundingClientRect();
         const x = event.native.clientX - rect.left;
+        const y = event.native.clientY - rect.top;
+
+        // Ignore events outside the plot rectangle so edges/margins don't
+        // snap to the first/last data point.
+        const area = chart.chartArea;
+        if (area && (x < area.left || x > area.right || y < area.top || y > area.bottom)) {
+          // Sync-clear React state and Chart.js's own hover state.
+          setCrosshairPosition(prev => (prev !== null ? null : prev));
+          setHoveredData(prev => (prev !== null ? null : prev));
+          if (chart.getActiveElements().length > 0) {
+            chart.setActiveElements([]);
+            chart.update('none');
+          }
+          return;
+        }
 
         // Use Chart.js built-in methods to get the data index from pixel position
         const rawDataIndex = chart.scales.x.getValueForPixel(x);
@@ -764,15 +855,24 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
               size: isMobile ? 10 : 11
             },
             // Only reduce number of ticks on mobile
-            ...(isMobile && { maxTicksLimit: 6 })
+            ...(isMobile && { maxTicksLimit: 6 }),
+            // Split "mm/dd hh:mm" into two rows so labels stay compact.
+            // Mobile labels are already mm/dd only, so the split is a no-op there.
+            callback: function(value: number | string) {
+              const raw = (this as any).getLabelForValue(Number(value));
+              const parts = typeof raw === 'string' ? raw.split(' ') : [raw];
+              return parts.length === 2 ? parts : raw;
+            }
           }
         },
         y: {
           beginAtZero: false,
+          // On mobile we mirror the y-axis ticks inside the plot to widen
+          // the usable chart area; the title would just eat space there.
           title: {
-            display: true,
+            display: !isMobile,
             text: 'スコア',
-            color: getTextColor(), // Use theme-appropriate text color
+            color: getTextColor(),
             font: {
               size: isMobile ? 11 : 12
             }
@@ -782,6 +882,9 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
             font: {
               size: isMobile ? 10 : 11
             },
+            mirror: true,
+            padding: 4,
+            z: 1,
             callback: function(value: number | string) {
               const numValue = typeof value === 'string' ? parseFloat(value) : value;
               return formatJapaneseNumber(numValue);
@@ -839,7 +942,8 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
       </div>
       
       <div 
-        className="relative w-full h-[300px] sm:h-[400px] md:h-[600px]" 
+        ref={chartContainerRef}
+        className="relative w-full h-[60vh] min-h-[360px] sm:h-[400px] md:h-[600px]" 
         onMouseLeave={handleChartLeave}
         onMouseDown={(e) => {
           // console.log('📍 DIV Mouse Down Event:', { 
@@ -864,51 +968,46 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
       >
         <Line ref={chartRef} data={chartData} options={options} />
         
-        {/* Range selection rectangle */}
-        {selectionRect && isSelecting && (
-          <div
-            className="absolute pointer-events-none bg-primary/20 border border-primary"
-            style={{
-              left: selectionRect.x,
-              top: (() => {
-                if (window.innerWidth < 640) return '12%'; // h-[300px]
-                if (window.innerWidth < 768) return '10%';  // sm:h-[400px] 
-                return '6.5%'; // md:h-[600px]
-              })(),
-              width: selectionRect.width,
-              height: (() => {
-                if (window.innerWidth < 640) return '62%'; // h-[300px]
-                if (window.innerWidth < 768) return '61%'; // sm:h-[400px]
-                return '74%'; // md:h-[600px]
-              })(),
-              zIndex: 5
-            }}
-          />
-        )}
-        
-        {/* Custom crosshair and tooltip */}
-        {crosshairPosition && hoveredData && !isPanning && !isSelecting && (
-          <>
-            {/* Vertical crosshair line */}
+        {/* Range selection rectangle — capped to the plot rectangle so it
+            tracks the real grid on zoom/resize. */}
+        {selectionRect && isSelecting && (() => {
+          const area = chartRef.current?.chartArea;
+          if (!area) return null;
+          return (
             <div
-              className="absolute pointer-events-none"
+              className="absolute pointer-events-none bg-primary/20 border border-primary"
               style={{
-                left: crosshairPosition.x,
-                top: (() => {
-                  if (window.innerWidth < 640) return '12%'; // h-[300px]
-                  if (window.innerWidth < 768) return '10%';  // sm:h-[400px] 
-                  return '6.5%'; // md:h-[600px]
-                })(),
-                height: (() => {
-                  if (window.innerWidth < 640) return '62%'; // h-[300px]
-                  if (window.innerWidth < 768) return '61%'; // sm:h-[400px]
-                  return '74%'; // md:h-[600px]
-                })(),
-                width: 1,
-                backgroundColor: 'rgba(255, 99, 132, 0.8)',
-                zIndex: 10
+                left: selectionRect.x,
+                top: area.top,
+                width: selectionRect.width,
+                height: area.bottom - area.top,
+                zIndex: 5
               }}
             />
+          );
+        })()}
+        
+        {/* Custom crosshair and tooltip */}
+        {crosshairPosition && hoveredData && (
+          <>
+            {/* Vertical crosshair line, capped to the plot rectangle */}
+            {(() => {
+              const area = chartRef.current?.chartArea;
+              if (!area) return null;
+              return (
+                <div
+                  className="absolute pointer-events-none"
+                  style={{
+                    left: crosshairPosition.x,
+                    top: area.top,
+                    height: area.bottom - area.top,
+                    width: 1,
+                    backgroundColor: 'rgba(255, 99, 132, 0.8)',
+                    zIndex: 10
+                  }}
+                />
+              );
+            })()}
             
             {/* Intersection dots */}
             {hoveredData.values.map((item, index) => {

@@ -50,171 +50,174 @@ const BorderTabs: React.FC<BorderTabsProps> = ({
     };
 
     return (
-        <CardContainer className="mb-8">
-            <div className="flex flex-col gap-4">
-                {/* Tabs */}
-                <div className="tabs tabs-boxed w-full">
-                    <a 
-                        className={`tab flex-1 ${
-                            activeTab === '100'
-                                ? 'tab-active border-b-4 border-primary font-bold'
-                                : ''
-                        }`}
-                        onClick={() => setActiveTab('100')}
-                    >
-                        100位
-                    </a>
-                    <a 
-                        className={`tab flex-1 ${
-                            activeTab === '2500'
-                                ? 'tab-active border-b-4 border-primary font-bold'
-                                : ''
-                        }`}
-                        onClick={() => setActiveTab('2500')}
-                    >
-                        2500位
-                    </a>
-                </div>
+        <>
+            <CardContainer className="mb-4">
+                <div className="flex flex-col gap-4">
+                    {/* Tabs */}
+                    <div className="tabs tabs-boxed w-full">
+                        <a 
+                            className={`tab flex-1 ${
+                                activeTab === '100'
+                                    ? 'tab-active border-b-4 border-primary font-bold'
+                                    : ''
+                            }`}
+                            onClick={() => setActiveTab('100')}
+                        >
+                            100位
+                        </a>
+                        <a 
+                            className={`tab flex-1 ${
+                                activeTab === '2500'
+                                    ? 'tab-active border-b-4 border-primary font-bold'
+                                    : ''
+                            }`}
+                            onClick={() => setActiveTab('2500')}
+                        >
+                            2500位
+                        </a>
+                    </div>
 
-                <div className="text-center space-y-2">
-                    {/* Final Score */}
-                    <h3 className="text-lg sm:text-2xl font-bold flex items-center justify-center gap-2 flex-wrap">
-                        <span>{activeTab}位の予想最終スコア: {finalScore.toLocaleString()}</span>
-                        <div className="tooltip" data-tip="予測精度について詳しく見る">
-                            <button 
-                                className="btn btn-xs btn-outline btn-primary"
-                                onClick={(e) => {
-                                    e.preventDefault();
-                                    const element = document.getElementById('prediction-accuracy');
-                                    if (element) {
-                                        element.scrollIntoView({ behavior: 'smooth' });
-                                    }
-                                }}
-                            >
-                                <Info className="w-3 h-3" />
-                                精度
-                            </button>
-                        </div>
-                    </h3>
-
-                    {/* Error Ranges Bubble - subtle style */}
-                    <div className="inline-block rounded-lg bg-base-100 border border-base-300 px-3 py-2 text-base-content font-normal shadow-sm mt-2">
-                        <div className="flex flex-col gap-1 items-center">
-                            <div className="text-sm sm:text-base">
-                                <span className="mr-2 text-base-content/70">90%信頼区間:</span>
-                                <span>
-                                    {(() => {
-                                        const prediction = activeTab === '100' ? prediction100 : prediction2500;
-                                        const bounds = prediction.data.raw.bounds;
-                                        if (bounds && bounds[90]) {
-                                            return `${Math.round(bounds[90].lower.slice(-1)[0]).toLocaleString()} ～ ${Math.round(bounds[90].upper.slice(-1)[0]).toLocaleString()}`;
+                    <div className="text-center space-y-2">
+                        {/* Final Score */}
+                        <h3 className="text-lg sm:text-2xl font-bold flex items-center justify-center gap-2 flex-wrap">
+                            <span>{activeTab}位の予想最終スコア: {finalScore.toLocaleString()}</span>
+                            <div className="tooltip" data-tip="予測精度について詳しく見る">
+                                <button 
+                                    className="btn btn-xs btn-outline btn-primary"
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        const element = document.getElementById('prediction-accuracy');
+                                        if (element) {
+                                            element.scrollIntoView({ behavior: 'smooth' });
                                         }
-                                        return `${Math.round(finalScore * 0.95).toLocaleString()} ～ ${Math.round(finalScore * 1.05).toLocaleString()}`;
-                                    })()} 
-                                </span>
+                                    }}
+                                >
+                                    <Info className="w-3 h-3" />
+                                    精度
+                                </button>
                             </div>
-                            <div className="text-sm sm:text-base">
-                                <span className="mr-2 text-base-content/70">75%信頼区間:</span>
-                                <span>
-                                    {(() => {
-                                        const prediction = activeTab === '100' ? prediction100 : prediction2500;
-                                        const bounds = prediction.data.raw.bounds;
-                                        if (bounds && bounds[75]) {
-                                            return `${Math.round(bounds[75].lower.slice(-1)[0]).toLocaleString()} ～ ${Math.round(bounds[75].upper.slice(-1)[0]).toLocaleString()}`;
-                                        }
-                                        return `${Math.round(finalScore * 0.9).toLocaleString()} ～ ${Math.round(finalScore * 1.1).toLocaleString()}`;
-                                    })()} 
-                                </span>
+                        </h3>
+
+                        {/* Error Ranges Bubble - subtle style */}
+                        <div className="inline-block rounded-lg bg-base-100 border border-base-300 px-3 py-2 text-base-content font-normal shadow-sm mt-2">
+                            <div className="flex flex-col gap-1 items-center">
+                                <div className="text-sm sm:text-base">
+                                    <span className="mr-2 text-base-content/70">90%信頼区間:</span>
+                                    <span>
+                                        {(() => {
+                                            const prediction = activeTab === '100' ? prediction100 : prediction2500;
+                                            const bounds = prediction.data.raw.bounds;
+                                            if (bounds && bounds[90]) {
+                                                return `${Math.round(bounds[90].lower.slice(-1)[0]).toLocaleString()} ～ ${Math.round(bounds[90].upper.slice(-1)[0]).toLocaleString()}`;
+                                            }
+                                            return `${Math.round(finalScore * 0.95).toLocaleString()} ～ ${Math.round(finalScore * 1.05).toLocaleString()}`;
+                                        })()} 
+                                    </span>
+                                </div>
+                                <div className="text-sm sm:text-base">
+                                    <span className="mr-2 text-base-content/70">75%信頼区間:</span>
+                                    <span>
+                                        {(() => {
+                                            const prediction = activeTab === '100' ? prediction100 : prediction2500;
+                                            const bounds = prediction.data.raw.bounds;
+                                            if (bounds && bounds[75]) {
+                                                return `${Math.round(bounds[75].lower.slice(-1)[0]).toLocaleString()} ～ ${Math.round(bounds[75].upper.slice(-1)[0]).toLocaleString()}`;
+                                            }
+                                            return `${Math.round(finalScore * 0.9).toLocaleString()} ～ ${Math.round(finalScore * 1.1).toLocaleString()}`;
+                                        })()} 
+                                    </span>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Main Chart */}
-                <div className="relative w-full">
-                    <AnimatePresence mode="popLayout">
-                        <motion.div
-                            layout
-                            transition={{ type: "spring", stiffness: 100, damping: 20, duration: 0.5 }}
-                            className="w-full"
-                        >
-                            <MainChart
-                                key={activeTab}
-                                data={activeTab === '100' ? prediction100 : prediction2500}
-                                startAt={startAt}
-                                theme={theme}
-                            />
-                        </motion.div>
-                    </AnimatePresence>
-                </div>
-
-                {/* Neighbors Toggle */}
-                <div className="flex justify-center sm:justify-end">
-                    <label className="cursor-pointer label gap-2 flex-wrap justify-center sm:justify-end">
-                        <div className="flex items-center gap-2">
-                            <span className="label-text text-center sm:text-left">近傍(類似)イベント表示</span>
-                            <div
-                                className="tooltip"
-                                data-tip="近傍イベントは現在のイベントと傾向が似ているイベントです。詳細はページ下部の「解説」内「近傍イベントとは」をご覧ください"
-                            >
-                                <span className="cursor-pointer text-info">
-                                    <Info className="w-4 h-4 text-info cursor-pointer" />
-                                </span>
-                            </div>
-                        </div>
-                        <input
-                            type="checkbox"
-                            className="toggle toggle-primary"
-                            checked={showNeighbors}
-                            onChange={handleNeighborToggle}
-                        />
-                    </label>
-                </div>
-
-                {/* Neighbor Section */}
-                <div className="relative w-full">
-                    <AnimatePresence>
-                        {showNeighbors && (
+                    {/* Main Chart */}
+                    <div className="relative w-full">
+                        <AnimatePresence mode="popLayout">
                             <motion.div
-                                key="neighbors"
-                                ref={neighborSectionRef}
-                                initial={{ opacity: 0, height: 0, y: -20 }}
-                                animate={{ opacity: 1, height: "auto", y: 0 }}
-                                exit={{ opacity: 0, height: 0, y: -20 }}
-                                transition={{ 
-                                    type: "spring", 
-                                    stiffness: 300, 
-                                    damping: 30,
-                                    height: { duration: 0.4 },
-                                    opacity: { duration: 0.3 }
-                                }}
-                                className="w-full overflow-hidden"
+                                layout
+                                transition={{ type: "spring", stiffness: 100, damping: 20, duration: 0.5 }}
+                                className="w-full"
                             >
-                                <NeighborSection
-                                    normalizedData={activeTab === '100' 
-                                        ? prediction100.data.normalized 
-                                        : prediction2500.data.normalized}
-                                    lastKnownIndex={activeTab === '100'
-                                        ? prediction100.metadata.normalized.last_known_step_index
-                                        : prediction2500.metadata.normalized.last_known_step_index}
-                                    neighborMetadata={activeTab === '100'
-                                        ? prediction100.metadata.normalized.neighbors
-                                        : prediction2500.metadata.normalized.neighbors}
-                                    currentEventMetadata={{
-                                        name: activeTab === '100' ? prediction100.metadata.raw.name : prediction2500.metadata.raw.name,
-                                        id: activeTab === '100' ? prediction100.metadata.raw.id : prediction2500.metadata.raw.id,
-                                        length: activeTab === '100' 
-                                            ? prediction100.data.raw.target.length 
-                                            : prediction2500.data.raw.target.length
-                                    }}
+                                <MainChart
+                                    key={activeTab}
+                                    data={activeTab === '100' ? prediction100 : prediction2500}
+                                    startAt={startAt}
                                     theme={theme}
                                 />
                             </motion.div>
-                        )}
-                    </AnimatePresence>
+                        </AnimatePresence>
+                    </div>
+
+                    {/* Neighbors Toggle */}
+                    <div className="flex justify-center sm:justify-end">
+                        <label className="cursor-pointer label gap-2 flex-wrap justify-center sm:justify-end">
+                            <div className="flex items-center gap-2">
+                                <span className="label-text text-center sm:text-left">近傍(類似)イベント表示</span>
+                                <div
+                                    className="tooltip"
+                                    data-tip="近傍イベントは現在のイベントと傾向が似ているイベントです。詳細はページ下部の「解説」内「近傍イベントとは」をご覧ください"
+                                >
+                                    <span className="cursor-pointer text-info">
+                                        <Info className="w-4 h-4 text-info cursor-pointer" />
+                                    </span>
+                                </div>
+                            </div>
+                            <input
+                                type="checkbox"
+                                className="toggle toggle-primary"
+                                checked={showNeighbors}
+                                onChange={handleNeighborToggle}
+                            />
+                        </label>
+                    </div>
                 </div>
+            </CardContainer>
+
+            {/* Neighbor Section — rendered as a peer card so it gets the same
+                width as the main chart instead of being nested and narrower. */}
+            <div className="relative w-full mb-8">
+                <AnimatePresence>
+                    {showNeighbors && (
+                        <motion.div
+                            key="neighbors"
+                            ref={neighborSectionRef}
+                            initial={{ opacity: 0, height: 0, y: -20 }}
+                            animate={{ opacity: 1, height: "auto", y: 0 }}
+                            exit={{ opacity: 0, height: 0, y: -20 }}
+                            transition={{ 
+                                type: "spring", 
+                                stiffness: 300, 
+                                damping: 30,
+                                height: { duration: 0.4 },
+                                opacity: { duration: 0.3 }
+                            }}
+                            className="w-full overflow-hidden"
+                        >
+                            <NeighborSection
+                                normalizedData={activeTab === '100' 
+                                    ? prediction100.data.normalized 
+                                    : prediction2500.data.normalized}
+                                lastKnownIndex={activeTab === '100'
+                                    ? prediction100.metadata.normalized.last_known_step_index
+                                    : prediction2500.metadata.normalized.last_known_step_index}
+                                neighborMetadata={activeTab === '100'
+                                    ? prediction100.metadata.normalized.neighbors
+                                    : prediction2500.metadata.normalized.neighbors}
+                                currentEventMetadata={{
+                                    name: activeTab === '100' ? prediction100.metadata.raw.name : prediction2500.metadata.raw.name,
+                                    id: activeTab === '100' ? prediction100.metadata.raw.id : prediction2500.metadata.raw.id,
+                                    length: activeTab === '100' 
+                                        ? prediction100.data.raw.target.length 
+                                        : prediction2500.data.raw.target.length
+                                }}
+                                theme={theme}
+                            />
+                        </motion.div>
+                    )}
+                </AnimatePresence>
             </div>
-        </CardContainer>
+        </>
     );
 };
 

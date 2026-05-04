@@ -107,17 +107,8 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
             </span>
         );
     };
-    function getTopPercent() {
-        if (window.innerWidth < 640) return '7.2%';
-        if (window.innerWidth < 768) return '4.8%';
-        return '3.8%';
-    }
-    function getHeightPercent() {
-        if (window.innerWidth < 640) return '62.5%';
-        if (window.innerWidth < 768) return '75.7%';
-        return '80.1%';
-    }
     const chartRef = useRef<ChartJS<'line'>>(null);
+    const chartContainerRef = useRef<HTMLDivElement>(null);
     const [crosshairPosition, setCrosshairPosition] = useState<{ x: number; y: number } | null>(null);
     const [hoveredData, setHoveredData] = useState<{ 
         percentagePoint: number; 
@@ -240,21 +231,31 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
         const rect = chart.canvas.getBoundingClientRect();
         const mouseX = event.native.clientX;
         const mouseY = event.native.clientY;
+        const x = mouseX - rect.left;
+        const y = mouseY - rect.top;
 
-        // Hide crosshair if mouse is outside the visible chart area
+        // Hide crosshair if the pointer is outside the plot rectangle. Using
+        // `chartArea` instead of the canvas bounds prevents the crosshair
+        // from snapping to an edge when the user clicks the axis margin.
+        const area = chart.chartArea;
         if (
-            mouseX < rect.left ||
-            mouseX > rect.right ||
-            mouseY < rect.top ||
-            mouseY > rect.bottom
+            !area ||
+            x < area.left ||
+            x > area.right ||
+            y < area.top ||
+            y > area.bottom
         ) {
             setCrosshairPosition(prev => (prev !== null ? null : prev));
             setHoveredData(prev => (prev !== null ? null : prev));
+            // Also clear Chart.js's own hover dots.
+            if (chart.getActiveElements().length > 0) {
+                chart.setActiveElements([]);
+                chart.update('none');
+            }
             return;
         }
 
-        const x = mouseX - rect.left;
-        const relX = x - chart.chartArea.left;
+        const relX = x - area.left;
 
         // Use zoomed range for tooltip
         const dataLength = zoomState ? zoomState.max - zoomState.min + 1 : percentagePoints.length;
@@ -306,6 +307,15 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
         const neighborsSorted = values.filter(v => !v.isTarget).sort((a, b) => b.value - a.value);
         values = target ? [target, ...neighborsSorted] : neighborsSorted;
 
+        // If no series has data at this index (e.g. the leftmost tick before
+        // any neighbor has started), suppress the tooltip rather than showing
+        // an empty one.
+        if (values.length === 0) {
+            setCrosshairPosition(prev => (prev !== null ? null : prev));
+            setHoveredData(prev => (prev !== null ? null : prev));
+            return;
+        }
+
         setCrosshairPosition({ x: snappedX, y: mouseY - rect.top });
         setHoveredData({
             percentagePoint: percentPoints[dataIndex],
@@ -316,7 +326,80 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
     const handleChartLeave = () => {
         setCrosshairPosition(null);
         setHoveredData(null);
+        // Also clear Chart.js's own hover state so its canvas-drawn hover dots
+        // (pointHoverRadius) don't linger after our React state is cleared.
+        const chart = chartRef.current;
+        if (chart) {
+            chart.setActiveElements([]);
+            chart.update('none');
+        }
     };
+
+    // Touch scrubbing: drag a finger to move the crosshair. We dispatch a
+    // synthetic mousemove on the chart canvas so Chart.js's own event
+    // pipeline runs `onHover` with the latest captured state.
+    // Tooltip persists after touchend so the user can read it without their
+    // finger covering it; `mouseleave` still clears it on desktop.
+    React.useEffect(() => {
+        const el = chartContainerRef.current;
+        if (!el) return;
+        const forwardToChart = (e: TouchEvent) => {
+            const touch = e.touches[0];
+            const canvas = chartRef.current?.canvas;
+            if (!touch || !canvas) return;
+            if (e.cancelable) e.preventDefault();
+            canvas.dispatchEvent(new MouseEvent('mousemove', {
+                clientX: touch.clientX,
+                clientY: touch.clientY,
+                bubbles: true,
+                cancelable: true,
+            }));
+        };
+        el.addEventListener('touchstart', forwardToChart, { passive: false });
+        el.addEventListener('touchmove', forwardToChart, { passive: false });
+        return () => {
+            el.removeEventListener('touchstart', forwardToChart);
+            el.removeEventListener('touchmove', forwardToChart);
+        };
+    }, []);
+
+    // Dismiss the crosshair when the pointer moves or taps outside the plot
+    // rectangle. `mousemove` covers desktop hover (Chart.js's own onHover
+    // doesn't reliably fire in every pixel of the axis/legend margins);
+    // `click` + `touchend` cover touch taps (iOS Safari suppresses `click`
+    // on non-interactive targets, so `touchend` is the reliable path there).
+    React.useEffect(() => {
+        const isOutsidePlot = (clientX: number, clientY: number) => {
+            const chart = chartRef.current;
+            const area = chart?.chartArea;
+            if (!chart || !area) return false;
+            const canvasRect = chart.canvas.getBoundingClientRect();
+            return (
+                clientX < canvasRect.left + area.left ||
+                clientX > canvasRect.left + area.right ||
+                clientY < canvasRect.top + area.top ||
+                clientY > canvasRect.top + area.bottom
+            );
+        };
+        const onMove = (e: MouseEvent) => {
+            if (isOutsidePlot(e.clientX, e.clientY)) handleChartLeave();
+        };
+        const onClick = (e: MouseEvent) => {
+            if (isOutsidePlot(e.clientX, e.clientY)) handleChartLeave();
+        };
+        const onTouchEnd = (e: TouchEvent) => {
+            const touch = e.changedTouches[0];
+            if (touch && isOutsidePlot(touch.clientX, touch.clientY)) handleChartLeave();
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('click', onClick);
+        document.addEventListener('touchend', onTouchEnd);
+        return () => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('click', onClick);
+            document.removeEventListener('touchend', onTouchEnd);
+        };
+    }, []);
 
     // Range selection mouse handlers
     const handleMouseDown = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
@@ -531,6 +614,12 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                 },
                 ticks: {
                     color: textColor,
+                    // Draw the y-axis labels inside the plot area so the chart
+                    // itself can be wider. Small padding nudges them off the
+                    // axis line, z: 1 places them above gridlines.
+                    mirror: true,
+                    padding: 4,
+                    z: 1,
                     callback: function(value: number | string) {
                         const numValue = typeof value === 'string' ? parseFloat(value) : value;
                         return formatJapaneseNumber(numValue);
@@ -564,8 +653,9 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
     return (
         <CardContainer className="mb-4">
             <div className="flex flex-col gap-4">
-                <div className="h-[320px] sm:h-[500px] md:h-[600px] w-full">
+                <div className="h-[60vh] min-h-[360px] sm:h-[500px] md:h-[600px] w-full">
                     <div
+                        ref={chartContainerRef}
                         className="relative w-full h-full"
                         onMouseLeave={handleChartLeave}
                         onMouseDown={handleMouseDown}
@@ -590,19 +680,24 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                                 <span className="inline-block align-middle mr-1" style={{ fontSize: '1em' }}>⤺</span> 全体表示
                             </button>
                         )}
-                        {/* Range selection rectangle */}
-                        {selectionRect && isSelecting && (
-                            <div
-                                className="absolute pointer-events-none bg-primary/20 border border-primary"
-                                style={{
-                                    left: selectionRect.x,
-                                    top: getTopPercent(),
-                                    width: selectionRect.width,
-                                    height: getHeightPercent(),
-                                    zIndex: 5
-                                }}
-                            />
-                        )}
+                        {/* Range selection rectangle — capped to the plot
+                            rectangle so it tracks the real grid on zoom/resize. */}
+                        {selectionRect && isSelecting && (() => {
+                            const area = chartRef.current?.chartArea;
+                            if (!area) return null;
+                            return (
+                                <div
+                                    className="absolute pointer-events-none bg-primary/20 border border-primary"
+                                    style={{
+                                        left: selectionRect.x,
+                                        top: area.top,
+                                        width: selectionRect.width,
+                                        height: area.bottom - area.top,
+                                        zIndex: 5
+                                    }}
+                                />
+                            );
+                        })()}
                         <Line
                             ref={chartRef}
                             data={chartData}
@@ -635,18 +730,24 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                         {/* Custom crosshair and tooltip */}
                         {crosshairPosition && hoveredData && (
                             <>
-                                {/* Vertical crosshair line */}
-                                <div
-                                    className="absolute pointer-events-none"
-                                    style={{
-                                        left: crosshairPosition.x,
-                                        top: getTopPercent(),
-                                        height: getHeightPercent(),
-                                        width: 1,
-                                        backgroundColor: 'rgba(255, 99, 132, 0.8)',
-                                        zIndex: 10
-                                    }}
-                                />
+                                {/* Vertical crosshair line, capped to the plot rectangle */}
+                                {(() => {
+                                    const area = chartRef.current?.chartArea;
+                                    if (!area) return null;
+                                    return (
+                                        <div
+                                            className="absolute pointer-events-none"
+                                            style={{
+                                                left: crosshairPosition.x,
+                                                top: area.top,
+                                                height: area.bottom - area.top,
+                                                width: 1,
+                                                backgroundColor: 'rgba(255, 99, 132, 0.8)',
+                                                zIndex: 10
+                                            }}
+                                        />
+                                    );
+                                })()}
                                 {/* Custom crosshair dots */}
                                 {hoveredData.values.map((item, index) => {
                                     const chart = chartRef.current;
@@ -751,9 +852,9 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
 
                 <div className="bg-base-100 rounded-xl p-4">
                     <h3 className="text-lg font-bold mb-4">近傍イベント</h3>
-                    <ul className="w-full p-0 gap-2 space-y-2">
+                    <ul className="w-full p-0 space-y-1">
                         <li>
-                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-3 bg-base-200 rounded-lg hover:bg-base-200">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 py-2 px-3 bg-base-200 rounded-lg hover:bg-base-200">
                                 <div className="flex-1 min-w-0">
                                     <div className="font-medium text-sm flex items-center gap-2">
                                         <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS.target }} />
@@ -771,7 +872,7 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                                         }}>{eventMetadata.name}</span>
                                     </div>
                                     <div className="text-sm text-base-content/70 mt-1 sm:ml-0 ml-5">
-                                        <div className="flex flex-wrap gap-2">
+                                        <div className="flex flex-wrap gap-x-2 gap-y-0.5">
                                             <span>開催日数: {((eventMetadata.length - 1) * 30 / (24 * 60)).toFixed(2)}日</span>
                                             <span className="flex flex-row flex-wrap items-center gap-1 min-w-0">
                                                 <span className="truncate block max-w-full">最終スコア: {formatScore(normalizedData.target[normalizedData.target.length - 1])}</span>
@@ -800,7 +901,7 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                         </li>
                         {Object.entries(neighborMetadata).map(([key, neighbor], index) => (
                             <li key={key}>
-                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-3 bg-base-200 rounded-lg hover:bg-base-200">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 py-2 px-3 bg-base-200 rounded-lg hover:bg-base-200">
                                     <div className="flex-1 min-w-0">
                                         <div className="font-medium text-sm flex items-center gap-2">
                                             <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: COLORS.neighbors[index] }} />
@@ -818,7 +919,7 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
                                             }}>{neighbor.name}</span>
                                         </div>
                                         <div className="text-sm text-base-content/70 mt-1 sm:ml-0 ml-5">
-                                            <div className="flex flex-wrap gap-2">
+                                            <div className="flex flex-wrap gap-x-2 gap-y-0.5">
                                                 <span>開催日数: {((neighbor.raw_length - 1) * 30 / (24 * 60)).toFixed(2)}日</span>
                                                 <span className="flex flex-row flex-wrap items-center gap-1 min-w-0">
                                                     <span className="truncate block max-w-full">最終スコア: {formatScore(normalizedData.neighbors[key][normalizedData.neighbors[key].length - 1])}</span>

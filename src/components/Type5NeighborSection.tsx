@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { Line } from 'react-chartjs-2';
 import { ChartOptions, InteractionItem } from 'chart.js';
 import zoomPlugin from 'chartjs-plugin-zoom';
@@ -54,6 +54,7 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
     eventName
 }) => {
     const chartRef = useRef<any>(null);
+    const chartContainerRef = useRef<HTMLDivElement>(null);
     const [activeBorder, setActiveBorder] = useState<'100' | '1000'>('100');
     const [visibleNeighbors, setVisibleNeighbors] = useState<{ [key: string]: boolean }>({
         target: false,
@@ -195,6 +196,21 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
 
         const rect = chart.canvas.getBoundingClientRect();
         const x = event.native.clientX - rect.left;
+        const y = event.native.clientY - rect.top;
+
+        // Ignore events outside the plot rectangle so edges/margins don't
+        // snap to the first/last data point.
+        const area = chart.chartArea;
+        if (area && (x < area.left || x > area.right || y < area.top || y > area.bottom)) {
+            // Sync-clear React state and Chart.js's own hover state.
+            setCrosshairPosition(prev => (prev !== null ? null : prev));
+            setHoveredData(prev => (prev !== null ? null : prev));
+            if (chart.getActiveElements().length > 0) {
+                chart.setActiveElements([]);
+                chart.update('none');
+            }
+            return;
+        }
 
         // Use Chart.js built-in methods to get the data index from pixel position
         const rawDataIndex = chart.scales.x.getValueForPixel(x);
@@ -233,6 +249,14 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                 }
             });
 
+            // If no series has data at this index, suppress the tooltip
+            // rather than showing an empty one.
+            if (values.length === 0) {
+                setCrosshairPosition(null);
+                setHoveredData(null);
+                return;
+            }
+
             setHoveredData({
                 percentagePoint: percentagePoints[dataIndex],
                 values: values.sort((a, b) => b.value - a.value)
@@ -246,7 +270,80 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
     const handleChartLeave = useCallback(() => {
         setCrosshairPosition(null);
         setHoveredData(null);
+        // Also clear Chart.js's own hover state so its canvas-drawn hover dots
+        // (hoverRadius) don't linger after our React state is cleared.
+        const chart = chartRef.current;
+        if (chart) {
+            chart.setActiveElements([]);
+            chart.update('none');
+        }
     }, []);
+
+    // Touch scrubbing: drag a finger to move the crosshair. We dispatch a
+    // synthetic mousemove on the chart canvas so Chart.js's own event
+    // pipeline runs `onHover` with the latest captured state.
+    // Tooltip persists after touchend so the user can read it without their
+    // finger covering it; `mouseleave` still clears it on desktop.
+    useEffect(() => {
+        const el = chartContainerRef.current;
+        if (!el) return;
+        const forwardToChart = (e: TouchEvent) => {
+            const touch = e.touches[0];
+            const canvas = chartRef.current?.canvas;
+            if (!touch || !canvas) return;
+            if (e.cancelable) e.preventDefault();
+            canvas.dispatchEvent(new MouseEvent('mousemove', {
+                clientX: touch.clientX,
+                clientY: touch.clientY,
+                bubbles: true,
+                cancelable: true,
+            }));
+        };
+        el.addEventListener('touchstart', forwardToChart, { passive: false });
+        el.addEventListener('touchmove', forwardToChart, { passive: false });
+        return () => {
+            el.removeEventListener('touchstart', forwardToChart);
+            el.removeEventListener('touchmove', forwardToChart);
+        };
+    }, []);
+
+    // Dismiss the crosshair when the pointer moves or taps outside the plot
+    // rectangle. `mousemove` covers desktop hover (Chart.js's own onHover
+    // doesn't reliably fire in every pixel of the axis/legend margins);
+    // `click` + `touchend` cover touch taps (iOS Safari suppresses `click`
+    // on non-interactive targets, so `touchend` is the reliable path there).
+    useEffect(() => {
+        const isOutsidePlot = (clientX: number, clientY: number) => {
+            const chart = chartRef.current;
+            const area = chart?.chartArea;
+            if (!chart || !area) return false;
+            const canvasRect = chart.canvas.getBoundingClientRect();
+            return (
+                clientX < canvasRect.left + area.left ||
+                clientX > canvasRect.left + area.right ||
+                clientY < canvasRect.top + area.top ||
+                clientY > canvasRect.top + area.bottom
+            );
+        };
+        const onMove = (e: MouseEvent) => {
+            if (isOutsidePlot(e.clientX, e.clientY)) handleChartLeave();
+        };
+        const onClick = (e: MouseEvent) => {
+            if (isOutsidePlot(e.clientX, e.clientY)) handleChartLeave();
+        };
+        const onTouchEnd = (e: TouchEvent) => {
+            const touch = e.changedTouches[0];
+            if (touch && isOutsidePlot(touch.clientX, touch.clientY)) handleChartLeave();
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('click', onClick);
+        document.addEventListener('touchend', onTouchEnd);
+        return () => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('click', onClick);
+            document.removeEventListener('touchend', onTouchEnd);
+        };
+    }, [handleChartLeave]);
 
     // Range selection mouse handlers
     const handleMouseDown = React.useCallback((event: React.MouseEvent<HTMLDivElement>) => {
@@ -484,7 +581,9 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                 y: {
                     beginAtZero: false,
                     title: {
-                        display: true,
+                        // Hide the y-axis title on mobile so the mirrored ticks
+                        // can reclaim the horizontal space.
+                        display: !isMobile,
                         text: '正規化されたスコア',
                         color: getTextColor(), // Use theme-appropriate text color
                         font: {
@@ -496,6 +595,9 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                         font: {
                             size: isMobile ? 9 : 10
                         },
+                        mirror: true,
+                        padding: 4,
+                        z: 1,
                         callback: function(value: number | string) {
                             const numValue = typeof value === 'string' ? parseFloat(value) : value;
                             return formatJapaneseNumber(numValue);
@@ -591,7 +693,8 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
 
                 {/* Chart */}
                 <div 
-                    className="relative h-[300px] sm:h-[500px] md:h-[600px] w-full" 
+                    ref={chartContainerRef}
+                    className="relative h-[60vh] min-h-[360px] sm:h-[500px] md:h-[600px] w-full" 
                     onMouseLeave={handleChartLeave}
                     onMouseDown={handleMouseDown}
                     onMouseMove={handleMouseMove}
@@ -603,52 +706,46 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                         options={options} 
                     />
                     
-                    {/* Range selection rectangle */}
-                    {selectionRect && isSelecting && (
-                        <div
-                            className="absolute pointer-events-none bg-primary/20 border border-primary"
-                            style={{
-                                left: selectionRect.x,
-                                top: (() => {
-                                    if (window.innerWidth < 640) return '8%'; // h-[300px]
-                                    if (window.innerWidth < 768) return '5.2%';  // sm:h-[500px] 
-                                    return '4.5%'; // md:h-[600px]
-                                })(),
-                                width: selectionRect.width,
-                                height: (() => {
-                                    if (window.innerWidth < 640) return '77%'; // h-[300px]
-                                    if (window.innerWidth < 768) return '83%'; // sm:h-[500px]
-                                    return '85.5%'; // md:h-[600px]
-                                })(),
-                                zIndex: 5
-                            }}
-                        />
-                    )}
+                    {/* Range selection rectangle — capped to the plot
+                        rectangle so it tracks the real grid on zoom/resize. */}
+                    {selectionRect && isSelecting && (() => {
+                        const area = chartRef.current?.chartArea;
+                        if (!area) return null;
+                        return (
+                            <div
+                                className="absolute pointer-events-none bg-primary/20 border border-primary"
+                                style={{
+                                    left: selectionRect.x,
+                                    top: area.top,
+                                    width: selectionRect.width,
+                                    height: area.bottom - area.top,
+                                    zIndex: 5
+                                }}
+                            />
+                        );
+                    })()}
                     
                     {/* Custom crosshair and tooltip */}
                     {crosshairPosition && hoveredData && !isPanning && !isSelecting && (
                         <>
-                            {/* Vertical crosshair line */}
-                            <div
-                                className="absolute pointer-events-none"
-                                style={{
-                                    left: crosshairPosition.x,
-                                    top: (() => {
-                                        if (window.innerWidth < 640) return '8%'; // h-[300px]
-                                        if (window.innerWidth < 768) return '5.2%';  // sm:h-[500px] 
-                                        return '4.5%'; // md:h-[600px]
-                                    })(),
-                                    height: (() => {
-                                        if (window.innerWidth < 640) return '77%'; // h-[300px]
-                                        if (window.innerWidth < 768) return '83%'; // sm:h-[500px]
-                                        return '85.5%'; // md:h-[600px]
-                                    })(),
-                                    width: 1,
-                                    backgroundColor: 'rgba(255, 99, 132, 0.8)',
-                                    zIndex: 10
-                                }}
-                            />
-                            
+                            {/* Vertical crosshair line, capped to the plot rectangle */}
+                            {(() => {
+                                const area = chartRef.current?.chartArea;
+                                if (!area) return null;
+                                return (
+                                    <div
+                                        className="absolute pointer-events-none"
+                                        style={{
+                                            left: crosshairPosition.x,
+                                            top: area.top,
+                                            height: area.bottom - area.top,
+                                            width: 1,
+                                            backgroundColor: 'rgba(255, 99, 132, 0.8)',
+                                            zIndex: 10
+                                        }}
+                                    />
+                                );
+                            })()}
                             {/* Intersection dots */}
                             {hoveredData.values.map((item, index) => {
                                 const chart = chartRef.current;
@@ -754,9 +851,9 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                 {/* Neighbors List */}
                 <div className="bg-base-100 rounded-xl p-4">
                     <h3 className="text-lg font-bold mb-4">近傍イベント</h3>
-                    <ul className="w-full p-0 gap-2 space-y-2">
+                    <ul className="w-full p-0 space-y-1">
                         <li>
-                            <div className="flex items-center gap-2 p-3 bg-base-200 rounded-lg hover:bg-base-200">
+                            <div className="flex items-center gap-2 py-2 px-3 bg-base-200 rounded-lg hover:bg-base-200">
                                 <div className="flex-1 min-w-0">
                                     {/* Mobile layout */}
                                     <div className="block sm:hidden">
@@ -821,7 +918,7 @@ const Type5NeighborSection: React.FC<Type5NeighborSectionProps> = ({
                         </li>
                         {Object.entries(currentPrediction.metadata.normalized.neighbors).map(([key, neighbor], index) => (
                             <li key={key}>
-                                <div className="flex items-center gap-2 p-3 bg-base-200 rounded-lg hover:bg-base-200">
+                                <div className="flex items-center gap-2 py-2 px-3 bg-base-200 rounded-lg hover:bg-base-200">
                                     <div className="flex-1 min-w-0">
                                         {/* Mobile layout */}
                                         <div className="block sm:hidden">

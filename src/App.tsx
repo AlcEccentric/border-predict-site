@@ -7,7 +7,7 @@ import BorderTabs from './components/BorderTabs';
 import Type5EventPage from './components/Type5EventPage';
 import FAQ from './components/FAQ';
 import CardContainer from './components/CardContainer';
-import ThemeSelector from './components/ThemeSelector';
+import Banner, { LIGHT_THEME, DARK_THEME } from './components/Banner';
 import UpdatesButton from './components/UpdatesButton';
 
 const App: React.FC = () => {
@@ -30,7 +30,7 @@ const App: React.FC = () => {
         const savedShowNeighbors = localStorage.getItem('normalEventShowNeighbors');
         return savedShowNeighbors === 'true';
     });
-    const themes = ['nord', 'cupcake', 'dim', 'aqua', 'sunset'];
+    const themes = [LIGHT_THEME, DARK_THEME];
     const baseUrl = 'https://cdn.yuenimillion.live/data'; // Production URL
     // Debug mode: launched via `npm run dev:debug` (sets VITE_DEBUG=1).
     // Appends ?debug to fetches to bypass the CDN cache so the latest
@@ -43,10 +43,16 @@ const App: React.FC = () => {
     const isMaintenanceMode = false; // Set to true to enable maintenance mode
     const maintenanceEndTime = '2025-10-21 15:00 JST'; // Customize maintenance end time
     const [theme, setTheme] = useState(() => {
-        const savedTheme = localStorage.getItem('theme') || themes[1];
-        // Set initial theme immediately
-        document.documentElement.setAttribute('data-theme', savedTheme);
-        return savedTheme;
+        // Pick the saved theme if it's still supported, otherwise honor the
+        // OS preference for first-time visitors.
+        const saved = localStorage.getItem('theme');
+        const prefersDark = typeof window !== 'undefined'
+            && window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+        const initial = themes.includes(saved ?? '')
+            ? (saved as string)
+            : (prefersDark ? DARK_THEME : LIGHT_THEME);
+        document.documentElement.setAttribute('data-theme', initial);
+        return initial;
     });
 
     // Helper function to determine if it's a normal event (types 3, 4, 11, 13)
@@ -264,39 +270,37 @@ const App: React.FC = () => {
 
     // Render normal event page
     return (
-        <div className="container mx-auto px-4 py-8">
-            <CardContainer className="mb-8">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <h1 className="text-2xl sm:text-3xl font-bold flex flex-col gap-2">
-                        <span>ミリシタ・ボーダー予想</span>
-                        <span className="text-xl sm:text-2xl text-gray-500 break-words">{eventInfo?.EventName}</span>
+        <div className="min-h-screen">
+            <Banner theme={theme} setTheme={setTheme} />
+            <div className="container mx-auto px-4 py-8">
+                <div className="mb-6 pb-4 border-b border-base-300">
+                    <h1 className="text-xl sm:text-2xl font-bold">
+                        ミリシタ・ボーダー予想
                     </h1>
-                    <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                        <ThemeSelector theme={theme} setTheme={setTheme} />
-                    </div>
+                    <p className="text-base sm:text-lg text-base-content/70 break-words mt-1">
+                        {eventInfo?.EventName}
+                    </p>
                 </div>
-            </CardContainer>
 
-            {prediction100 && prediction2500 && eventInfo && (
-                <>
+                {prediction100 && prediction2500 && eventInfo && (
                     <BorderTabs
                         prediction100={prediction100}
                         prediction2500={prediction2500}
                         showNeighbors={showNeighbors}
                         toggleNeighbors={handleNeighborsToggle}
                         startAt={eventInfo.StartAt}
-                        activeTab={activeTab} 
-                        setActiveTab={handleActiveTabChange} 
+                        activeTab={activeTab}
+                        setActiveTab={handleActiveTabChange}
                         theme={theme}
                     />
-                </>
-            )}
+                )}
 
-            <CardContainer>
-                <FAQ />
-            </CardContainer>
-            
-            <UpdatesButton />
+                <CardContainer>
+                    <FAQ />
+                </CardContainer>
+
+                <UpdatesButton />
+            </div>
         </div>
     );
 };
