@@ -1,11 +1,10 @@
 # Militheatre Border Predict
 
-Web frontend for ミリシタ (MLTD) event border predictions. Built with React + Vite + TypeScript, styled with Tailwind and daisyUI, and reads prediction data from a CDN-backed JSON API.
+Web frontend for ミリシタ (MLTD) event border predictions. React + Vite + TypeScript, Tailwind + daisyUI, reads JSON from a CDN.
 
 ## Prerequisites
 
-- Node.js 18+ (for Vite 4 and the bundled toolchain)
-- npm (ships with Node)
+Node.js 18+ and npm.
 
 ## Setup
 
@@ -13,57 +12,73 @@ Web frontend for ミリシタ (MLTD) event border predictions. Built with React 
 npm install
 ```
 
-## Running locally
+## Run
 
-### Normal mode
+| Command              | What it does                                                        |
+|----------------------|---------------------------------------------------------------------|
+| `npm run dev`        | Dev server at http://localhost:3000. Uses CDN cache.                |
+| `npm run dev:debug`  | Same, with `VITE_DEBUG=1` so every fetch appends `?debug` (bypass). |
+| `npm run build`      | Type-check + production bundle to `dist/`.                          |
+| `npm run preview`    | Serve `dist/` locally.                                              |
 
-```bash
-npm run dev
-```
+## Preview screens during an active event
 
-Starts the Vite dev server at http://localhost:3000. Fetches prediction data from the production CDN (`https://cdn.yuenimillion.live/data`), which may serve cached responses.
+URL flags force the app into states that normally only appear at specific times:
 
-### Debug mode
+- `http://localhost:3000/?preview=modal` — `EventModal` (no-event / invalid-data screen).
+- `http://localhost:3000/?preview=pre-event` — the "first 36 hours" waiting card.
 
-```bash
-npm run dev:debug
-```
+Combine with the banner's light/dark toggle to check both modes.
 
-Same as `npm run dev`, but sets `VITE_DEBUG=1`. The app then appends `?debug` to every data fetch so the CDN bypasses its cache and returns the latest predictions. Useful when you need to verify freshly regenerated data without waiting for cache expiry.
+## Seasonal themes
 
-Debug mode is env-driven and only applied at launch; it is never enabled in a production build.
+A seasonal daisyUI theme can temporarily replace the default light/dark palette during a fixed time window. Two steps to add one:
 
-## Building for production
+1. **Register the theme** in `tailwind.config.js` under `daisyui.themes`. Only `primary`, `secondary`, `accent`, `base-100`, and `base-content` are required; daisyUI derives the rest.
 
-```bash
-npm run build
-```
+   ```js
+   {
+     'my-theme': {
+       'primary': '#D98452',
+       'secondary': '#8C7288',
+       'accent':    '#D9B26A',
+       'base-100':  '#F2F2F2',
+       'base-content': '#161526',
+     },
+   }
+   ```
 
-Type-checks with `tsc`, then emits a production bundle to `dist/`.
+2. **Wire the window** in `src/utils/themes.ts` → `SEASONAL_WINDOWS`. `start` and `end` are ISO-8601 UTC.
 
-```bash
-npm run preview
-```
+   ```ts
+   {
+     lightTheme: 'my-theme',
+     darkTheme:  'my-theme-dark',   // optional, falls back to default dark
+     start: '2026-05-05T07:00:00Z',
+     end:   '2026-05-18T14:59:59Z',
+   }
+   ```
 
-Serves the built `dist/` locally for smoke-testing the production bundle.
+During the window `useTheme()` swaps the active theme automatically. When the window closes the app reverts to `cupcake` / `dim` without a reload (a `setTimeout` wakes at the boundary).
+
+To preview a seasonal theme outside its window, temporarily widen the `start`/`end` in `themes.ts`. Remember to revert before shipping.
+
+## Environment variables
+
+| Variable     | Purpose                                                                      |
+|--------------|------------------------------------------------------------------------------|
+| `VITE_DEBUG` | `1` or `true` makes fetches append `?debug` to bypass CDN cache. Set by `npm run dev:debug`. Not included in production builds. |
+
+`.env` is gitignored.
 
 ## Project layout
 
 ```
 src/
-  App.tsx            # Top-level app: loads event info + predictions, routes by event type
-  components/        # Chart, modal, tabs, theme, FAQ, etc.
-  contexts/          # React contexts (e.g. theme)
-  types/             # Shared TypeScript interfaces
-  utils/             # Date helpers, idol data, theme storage, daisyUI helpers
-vite.config.ts       # Vite config (dev server, aliases, publicDir)
-tailwind.config.js   # Tailwind + daisyUI config
+  App.tsx            Top-level routing by event type.
+  components/        Chart, modal, banner, FAQ, etc.
+  types/             Shared interfaces.
+  utils/             Date helpers, idol data, daisyUI helpers, theme logic.
+vite.config.ts
+tailwind.config.js   Tailwind + daisyUI (incl. seasonal theme definitions).
 ```
-
-## Environment variables
-
-| Variable     | Used by   | Purpose                                                      |
-|--------------|-----------|--------------------------------------------------------------|
-| `VITE_DEBUG` | `App.tsx` | When `1`/`true`, appends `?debug` to CDN requests to bypass cache. Set automatically by `npm run dev:debug`. |
-
-`.env` is gitignored. Do not commit secrets.
