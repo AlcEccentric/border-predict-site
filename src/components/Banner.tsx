@@ -3,33 +3,19 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Menu, X, Sun, Moon, Twitter } from 'lucide-react';
 
 /**
- * Two daisyUI themes drive light/dark mode. The names must match entries in
- * tailwind.config.js -> daisyui.themes, and are persisted under the same
- * localStorage key the rest of the app uses ("theme").
+ * Re-exports kept for backwards compatibility with callers that imported
+ * these constants from Banner. The canonical definitions live in
+ * `src/utils/themes.ts` along with the seasonal theme resolution logic.
  */
-export const LIGHT_THEME = 'cupcake';
-export const DARK_THEME = 'dim';
+export { DEFAULT_LIGHT_THEME as LIGHT_THEME, DARK_THEME } from '../utils/themes';
 
 interface BannerProps {
-    theme: string;
-    setTheme: (theme: string) => void;
+    isDark: boolean;
+    toggleDark: () => void;
 }
 
-const Banner: React.FC<BannerProps> = ({ theme, setTheme }) => {
+const Banner: React.FC<BannerProps> = ({ isDark, toggleDark }) => {
     const [open, setOpen] = useState(false);
-    const isDark = theme === DARK_THEME;
-
-    const applyTheme = (next: string) => {
-        setTheme(next);
-        document.documentElement.setAttribute('data-theme', next);
-        try {
-            localStorage.setItem('theme', next);
-        } catch {
-            /* storage may be disabled; non-fatal */
-        }
-    };
-
-    const toggleDark = () => applyTheme(isDark ? LIGHT_THEME : DARK_THEME);
 
     return (
         <header className="sticky top-0 z-40 w-full bg-base-200/90 backdrop-blur border-b border-base-300 shadow-sm">

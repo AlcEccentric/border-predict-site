@@ -224,7 +224,7 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
         }));
     };
 
-    const handleChartHover = (event: any, _elements: InteractionItem[]) => {
+    const handleChartHover = React.useCallback((event: any, _elements: InteractionItem[]) => {
         const chart = chartRef.current;
         if (!chart || !event.native) return;
 
@@ -321,7 +321,7 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
             percentagePoint: percentPoints[dataIndex],
             values
         });
-    };
+    }, [normalizedData, percentagePoints, zoomState, visibleNeighbors]);
 
     const handleChartLeave = () => {
         setCrosshairPosition(null);
@@ -335,12 +335,16 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
         }
     };
 
-    // Touch scrubbing: drag a finger to move the crosshair. We call
-    // `handleChartHover` directly with a synthetic event object — the same
-    // pattern the main chart uses, which is more reliable than dispatching
-    // a MouseEvent on the canvas (Chart.js's onHover can ignore events that
-    // arrive without movement, so a stationary tap wouldn't show the
-    // crosshair). Direction detection means vertical drags still scroll.
+    // Touch scrubbing + desktop hover: attach native listeners to the
+    // container. We avoid Chart.js's `onHover` because wiring into it
+    // creates a feedback loop where state updates trigger re-renders that
+    // re-fire mousemoves at the last position (especially on mobile).
+    // The handler is read through a ref so listeners are attached once
+    // and aren't torn down on every state update — that tear-down was
+    // killing horizontal drag mid-gesture.
+    const hoverRef = React.useRef(handleChartHover);
+    React.useEffect(() => { hoverRef.current = handleChartHover; }, [handleChartHover]);
+
     React.useEffect(() => {
         const el = chartContainerRef.current;
         if (!el) return;
@@ -350,7 +354,7 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
         let mode: 'undecided' | 'scrub' | 'scroll' = 'undecided';
 
         const fire = (clientX: number, clientY: number) => {
-            handleChartHover({ native: { clientX, clientY } }, []);
+            hoverRef.current({ native: { clientX, clientY } }, []);
         };
         const onStart = (e: TouchEvent) => {
             const touch = e.touches[0];
@@ -373,13 +377,18 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
             if (e.cancelable) e.preventDefault();
             fire(touch.clientX, touch.clientY);
         };
+        const onMouseMove = (e: MouseEvent) => {
+            fire(e.clientX, e.clientY);
+        };
         el.addEventListener('touchstart', onStart, { passive: false });
         el.addEventListener('touchmove', onMove, { passive: false });
+        el.addEventListener('mousemove', onMouseMove);
         return () => {
             el.removeEventListener('touchstart', onStart);
             el.removeEventListener('touchmove', onMove);
+            el.removeEventListener('mousemove', onMouseMove);
         };
-    }, [handleChartHover]);
+    }, []);
 
     // Dismiss the crosshair when the pointer moves or taps outside the plot
     // rectangle. `mousemove` covers desktop hover (Chart.js's own onHover
@@ -591,7 +600,11 @@ const NeighborSection: React.FC<NeighborSectionProps> = ({
     const options: ExtendedChartOptions = {
         responsive: true,
         maintainAspectRatio: false,
-        onHover: handleChartHover,
+        // Not wiring `onHover` into Chart.js: we attach native mousemove and
+        // touch listeners to the canvas directly so the crosshair state flow
+        // is one-directional (DOM event → React state). Going through
+        // Chart.js's onHover causes it to re-fire mousemoves on every
+        // re-render, producing an infinite loop on mobile.
         animation: false, // Disable all chart animations
         plugins: {
             legend: {
