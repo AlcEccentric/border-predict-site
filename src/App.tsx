@@ -7,8 +7,9 @@ import BorderTabs from './components/BorderTabs';
 import Type5EventPage from './components/Type5EventPage';
 import FAQ from './components/FAQ';
 import CardContainer from './components/CardContainer';
-import Banner, { LIGHT_THEME, DARK_THEME } from './components/Banner';
+import Banner from './components/Banner';
 import UpdatesButton from './components/UpdatesButton';
+import { useTheme } from './utils/themes';
 
 const App: React.FC = () => {
     const releaseDate = new Date('2025-06-01T00:00:00+09:00');
@@ -30,7 +31,6 @@ const App: React.FC = () => {
         const savedShowNeighbors = localStorage.getItem('normalEventShowNeighbors');
         return savedShowNeighbors === 'true';
     });
-    const themes = [LIGHT_THEME, DARK_THEME];
     const baseUrl = 'https://cdn.yuenimillion.live/data'; // Production URL
     // Debug mode: launched via `npm run dev:debug` (sets VITE_DEBUG=1).
     // Appends ?debug to fetches to bypass the CDN cache so the latest
@@ -42,18 +42,7 @@ const App: React.FC = () => {
     // Maintenance mode configuration
     const isMaintenanceMode = false; // Set to true to enable maintenance mode
     const maintenanceEndTime = '2025-10-21 15:00 JST'; // Customize maintenance end time
-    const [theme, setTheme] = useState(() => {
-        // Pick the saved theme if it's still supported, otherwise honor the
-        // OS preference for first-time visitors.
-        const saved = localStorage.getItem('theme');
-        const prefersDark = typeof window !== 'undefined'
-            && window.matchMedia?.('(prefers-color-scheme: dark)').matches;
-        const initial = themes.includes(saved ?? '')
-            ? (saved as string)
-            : (prefersDark ? DARK_THEME : LIGHT_THEME);
-        document.documentElement.setAttribute('data-theme', initial);
-        return initial;
-    });
+    const { theme, isDark, toggleDark } = useTheme();
 
     // Helper function to determine if it's a normal event (types 3, 4, 11, 13)
     const isNormalEvent = (eventType: number) => {
@@ -203,11 +192,6 @@ const App: React.FC = () => {
         loadData();
     }, []); // Only run once on mount
 
-    // Separate effect for theme changes
-    useEffect(() => {
-        document.documentElement.setAttribute('data-theme', theme);
-    }, [theme]);
-
     // Wrapper functions to save state to localStorage
     const handleActiveTabChange = (tab: string) => {
         setActiveTab(tab);
@@ -262,7 +246,8 @@ const App: React.FC = () => {
                     idolPredictions={idolPredictions}
                     loading={loading}
                     theme={theme}
-                    setTheme={setTheme}
+                    isDark={isDark}
+                    toggleDark={toggleDark}
                 />
             </div>
         );
@@ -271,7 +256,7 @@ const App: React.FC = () => {
     // Render normal event page
     return (
         <div className="min-h-screen">
-            <Banner theme={theme} setTheme={setTheme} />
+            <Banner isDark={isDark} toggleDark={toggleDark} />
             <div className="container mx-auto px-4 py-8">
                 <div className="mb-6 pb-4 border-b border-base-300">
                     <h1 className="text-xl sm:text-2xl font-bold">

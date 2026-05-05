@@ -16,7 +16,8 @@ interface Type5EventPageProps {
     idolPredictions: Map<number, IdolPredictionData>;
     loading: boolean;
     theme: string;
-    setTheme: (theme: string) => void;
+    isDark: boolean;
+    toggleDark: () => void;
 }
 
 const Type5EventPage: React.FC<Type5EventPageProps> = ({
@@ -24,7 +25,8 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
     idolPredictions,
     loading,
     theme,
-    setTheme
+    isDark,
+    toggleDark
 }) => {
     // Initialize selectedIdol from localStorage or default to 1
     const [selectedIdol, setSelectedIdol] = useState<number>(() => {
@@ -127,7 +129,7 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
 
     return (
         <div className="min-h-screen">
-            <Banner theme={theme} setTheme={setTheme} />
+            <Banner isDark={isDark} toggleDark={toggleDark} />
             <div className="container mx-auto px-4 py-8">
                 {/* Event title */}
                 <div className="mb-6 pb-4 border-b border-base-300 text-center">
