@@ -75,6 +75,11 @@ export function isDarkTheme(theme: string): boolean {
     return theme === DARK_THEME;
 }
 
+/** True when the given theme belongs to any seasonal window (active or not). */
+export function isSeasonalTheme(theme: string): boolean {
+    return SEASONAL_WINDOWS.some(w => w.lightTheme === theme || w.darkTheme === theme);
+}
+
 /** Every theme name the app may hand out — useful for validating stored prefs. */
 export function allKnownThemes(): string[] {
     return [

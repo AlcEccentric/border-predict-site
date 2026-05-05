@@ -209,6 +209,26 @@ const App: React.FC = () => {
         return <MaintenancePage endTime={maintenanceEndTime} />;
     }
 
+    // Preview mode: `?preview=modal` forces the no-event / data-invalid
+    // screen, `?preview=pre-event` forces the 36-hour pre-event screen.
+    // Useful for styling these pages during an active event where we can't
+    // otherwise hit them. Remove the query param from the URL to go back.
+    const previewScreen = new URLSearchParams(window.location.search).get('preview');
+    if (previewScreen === 'modal') {
+        return <EventModal />;
+    }
+    if (previewScreen === 'pre-event') {
+        return (
+            <div className="min-h-screen bg-base-100 flex flex-col items-center justify-center">
+                <div className="bg-base-200 rounded-lg shadow-lg p-8 max-w-md text-center">
+                    <h2 className="text-xl font-bold mb-4">予測データ準備中</h2>
+                    <p className="mb-2">イベント開始から36時間分のデータが必要です。</p>
+                    <p className="text-base-content/70">恐れ入りますが、イベント開始から36時間経過後にご利用ください。</p>
+                </div>
+            </div>
+        );
+    }
+
     if (loading) {
         return <div>Loading... (｀・ω・´)</div>;
     }
@@ -223,7 +243,7 @@ const App: React.FC = () => {
     const hoursSinceStart = (nowTime.getTime() - eventStart.getTime()) / (1000 * 60 * 60);
     if (!isDebug && hoursSinceStart < 36) {
         return (
-            <div className="min-h-screen flex flex-col items-center justify-center">
+            <div className="min-h-screen bg-base-100 flex flex-col items-center justify-center">
                 <div className="bg-base-200 rounded-lg shadow-lg p-8 max-w-md text-center">
                     <h2 className="text-xl font-bold mb-4">予測データ準備中</h2>
                     <p className="mb-2">イベント開始から36時間分のデータが必要です。</p>
