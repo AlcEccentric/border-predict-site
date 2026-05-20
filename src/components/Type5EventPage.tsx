@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import CardContainer from './CardContainer';
 import IdolSelector from './IdolSelector';
 import Type5MainChart from './Type5MainChart';
-import Type5NeighborSection from './Type5NeighborSection';
 import Banner from './Banner';
 import UpdatesButton from './UpdatesButton';
 import FAQ from './FAQ';
@@ -33,26 +32,19 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
         const savedIdol = localStorage.getItem('selectedIdol');
         if (savedIdol) {
             const idolId = parseInt(savedIdol, 10);
-            // Validate that the idol ID is within valid range
             if (idolId >= 1 && idolId <= 52) {
                 return idolId;
             }
         }
-        return 1; // Default to idol 1 if no valid saved selection
+        return 1;
     });
-    const [showNeighbors, setShowNeighbors] = useState<boolean>(() => {
-        const savedShowNeighbors = localStorage.getItem('showNeighbors');
-        return savedShowNeighbors === 'true';
-    }); // Initialize from localStorage
     const chartSectionRef = useRef<HTMLDivElement>(null);
-    const neighborSectionRef = useRef<HTMLDivElement>(null);
     const summaryStatsRef = useRef<HTMLDivElement>(null);
 
     const handleIdolSelect = (idolId: number) => {
         setSelectedIdol(idolId);
-        // Save to localStorage
         localStorage.setItem('selectedIdol', idolId.toString());
-        
+
         // Scroll to summary stats section after a short delay to allow for state update
         setTimeout(() => {
             summaryStatsRef.current?.scrollIntoView({
@@ -62,30 +54,13 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
         }, 100);
     };
 
-    const handleNeighborToggle = () => {
-        const newShowNeighbors = !showNeighbors;
-        setShowNeighbors(newShowNeighbors);
-        // Save to localStorage
-        localStorage.setItem('showNeighbors', newShowNeighbors.toString());
-        
-        // If turning on, scroll to neighbor section after animation
-        if (newShowNeighbors) {
-            setTimeout(() => {
-                neighborSectionRef.current?.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'center' // Use 'center' instead of 'start' to keep toggle visible
-                });
-            }, 200); // Reduced delay since animation is now smoother
-        }
-    };
-
     const getScoreForIdol = (idolId: number, border: '100' | '1000') => {
         const idolData = idolPredictions.get(idolId);
         if (!idolData) return null;
-        
+
         const prediction = border === '100' ? idolData.prediction100 : idolData.prediction1000;
         if (!prediction) return null;
-        
+
         const scores = prediction.data.raw.target;
         return scores[scores.length - 1];
     };
@@ -100,9 +75,8 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
     React.useEffect(() => {
         if (idolPredictions.size > 0) {
             const idolData = idolPredictions.get(selectedIdol);
-            // If the saved idol has no data, find the first idol with data
             if (!idolData) {
-                const firstAvailableIdol = Array.from(idolPredictions.keys()).find(idolId => 
+                const firstAvailableIdol = Array.from(idolPredictions.keys()).find(idolId =>
                     idolPredictions.get(idolId)
                 );
                 if (firstAvailableIdol) {
@@ -159,7 +133,7 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                             <h3 className="text-xl font-bold flex items-center justify-center gap-2 flex-wrap">
                                 <span>{getIdolName(selectedIdol)}の予測スコア</span>
                                 <div className="tooltip" data-tip="予測精度について詳しく見る">
-                                    <button 
+                                    <button
                                         className="btn btn-xs btn-outline btn-primary"
                                         onClick={(e) => {
                                             e.preventDefault();
@@ -260,12 +234,11 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                     <div ref={chartSectionRef}>
                         <CardContainer className="mb-4">
                             <div className="space-y-4">
-                                {/* Main Chart */}
                                 <div className="relative w-full">
                                     <AnimatePresence mode="popLayout">
                                         <motion.div
                                             layout
-                                            transition={{ type: "spring", stiffness: 100, damping: 20, duration: 0.5 }}
+                                            transition={{ type: 'spring', stiffness: 100, damping: 20, duration: 0.5 }}
                                             className="w-full"
                                         >
                                             <Type5MainChart
@@ -280,58 +253,6 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                                 </div>
                             </div>
                         </CardContainer>
-                        
-                        {/* Neighbors Toggle */}
-                        <div className="flex justify-end mb-4">
-                            <label className="cursor-pointer label gap-2">
-                                <span className="label-text">近傍イベント表示</span>
-                                <div
-                                    className="tooltip tooltip-left lg:tooltip-left"
-                                    data-tip="近傍イベントは現在のイベントと傾向が似ているイベントです。詳細はページ下部の「解説」内「近傍イベントとは」をご覧ください"
-                                >
-                                    <span className="cursor-pointer text-info">
-                                        <Info className="w-4 h-4 text-info cursor-pointer" />
-                                    </span>
-                                </div>
-                                <input
-                                    type="checkbox"
-                                    className="toggle toggle-primary"
-                                    checked={!!showNeighbors} // Ensure boolean value
-                                    onChange={handleNeighborToggle}
-                                    disabled={!hasDataForBorder(selectedIdol, '100') && !hasDataForBorder(selectedIdol, '1000')}
-                                />
-                            </label>
-                        </div>
-
-                        {/* Neighbor Section */}
-                        <div className="relative w-full">
-                            <AnimatePresence>
-                                {showNeighbors && (
-                                    <motion.div
-                                        key="neighbors"
-                                        ref={neighborSectionRef}
-                                        initial={{ opacity: 0, height: 0, y: -20 }}
-                                        animate={{ opacity: 1, height: "auto", y: 0 }}
-                                        exit={{ opacity: 0, height: 0, y: -20 }}
-                                        transition={{ 
-                                            type: "spring", 
-                                            stiffness: 300, 
-                                            damping: 30,
-                                            height: { duration: 0.4 },
-                                            opacity: { duration: 0.3 }
-                                        }}
-                                        className="w-full overflow-hidden"
-                                    >
-                                        <Type5NeighborSection
-                                            idolPredictions={idolPredictions}
-                                            selectedIdol={selectedIdol}
-                                            theme={theme}
-                                            eventName={eventInfo.EventName}
-                                        />
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                        </div>
                     </div>
                 </>
             )}

@@ -4,7 +4,7 @@ import { Info, X } from 'lucide-react';
 const UpdatesButton: React.FC = () => {
     const [isExpanded, setIsExpanded] = useState(false);
 
-    const currentUpdateKey = "update-2026-05-05"; // Change this when there's a new update
+    const currentUpdateKey = "update-2026-05-19"; // Change this when there's a new update
     const [hasNewUpdate, setHasNewUpdate] = useState(() => {
         const lastSeen = localStorage.getItem('lastSeenUpdate');
         return lastSeen !== currentUpdateKey;
@@ -75,18 +75,14 @@ const UpdatesButton: React.FC = () => {
 
                         {/* Updates section */}
                         <div className="border-l-4 border-primary pl-4">
-                            <h4 className="font-bold text-primary mb-2">更新情報 (2026/05/05)</h4>
+                            <h4 className="font-bold text-primary mb-2">更新情報 (2026/05/19)</h4>
                             <div className="pl-2 space-y-3">
                                 <div>
-                                    <h5 className="font-bold mb-1 text-sm">13thライブ限定テーマ</h5>
+                                    <h5 className="font-bold mb-1 text-sm">類似イベント表示の終了</h5>
                                     <p className="text-sm text-base-content/80">
-                                        13thライブ限定テーマを追加しました。表示期間はライブ配信の視聴可能期間と同じく、日本標準時5月18日23:59までです。チケットをご購入された方は、ライブ配信のご視聴をお忘れなく！
-                                    </p>
-                                </div>
-                                <div>
-                                    <h5 className="font-bold mb-1 text-sm">予測精度とモバイル表示の改善</h5>
-                                    <p className="text-sm text-base-content/80">
-                                        類似イベントの選定において、スコアの上昇率（傾き）をより重視するよう調整し、予測精度を改善しました。モバイル表示を改善しました。
+                                        「類似イベント」の表示を、いったん非表示にしました。
+                                        アルゴリズム改善により、より「<strong>スコアの伸び方の形</strong>」を重視するようにしました。
+                                        ただし、選ばれた類似イベントは伸び方は似ていてもスコアの高さが離れていることが多く、グラフに重ねると「なぜこれが類似？」と混乱を招きやすいため、当面は非表示としました。スコアが近い過去イベントを見比べる用途には、別途専用ツールを準備中です。
                                     </p>
                                 </div>
                             </div>

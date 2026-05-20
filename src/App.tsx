@@ -27,10 +27,6 @@ const App: React.FC = () => {
         const savedActiveTab = localStorage.getItem('activeTab');
         return savedActiveTab || '100';
     });
-    const [showNeighbors, setShowNeighbors] = useState(() => {
-        const savedShowNeighbors = localStorage.getItem('normalEventShowNeighbors');
-        return savedShowNeighbors === 'true';
-    });
     const baseUrl = 'https://cdn.yuenimillion.live/data'; // Production URL
     // Debug mode: launched via `npm run dev:debug` (sets VITE_DEBUG=1).
     // Appends ?debug to fetches to bypass the CDN cache so the latest
@@ -198,12 +194,6 @@ const App: React.FC = () => {
         localStorage.setItem('activeTab', tab);
     };
 
-    const handleNeighborsToggle = () => {
-        const newShowNeighbors = !showNeighbors;
-        setShowNeighbors(newShowNeighbors);
-        localStorage.setItem('normalEventShowNeighbors', newShowNeighbors.toString());
-    };
-
     // Check maintenance mode first
     if (isMaintenanceMode) {
         return <MaintenancePage endTime={maintenanceEndTime} />;
@@ -291,8 +281,6 @@ const App: React.FC = () => {
                     <BorderTabs
                         prediction100={prediction100}
                         prediction2500={prediction2500}
-                        showNeighbors={showNeighbors}
-                        toggleNeighbors={handleNeighborsToggle}
                         startAt={eventInfo.StartAt}
                         activeTab={activeTab}
                         setActiveTab={handleActiveTabChange}
