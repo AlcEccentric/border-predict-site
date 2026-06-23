@@ -17,6 +17,7 @@ import {
 import { getRelativePosition } from 'chart.js/helpers';
 import { IdolPredictionData } from '../types';
 import { getIdolName } from '../utils/idolData';
+import { log } from '../utils/logger';
 
 ChartJS.register(
   CategoryScale,
@@ -190,12 +191,11 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
   if (!idolData || (!idolData.prediction100 && !idolData.prediction1000)) {
     return (
       <div className="bg-base-200 rounded-lg p-8 text-center">
-        <div className="text-4xl mb-4">📊</div>
         <h3 className="text-lg font-bold mb-2 text-warning">
-          予測データが不足しています
+          データが不足です
         </h3>
         <p className="text-sm text-base-content/70">
-          {getIdolName(selectedIdol)}の予測データがありません
+          データ不足のため、予測できません
         </p>
       </div>
     );
@@ -223,7 +223,7 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
           
           return color || (cssVar === '--p' ? '#8b5cf6' : '#f59e0b'); // fallback colors
         } catch (error) {
-          console.warn('Failed to get computed theme color:', error);
+          log.warn('Failed to get computed theme color:', error);
           return cssVar === '--p' ? '#8b5cf6' : '#f59e0b'; // fallback colors
         }
       }
@@ -431,10 +431,10 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
   }, [isSelecting, selectionStart, timePoints.length]);
 
   const handleMouseUp = React.useCallback(() => {
-    console.log('🖱️ Mouse up triggered - isSelecting:', isSelecting, 'selectionStart:', selectionStart, 'selectionEnd:', selectionEnd);
+    log.info('🖱️ Mouse up triggered - isSelecting:', isSelecting, 'selectionStart:', selectionStart, 'selectionEnd:', selectionEnd);
     
     if (!isSelecting || selectionStart === null || selectionEnd === null) {
-      console.log('❌ No active selection, resetting state');
+      log.info('❌ No active selection, resetting state');
       setIsSelecting(false);
       setSelectionStart(null);
       setSelectionEnd(null);
@@ -444,14 +444,14 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
 
     const chart = chartRef.current;
     if (!chart) {
-      console.log('❌ No chart ref available');
+      log.info('❌ No chart ref available');
       return;
     }
 
     const minIndex = Math.round(Math.min(selectionStart, selectionEnd));
     const maxIndex = Math.round(Math.max(selectionStart, selectionEnd));
     
-    console.log('📊 Range selection completed:', { 
+    log.info('📊 Range selection completed:', { 
       originalStart: selectionStart, 
       originalEnd: selectionEnd, 
       minIndex, 
@@ -462,14 +462,14 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
     
     // Only zoom if there's a meaningful selection (more than 1 data point)
     if (maxIndex - minIndex > 1) {
-      console.log('✅ Setting zoom state:', { min: minIndex, max: maxIndex });
+      log.info('✅ Setting zoom state:', { min: minIndex, max: maxIndex });
       setZoomState({ min: minIndex, max: maxIndex });
     } else {
-      console.log('❌ Selection too small, not zooming. Range:', maxIndex - minIndex);
+      log.info('❌ Selection too small, not zooming. Range:', maxIndex - minIndex);
     }
 
     // Reset selection state
-    console.log('🔄 Resetting selection state');
+    log.info('🔄 Resetting selection state');
     setIsSelecting(false);
     setSelectionStart(null);
     setSelectionEnd(null);
@@ -517,12 +517,12 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
 
   // Apply zoom state when it changes
   React.useEffect(() => {
-    console.log('🔄 Zoom state useEffect triggered - zoomState:', zoomState, 'chartRef.current:', !!chartRef.current);
+    log.info('🔄 Zoom state useEffect triggered - zoomState:', zoomState, 'chartRef.current:', !!chartRef.current);
     
     if (zoomState && chartRef.current) {
       const chart = chartRef.current;
-      console.log('🔍 Applying zoom state:', zoomState);
-      console.log('📊 Current chart scales before zoom:', { 
+      log.info('🔍 Applying zoom state:', zoomState);
+      log.info('📊 Current chart scales before zoom:', { 
         xMin: chart.scales.x.min, 
         xMax: chart.scales.x.max,
         dataLength: timePoints.length
@@ -530,27 +530,27 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
       
       // Use the chartjs-plugin-zoom's zoomScale method
       try {
-        console.log('🔍 Attempting to use zoomScale method');
+        log.info('🔍 Attempting to use zoomScale method');
         (chart as any).zoomScale('x', { min: zoomState.min, max: zoomState.max }, 'none');
-        console.log('✅ zoomScale method succeeded');
+        log.info('✅ zoomScale method succeeded');
       } catch (error) {
-        console.log('❌ zoomScale method failed:', error);
+        log.info('❌ zoomScale method failed:', error);
         
         // Fallback: Direct scale manipulation with forced update
-        console.log('🔍 Falling back to direct scale manipulation');
+        log.info('🔍 Falling back to direct scale manipulation');
         chart.scales.x.min = zoomState.min;
         chart.scales.x.max = zoomState.max;
         chart.update('resize'); // Force a complete update
       }
       
-      console.log('📊 Chart scales after zoom:', { 
+      log.info('📊 Chart scales after zoom:', { 
         xMin: chart.scales.x.min, 
         xMax: chart.scales.x.max 
       });
     } else if (zoomState && !chartRef.current) {
-      console.log('❌ Zoom state exists but no chart ref');
+      log.info('❌ Zoom state exists but no chart ref');
     } else {
-      console.log('ℹ️ No zoom state to apply');
+      log.info('ℹ️ No zoom state to apply');
     }
   }, [zoomState, timePoints.length]);
 
@@ -608,7 +608,7 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
           
           return color || (cssVar === '--p' ? '#8b5cf6' : '#f59e0b'); // fallback colors
         } catch (error) {
-          console.warn('Failed to get computed theme color:', error);
+          log.warn('Failed to get computed theme color:', error);
           return cssVar === '--p' ? '#8b5cf6' : '#f59e0b'; // fallback colors
         }
       }
@@ -637,7 +637,7 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
           
           return color || '#000000'; // fallback to black
         } catch (error) {
-          console.warn('Failed to get computed text color:', error);
+          log.warn('Failed to get computed text color:', error);
           return '#000000'; // fallback to black
         }
       }

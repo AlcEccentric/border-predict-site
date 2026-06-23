@@ -11,6 +11,7 @@ import Banner from './components/Banner';
 import UpdatesButton from './components/UpdatesButton';
 import { useTheme } from './utils/themes';
 import { discoverAvailableIdols, loadIdolPrediction } from './utils/type5Loader';
+import { log } from './utils/logger';
 
 const App: React.FC = () => {
     const releaseDate = new Date('2025-06-01T00:00:00+09:00');
@@ -156,13 +157,13 @@ const App: React.FC = () => {
                         const eventStart = new Date(eventStartTime);
                         
                         if (predictionModifiedTime < eventStart) {
-                            console.error(`Prediction data is outdated. Event started at ${eventStart.toISOString()}, but predictions were last modified at ${predictionModifiedTime.toISOString()}`);
+                            log.error(`Prediction data is outdated. Event started at ${eventStart.toISOString()}, but predictions were last modified at ${predictionModifiedTime.toISOString()}`);
                             return false;
                         }
                         
                         return true;
                     } catch (error) {
-                        console.error('Error checking prediction data validity:', error);
+                        log.error('Error checking prediction data validity:', error);
                         return false;
                     }
                 };
@@ -182,7 +183,7 @@ const App: React.FC = () => {
                     const finalIs2500Valid = is2500Valid; // Change to testIs2500Valid for testing
                     
                     if (!finalIs100Valid || !finalIs2500Valid) {
-                        console.error('Prediction data is outdated, showing no-event page');
+                        log.error('Prediction data is outdated, showing no-event page');
                         setPredictionDataValid(false);
                         setLoading(false);
                         return;
@@ -196,7 +197,7 @@ const App: React.FC = () => {
                         setPrediction100(await pred100Response.json());
                         setPrediction2500(await pred2500Response.json());
                     } else {
-                        console.warn('Failed to load normal event predictions');
+                        log.warn('Failed to load normal event predictions');
                     }
                 } else if (isType5Event(eventInfoData.EventType)) {
                     // Check a sample prediction file to validate data freshness.
@@ -207,7 +208,7 @@ const App: React.FC = () => {
                         const isValid = await validatePredictionData(samplePredictionUrl, eventInfoData.StartAt);
 
                         if (!isValid) {
-                            console.error('Type 5 prediction data is outdated, showing no-event page');
+                            log.error('Type 5 prediction data is outdated, showing no-event page');
                             setPredictionDataValid(false);
                             setLoading(false);
                             return;
@@ -227,7 +228,7 @@ const App: React.FC = () => {
                     setAvailableIdols(availableIdols);
                 }
             } catch (error) {
-                console.error('Error loading data:', error);
+                log.error('Error loading data:', error);
             } finally {
                 setLoading(false);
             }
