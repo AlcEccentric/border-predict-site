@@ -13,6 +13,9 @@ import { Info } from 'lucide-react';
 interface Type5EventPageProps {
     eventInfo: EventInfo;
     idolPredictions: Map<number, IdolPredictionData>;
+    availableIdols: Set<number>;
+    loadingIdols: Set<number>;
+    requestIdolData: (idolId: number) => void;
     loading: boolean;
     theme: string;
     isDark: boolean;
@@ -22,6 +25,9 @@ interface Type5EventPageProps {
 const Type5EventPage: React.FC<Type5EventPageProps> = ({
     eventInfo,
     idolPredictions,
+    availableIdols,
+    loadingIdols,
+    requestIdolData,
     loading,
     theme,
     isDark,
@@ -71,21 +77,27 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
         return border === '100' ? !!idolData.prediction100 : !!idolData.prediction1000;
     };
 
-    // Validate selectedIdol has data once predictions are loaded
+    // Switch the selected idol to the first available one if the saved
+    // value (or default 1) doesn't have data in this event.
     React.useEffect(() => {
-        if (idolPredictions.size > 0) {
-            const idolData = idolPredictions.get(selectedIdol);
-            if (!idolData) {
-                const firstAvailableIdol = Array.from(idolPredictions.keys()).find(idolId =>
-                    idolPredictions.get(idolId)
-                );
-                if (firstAvailableIdol) {
-                    setSelectedIdol(firstAvailableIdol);
-                    localStorage.setItem('selectedIdol', firstAvailableIdol.toString());
-                }
+        if (availableIdols.size === 0) return;
+        if (!availableIdols.has(selectedIdol)) {
+            const firstAvailable = Array.from(availableIdols).sort((a, b) => a - b)[0];
+            if (firstAvailable !== undefined) {
+                setSelectedIdol(firstAvailable);
+                localStorage.setItem('selectedIdol', firstAvailable.toString());
             }
         }
-    }, [idolPredictions, selectedIdol]);
+    }, [availableIdols, selectedIdol]);
+
+    // Lazy fetch the selected idol's full prediction data on demand.
+    // The callback is idempotent — repeats are no-ops while a fetch is
+    // in flight, and cache hits return immediately.
+    React.useEffect(() => {
+        if (availableIdols.has(selectedIdol)) {
+            requestIdolData(selectedIdol);
+        }
+    }, [selectedIdol, availableIdols, requestIdolData]);
 
     if (loading) {
         return (
@@ -97,6 +109,8 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
             </div>
         );
     }
+
+    const isSelectedIdolLoading = loadingIdols.has(selectedIdol);
 
     const score100 = getScoreForIdol(selectedIdol, '100');
     const score1000 = getScoreForIdol(selectedIdol, '1000');
@@ -119,10 +133,7 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
             <IdolSelector
                 selectedIdol={selectedIdol}
                 onIdolSelect={handleIdolSelect}
-                availableIdols={new Set(Array.from(idolPredictions.keys()).filter(idolId => {
-                    const idolData = idolPredictions.get(idolId);
-                    return idolData && (idolData.prediction100 || idolData.prediction1000);
-                }))}
+                availableIdols={availableIdols}
             />
 
             {selectedIdol && idolPredictions.has(selectedIdol) && (
@@ -235,21 +246,30 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                         <CardContainer className="mb-4">
                             <div className="space-y-4">
                                 <div className="relative w-full">
-                                    <AnimatePresence mode="popLayout">
-                                        <motion.div
-                                            layout
-                                            transition={{ type: 'spring', stiffness: 100, damping: 20, duration: 0.5 }}
-                                            className="w-full"
-                                        >
-                                            <Type5MainChart
-                                                idolPredictions={idolPredictions}
-                                                selectedIdol={selectedIdol}
-                                                startAt={eventInfo.StartAt}
-                                                eventName={eventInfo.EventName}
-                                                theme={theme}
-                                            />
-                                        </motion.div>
-                                    </AnimatePresence>
+                                    {isSelectedIdolLoading && !idolPredictions.has(selectedIdol) ? (
+                                        <div className="flex flex-col items-center justify-center min-h-[360px]">
+                                            <div className="loading loading-spinner loading-md"></div>
+                                            <p className="mt-3 text-sm text-base-content/70">
+                                                {getIdolName(selectedIdol)} の予測データを読み込み中...
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <AnimatePresence mode="popLayout">
+                                            <motion.div
+                                                layout
+                                                transition={{ type: 'spring', stiffness: 100, damping: 20, duration: 0.5 }}
+                                                className="w-full"
+                                            >
+                                                <Type5MainChart
+                                                    idolPredictions={idolPredictions}
+                                                    selectedIdol={selectedIdol}
+                                                    startAt={eventInfo.StartAt}
+                                                    eventName={eventInfo.EventName}
+                                                    theme={theme}
+                                                />
+                                            </motion.div>
+                                        </AnimatePresence>
+                                    )}
                                 </div>
                             </div>
                         </CardContainer>

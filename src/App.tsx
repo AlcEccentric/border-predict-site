@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import EventModal from './components/EventModal';
 import MaintenancePage from './components/MaintenancePage';
 import { EventInfo, PredictionData, IdolPredictionData } from './types';
@@ -10,6 +10,7 @@ import CardContainer from './components/CardContainer';
 import Banner from './components/Banner';
 import UpdatesButton from './components/UpdatesButton';
 import { useTheme } from './utils/themes';
+import { discoverAvailableIdols, loadIdolPrediction } from './utils/type5Loader';
 
 const App: React.FC = () => {
     const releaseDate = new Date('2025-06-01T00:00:00+09:00');
@@ -21,6 +22,8 @@ const App: React.FC = () => {
     const [prediction100, setPrediction100] = useState<PredictionData | null>(null);
     const [prediction2500, setPrediction2500] = useState<PredictionData | null>(null);
     const [idolPredictions, setIdolPredictions] = useState<Map<number, IdolPredictionData>>(new Map());
+    const [availableIdols, setAvailableIdols] = useState<Set<number>>(new Set());
+    const [loadingIdols, setLoadingIdols] = useState<Set<number>>(new Set());
     const [loading, setLoading] = useState(true);
     const [predictionDataValid, setPredictionDataValid] = useState(true);
     const [activeTab, setActiveTab] = useState(() => {
@@ -72,6 +75,35 @@ const App: React.FC = () => {
         return eventType === 5;
     };
 
+    // Lazy-load cache for Type 5 idol predictions. Refs let the
+    // `requestIdolData` callback dedupe in-flight and cached fetches without
+    // taking `idolPredictions` / `loadingIdols` as deps (which would cause
+    // the callback identity to change every fetch and re-trigger effects).
+    const idolDataRef = useRef<Map<number, IdolPredictionData>>(new Map());
+    const inFlightRef = useRef<Set<number>>(new Set());
+
+    const requestIdolData = useCallback(async (idolId: number) => {
+        if (idolDataRef.current.has(idolId) || inFlightRef.current.has(idolId)) return;
+        inFlightRef.current.add(idolId);
+        setLoadingIdols(prev => new Set(prev).add(idolId));
+        try {
+            const data = await loadIdolPrediction(idolId, baseUrl, debugSuffix);
+            if (data) {
+                const next = new Map(idolDataRef.current);
+                next.set(idolId, data);
+                idolDataRef.current = next;
+                setIdolPredictions(next);
+            }
+        } finally {
+            inFlightRef.current.delete(idolId);
+            setLoadingIdols(prev => {
+                const next = new Set(prev);
+                next.delete(idolId);
+                return next;
+            });
+        }
+    }, [baseUrl, debugSuffix]);
+
     useEffect(() => {
         const loadData = async () => {
             try {
@@ -92,7 +124,6 @@ const App: React.FC = () => {
                         StartAt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(),
                         EndAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
                     };
-                    console.log('[type5-demo] active — using synthesized EventInfo', eventInfoData);
                     setEventInfo(eventInfoData);
                 } else {
                     // Load event info (CDN will cache for 24 hours based on Cache-Control header)
@@ -174,79 +205,12 @@ const App: React.FC = () => {
                             return;
                         }
                     }
-                    
-                    // Load Type 5 event predictions for all idols
-                    const idolPredictionsMap = new Map<number, IdolPredictionData>();
-                    
-                    // Helper function to safely fetch prediction data
-                    const fetchedUrls: string[] = [];
-                    const fetchPrediction = async (idolId: number, border: string) => {
-                        const url = `${baseUrl}/prediction/${idolId}/${border}/predictions.json${debugSuffix}`;
-                        fetchedUrls.push(url);
-                        try {
-                            const response = await fetch(url);
-                            if (!response.ok) {
-                                console.warn(`[type5-load] ${response.status} ${response.statusText}: idol=${idolId} border=${border}`, url);
-                                return null; // Return null for 404s and other errors
-                            }
-                            return await response.json();
-                        } catch (error) {
-                            // Silently handle network errors (CORS, 404, etc.)
-                            console.warn(`[type5-load] fetch error: idol=${idolId} border=${border}`, error, url);
-                            return null;
-                        }
-                    };
-                    
-                    // Load predictions for idols 1-52
-                    const loadStart = performance.now();
-                    const loadPromises = [];
-                    for (let idolId = 1; idolId <= 52; idolId++) {
-                        loadPromises.push(
-                            Promise.all([
-                                fetchPrediction(idolId, '100.0'),
-                                fetchPrediction(idolId, '1000.0')
-                            ]).then(([pred100, pred1000]) => {
-                                // Only add to map if at least one prediction exists
-                                if (pred100 || pred1000) {
-                                    idolPredictionsMap.set(idolId, {
-                                        idolId,
-                                        prediction100: pred100,
-                                        prediction1000: pred1000
-                                    });
-                                }
-                            }).catch(error => {
-                                console.warn(`Unexpected error loading predictions for idol ${idolId}:`, error);
-                            })
-                        );
-                    }
 
-                    await Promise.all(loadPromises);
-                    const loadMs = performance.now() - loadStart;
-
-                    // Pull network timings + payload sizes from the
-                    // PerformanceResourceTiming entries the browser already
-                    // recorded. transferSize / decodedBodySize are only
-                    // populated when the worker sends `Timing-Allow-Origin`.
-                    // Match by exact URL so React StrictMode's double-invoke
-                    // doesn't cause cross-effect over-counting.
-                    const wanted = new Set(fetchedUrls);
-                    const matching = performance
-                        .getEntriesByType('resource')
-                        .filter((e): e is PerformanceResourceTiming => wanted.has(e.name));
-                    const totalTransferBytes = matching.reduce((s, e) => s + (e.transferSize || 0), 0);
-                    const totalDecodedBytes = matching.reduce((s, e) => s + (e.decodedBodySize || 0), 0);
-
-                    console.log(
-                        `[type5-load] eager: ${idolPredictionsMap.size}/52 idols loaded`,
-                        {
-                            totalMs: Math.round(loadMs),
-                            requests: fetchedUrls.length,
-                            transferKB: +(totalTransferBytes / 1024).toFixed(1),
-                            decodedKB: +(totalDecodedBytes / 1024).toFixed(1),
-                        },
-                    );
-
-                    setIdolPredictions(idolPredictionsMap);
+                    // Lazy load: discover availability via HEAD probes, then
+                    // let the page fetch each idol's full data on demand
+                    // when selected. See `src/utils/type5Loader.ts`.
+                    const availableIdols = await discoverAvailableIdols(baseUrl, debugSuffix);
+                    setAvailableIdols(availableIdols);
                 }
             } catch (error) {
                 console.error('Error loading data:', error);
@@ -325,6 +289,9 @@ const App: React.FC = () => {
                 <Type5EventPage
                     eventInfo={eventInfo}
                     idolPredictions={idolPredictions}
+                    availableIdols={availableIdols}
+                    loadingIdols={loadingIdols}
+                    requestIdolData={requestIdolData}
                     loading={loading}
                     theme={theme}
                     isDark={isDark}
