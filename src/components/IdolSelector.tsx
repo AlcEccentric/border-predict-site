@@ -122,7 +122,11 @@ const IdolSelector: React.FC<IdolSelectorProps> = ({
                                 )}
                                 
                                 {isSelected(idolId) && hasData(idolId) && (
-                                    <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                                    <div
+                                        className="absolute inset-0 flex items-center justify-center"
+                                        // 8-digit hex: idol color + B3 (~70% alpha) for parity with bg-primary/70.
+                                        style={{ backgroundColor: `${getIdolColor(idolId)}B3` }}
+                                    >
                                         <div 
                                             className="rounded-full p-1"
                                             style={{ backgroundColor: getIdolColor(idolId) }}
