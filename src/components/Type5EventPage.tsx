@@ -10,6 +10,92 @@ import { IdolPredictionData, EventInfo } from '../types';
 import { getIdolName } from '../utils/idolData';
 import { Info } from 'lucide-react';
 
+/**
+ * Renders one border's stats column (100位 or 1000位). Three visual states
+ * driven by the same shape so the column transitions smoothly between them
+ * via CSS opacity:
+ *   - loading: spinner where the score would be
+ *   - has data: real predicted score + error ranges
+ *   - no data: 「予測不可」 fallback
+ */
+const BorderStatsColumn: React.FC<{
+    heading: string;
+    colorClass: string; // e.g. "text-primary"
+    score: number | null;
+    isLoading: boolean;
+    hasData: boolean;
+}> = ({ heading, colorClass, score, isLoading, hasData }) => {
+    const showRealStats = !isLoading && hasData && score !== null;
+    return (
+        <div className="text-center space-y-3">
+            <h3 className={`text-xl font-bold ${colorClass}`}>{heading}</h3>
+            <AnimatePresence mode="wait" initial={false}>
+                {isLoading ? (
+                    <motion.div
+                        key="loading"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="stats stats-vertical shadow w-full max-w-xs mx-auto"
+                    >
+                        <div className="stat">
+                            <div className={`stat-title font-bold ${colorClass}`}>予測スコア</div>
+                            <div className={`stat-value ${colorClass} min-h-[3rem] flex items-center justify-center`}>
+                                <span className="loading loading-spinner loading-md"></span>
+                            </div>
+                            <div className="stat-desc">計算中...</div>
+                        </div>
+                    </motion.div>
+                ) : showRealStats ? (
+                    <motion.div
+                        key="data"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.25 }}
+                        className="stats stats-vertical shadow w-full max-w-xs mx-auto"
+                    >
+                        <div className="stat">
+                            <div className={`stat-title font-bold ${colorClass}`}>予測スコア</div>
+                            <div className={`stat-value ${colorClass} min-w-[140px] mx-auto`}>
+                                {Math.round(score!).toLocaleString()}
+                            </div>
+                        </div>
+                        <div className="stat">
+                            <div className={`stat-title font-bold ${colorClass}`}>±5% 誤差区間</div>
+                            <div className={`stat-desc font-bold ${colorClass}`}>
+                                {Math.round(score! * 0.95).toLocaleString()} ～ {Math.round(score! * 1.05).toLocaleString()}
+                            </div>
+                        </div>
+                        <div className="stat">
+                            <div className={`stat-title font-bold ${colorClass}`}>±10% 誤差区間</div>
+                            <div className={`stat-desc font-bold ${colorClass}`}>
+                                {Math.round(score! * 0.9).toLocaleString()} ～ {Math.round(score! * 1.1).toLocaleString()}
+                            </div>
+                        </div>
+                    </motion.div>
+                ) : (
+                    <motion.div
+                        key="empty"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="stats stats-vertical shadow w-full max-w-xs mx-auto"
+                    >
+                        <div className="stat">
+                            <div className="stat-title font-bold text-error">データ不足</div>
+                            <div className="stat-value text-error text-lg">予測不可</div>
+                            <div className="stat-desc text-error">十分なデータがありません</div>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
+
 interface Type5EventPageProps {
     eventInfo: EventInfo;
     idolPredictions: Map<number, IdolPredictionData>;
@@ -130,7 +216,7 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
         );
     }
 
-    const isSelectedIdolLoading = loadingIdols.has(selectedIdol);
+    const isSelectedIdolLoading = availableIdols.has(selectedIdol) && !idolPredictions.has(selectedIdol);
 
     const score100 = getScoreForIdol(selectedIdol, '100');
     const score1000 = getScoreForIdol(selectedIdol, '1000');
@@ -156,7 +242,7 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                 availableIdols={availableIdols}
             />
 
-            {selectedIdol && idolPredictions.has(selectedIdol) && (
+            {selectedIdol && (
                 <>
                     {/* Summary Stats */}
                     <CardContainer className="mb-8" ref={summaryStatsRef}>
@@ -181,83 +267,20 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                             </h3>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* 100 Border Stats */}
-                            <div className="text-center space-y-3">
-                                <h3 className="text-xl text-primary font-bold">100位ボーダー</h3>
-                                {hasDataForBorder(selectedIdol, '100') ? (
-                                    <div className="stats stats-vertical shadow w-full max-w-xs mx-auto">
-                                        <div className="stat">
-                                            <div className="stat-title font-bold text-primary">予測スコア</div>
-                                            <div className="stat-value text-primary min-w-[140px] mx-auto">
-                                                {Math.round(score100!).toLocaleString()}
-                                            </div>
-                                        </div>
-                                        <div className="stat">
-                                            <div className="stat-title font-bold text-primary">±5% 誤差区間</div>
-                                            <div className="stat-desc font-bold text-primary">
-                                                {Math.round(score100! * 0.95).toLocaleString()} ～ {Math.round(score100! * 1.05).toLocaleString()}
-                                            </div>
-                                        </div>
-                                        <div className="stat">
-                                            <div className="stat-title font-bold text-primary">±10% 誤差区間</div>
-                                            <div className="stat-desc font-bold text-primary">
-                                                {Math.round(score100! * 0.9).toLocaleString()} ～ {Math.round(score100! * 1.1).toLocaleString()}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="stats stats-vertical shadow">
-                                        <div className="stat">
-                                            <div className="stat-title font-bold text-error">データ不足</div>
-                                            <div className="stat-value text-error text-lg">
-                                                予測不可
-                                            </div>
-                                            <div className="stat-desc text-error">
-                                                十分なデータがありません
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* 1000 Border Stats */}
-                            <div className="text-center space-y-3">
-                                <h3 className="text-xl font-bold text-secondary">1000位ボーダー</h3>
-                                {hasDataForBorder(selectedIdol, '1000') ? (
-                                    <div className="stats stats-vertical shadow w-full max-w-xs mx-auto">
-                                        <div className="stat">
-                                            <div className="stat-title font-bold text-secondary">予測スコア</div>
-                                            <div className="stat-value text-secondary min-w-[140px] mx-auto">
-                                                {Math.round(score1000!).toLocaleString()}
-                                            </div>
-                                        </div>
-                                        <div className="stat">
-                                            <div className="stat-title font-bold text-secondary">±5% 誤差区間</div>
-                                            <div className="stat-desc font-bold text-secondary">
-                                                {Math.round(score1000! * 0.95).toLocaleString()} ～ {Math.round(score1000! * 1.05).toLocaleString()}
-                                            </div>
-                                        </div>
-                                        <div className="stat">
-                                            <div className="stat-title font-bold text-secondary">±10% 誤差区間</div>
-                                            <div className="stat-desc font-bold text-secondary">
-                                                {Math.round(score1000! * 0.9).toLocaleString()} ～ {Math.round(score1000! * 1.1).toLocaleString()}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="stats stats-vertical shadow w-full max-w-xs mx-auto">
-                                        <div className="stat">
-                                            <div className="stat-title font-bold text-error">データ不足</div>
-                                            <div className="stat-value text-error text-lg">
-                                                予測不可
-                                            </div>
-                                            <div className="stat-desc text-error">
-                                                十分なデータがありません
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
+                            <BorderStatsColumn
+                                heading="100位ボーダー"
+                                colorClass="text-primary"
+                                score={score100}
+                                isLoading={isSelectedIdolLoading}
+                                hasData={hasDataForBorder(selectedIdol, '100')}
+                            />
+                            <BorderStatsColumn
+                                heading="1000位ボーダー"
+                                colorClass="text-secondary"
+                                score={score1000}
+                                isLoading={isSelectedIdolLoading}
+                                hasData={hasDataForBorder(selectedIdol, '1000')}
+                            />
                         </div>
                     </CardContainer>
 
@@ -265,19 +288,29 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                     <div ref={chartSectionRef}>
                         <CardContainer className="mb-4">
                             <div className="space-y-4">
-                                <div className="relative w-full">
-                                    {isSelectedIdolLoading && !idolPredictions.has(selectedIdol) ? (
-                                        <div className="flex flex-col items-center justify-center min-h-[360px]">
-                                            <div className="loading loading-spinner loading-md"></div>
-                                            <p className="mt-3 text-sm text-base-content/70">
-                                                {getIdolName(selectedIdol)} の予測データを読み込み中...
-                                            </p>
-                                        </div>
-                                    ) : (
-                                        <AnimatePresence mode="popLayout">
+                                <div className="relative w-full min-h-[360px]">
+                                    <AnimatePresence mode="wait">
+                                        {isSelectedIdolLoading ? (
                                             <motion.div
-                                                layout
-                                                transition={{ type: 'spring', stiffness: 100, damping: 20, duration: 0.5 }}
+                                                key="chart-loading"
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                exit={{ opacity: 0 }}
+                                                transition={{ duration: 0.2 }}
+                                                className="flex flex-col items-center justify-center min-h-[360px]"
+                                            >
+                                                <div className="loading loading-spinner loading-md"></div>
+                                                <p className="mt-3 text-sm text-base-content/70">
+                                                    {getIdolName(selectedIdol)} の予測データを読み込み中...
+                                                </p>
+                                            </motion.div>
+                                        ) : (
+                                            <motion.div
+                                                key={`chart-${selectedIdol}`}
+                                                initial={{ opacity: 0 }}
+                                                animate={{ opacity: 1 }}
+                                                exit={{ opacity: 0 }}
+                                                transition={{ duration: 0.25 }}
                                                 className="w-full"
                                             >
                                                 <Type5MainChart
@@ -288,8 +321,8 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                                                     theme={theme}
                                                 />
                                             </motion.div>
-                                        </AnimatePresence>
-                                    )}
+                                        )}
+                                    </AnimatePresence>
                                 </div>
                             </div>
                         </CardContainer>

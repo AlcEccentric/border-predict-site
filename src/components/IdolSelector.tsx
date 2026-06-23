@@ -62,7 +62,7 @@ const IdolSelector: React.FC<IdolSelectorProps> = ({
                     表示したいアイドルを選択してください
                     {availableIdols && availableIdols.size < allIdols.length && (
                         <div className="mt-2 p-2 bg-warning/10 border border-warning/20 rounded text-warning text-xs">
-                            ⚠️ 一部のアイドルは予測データが不足しているため選択できません
+                            一部のアイドルは予測データ不足のため、選択できません。
                         </div>
                     )}
                 </div>
@@ -149,7 +149,6 @@ const IdolSelector: React.FC<IdolSelectorProps> = ({
                                 {!hasData(idolId) && (
                                     <div className="absolute inset-0 bg-base-300/80 flex items-center justify-center">
                                         <div className="text-center">
-                                            <div className="text-lg">📊</div>
                                             <div className="text-xs text-base-content/70 font-semibold">
                                                 データ不足
                                             </div>
