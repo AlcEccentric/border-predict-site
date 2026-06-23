@@ -1,7 +1,7 @@
 normal
 node_modules
 dist
-
+r2-worker
 # Local environment variables (may contain secrets)
 .env
 .env.local

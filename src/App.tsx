@@ -27,13 +27,35 @@ const App: React.FC = () => {
         const savedActiveTab = localStorage.getItem('activeTab');
         return savedActiveTab || '100';
     });
-    const baseUrl = 'https://cdn.yuenimillion.live/data'; // Production URL
     // Debug mode: launched via `npm run dev:debug` (sets VITE_DEBUG=1).
     // Appends ?debug to fetches to bypass the CDN cache so the latest
     // uncached predictions are rendered. Never enabled in a production build.
     const isDebug = import.meta.env.VITE_DEBUG === '1'
         || import.meta.env.VITE_DEBUG === 'true';
     const debugSuffix = isDebug ? '?debug' : '';
+
+    // Allow overriding the data base URL for local testing against a
+    // different bucket / mock server. Falls back to the production CDN.
+    const baseUrlEnv = import.meta.env.VITE_DATA_BASE_URL as string | undefined;
+    const baseUrl = baseUrlEnv && baseUrlEnv.length > 0
+        ? baseUrlEnv
+        : 'https://cdn.yuenimillion.live/data';
+
+    // Force the page into a particular event type for local testing,
+    // regardless of what `latest_event_border_info.json` says. Useful for
+    // checking the Type 5 layout when no Type 5 event is currently running.
+    // The actual prediction data still comes from `baseUrl`, so any
+    // historical data left at the unversioned paths will be used.
+    //
+    // Examples:
+    //   ?type5Demo=true        → Type 5 page (event id 388 by default)
+    //   ?type5Demo=true&eventId=388&eventName=テスト → custom labels
+    const params = typeof window !== 'undefined'
+        ? new URLSearchParams(window.location.search)
+        : new URLSearchParams();
+    const forceType5Demo = params.get('type5Demo') === 'true' || params.get('type5Demo') === '1';
+    const demoEventId = Number(params.get('eventId') ?? 388);
+    const demoEventName = params.get('eventName') ?? 'デモイベント (Type 5)';
     
     // Maintenance mode configuration
     const isMaintenanceMode = false; // Set to true to enable maintenance mode
@@ -53,13 +75,34 @@ const App: React.FC = () => {
     useEffect(() => {
         const loadData = async () => {
             try {
-                // Load event info (CDN will cache for 24 hours based on Cache-Control header)
-                const eventInfoResponse = await fetch(`${baseUrl}/metadata/latest_event_border_info.json${debugSuffix}`);
-                if (!eventInfoResponse.ok) {
-                    throw new Error(`Failed to fetch event info: ${eventInfoResponse.status} ${eventInfoResponse.statusText}`);
+                let eventInfoData: EventInfo;
+
+                if (forceType5Demo) {
+                    // Skip the live metadata fetch and synthesize an EventInfo so
+                    // we render the Type 5 page using whatever predictions still
+                    // sit at the unversioned paths.
+                    const now = new Date();
+                    eventInfoData = {
+                        EventId: demoEventId,
+                        EventType: 5,
+                        InternalEventType: 5,
+                        EventName: demoEventName,
+                        // StartAt set far enough in the past that the 36-hour
+                        // pre-event gate doesn't trigger.
+                        StartAt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+                        EndAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+                    };
+                    console.log('[type5-demo] active — using synthesized EventInfo', eventInfoData);
+                    setEventInfo(eventInfoData);
+                } else {
+                    // Load event info (CDN will cache for 24 hours based on Cache-Control header)
+                    const eventInfoResponse = await fetch(`${baseUrl}/metadata/latest_event_border_info.json${debugSuffix}`);
+                    if (!eventInfoResponse.ok) {
+                        throw new Error(`Failed to fetch event info: ${eventInfoResponse.status} ${eventInfoResponse.statusText}`);
+                    }
+                    eventInfoData = await eventInfoResponse.json();
+                    setEventInfo(eventInfoData);
                 }
-                const eventInfoData = await eventInfoResponse.json();
-                setEventInfo(eventInfoData);
 
                 // Helper function to check if prediction data is valid (newer than event start)
                 const validatePredictionData = async (url: string, eventStartTime: string): Promise<boolean> => {
@@ -117,35 +160,45 @@ const App: React.FC = () => {
                         console.warn('Failed to load normal event predictions');
                     }
                 } else if (isType5Event(eventInfoData.EventType)) {
-                    // Check a sample prediction file to validate data freshness
-                    const samplePredictionUrl = `${baseUrl}/prediction/1/100.0/predictions.json${debugSuffix}`;
-                    const isValid = await validatePredictionData(samplePredictionUrl, eventInfoData.StartAt);
-                    
-                    if (!isValid) {
-                        console.error('Type 5 prediction data is outdated, showing no-event page');
-                        setPredictionDataValid(false);
-                        setLoading(false);
-                        return;
+                    // Check a sample prediction file to validate data freshness.
+                    // Skipped in demo mode because the historical data on R2 is
+                    // older than the synthesized `StartAt`.
+                    if (!forceType5Demo) {
+                        const samplePredictionUrl = `${baseUrl}/prediction/1/100.0/predictions.json${debugSuffix}`;
+                        const isValid = await validatePredictionData(samplePredictionUrl, eventInfoData.StartAt);
+
+                        if (!isValid) {
+                            console.error('Type 5 prediction data is outdated, showing no-event page');
+                            setPredictionDataValid(false);
+                            setLoading(false);
+                            return;
+                        }
                     }
                     
                     // Load Type 5 event predictions for all idols
                     const idolPredictionsMap = new Map<number, IdolPredictionData>();
                     
                     // Helper function to safely fetch prediction data
+                    const fetchedUrls: string[] = [];
                     const fetchPrediction = async (idolId: number, border: string) => {
+                        const url = `${baseUrl}/prediction/${idolId}/${border}/predictions.json${debugSuffix}`;
+                        fetchedUrls.push(url);
                         try {
-                            const response = await fetch(`${baseUrl}/prediction/${idolId}/${border}/predictions.json${debugSuffix}`);
+                            const response = await fetch(url);
                             if (!response.ok) {
+                                console.warn(`[type5-load] ${response.status} ${response.statusText}: idol=${idolId} border=${border}`, url);
                                 return null; // Return null for 404s and other errors
                             }
                             return await response.json();
                         } catch (error) {
                             // Silently handle network errors (CORS, 404, etc.)
+                            console.warn(`[type5-load] fetch error: idol=${idolId} border=${border}`, error, url);
                             return null;
                         }
                     };
                     
                     // Load predictions for idols 1-52
+                    const loadStart = performance.now();
                     const loadPromises = [];
                     for (let idolId = 1; idolId <= 52; idolId++) {
                         loadPromises.push(
@@ -160,21 +213,39 @@ const App: React.FC = () => {
                                         prediction100: pred100,
                                         prediction1000: pred1000
                                     });
-                                    
-                                    // Optional: Log successful loads (can be removed in production)
-                                    // const available = [];
-                                    // if (pred100) available.push('100');
-                                    // if (pred1000) available.push('1000');
-                                    // console.log(`Loaded predictions for idol ${idolId}: ${available.join(', ')}`);
                                 }
                             }).catch(error => {
-                                // This should rarely happen since we handle errors in fetchPrediction
                                 console.warn(`Unexpected error loading predictions for idol ${idolId}:`, error);
                             })
                         );
                     }
-                    
+
                     await Promise.all(loadPromises);
+                    const loadMs = performance.now() - loadStart;
+
+                    // Pull network timings + payload sizes from the
+                    // PerformanceResourceTiming entries the browser already
+                    // recorded. transferSize / decodedBodySize are only
+                    // populated when the worker sends `Timing-Allow-Origin`.
+                    // Match by exact URL so React StrictMode's double-invoke
+                    // doesn't cause cross-effect over-counting.
+                    const wanted = new Set(fetchedUrls);
+                    const matching = performance
+                        .getEntriesByType('resource')
+                        .filter((e): e is PerformanceResourceTiming => wanted.has(e.name));
+                    const totalTransferBytes = matching.reduce((s, e) => s + (e.transferSize || 0), 0);
+                    const totalDecodedBytes = matching.reduce((s, e) => s + (e.decodedBodySize || 0), 0);
+
+                    console.log(
+                        `[type5-load] eager: ${idolPredictionsMap.size}/52 idols loaded`,
+                        {
+                            totalMs: Math.round(loadMs),
+                            requests: fetchedUrls.length,
+                            transferKB: +(totalTransferBytes / 1024).toFixed(1),
+                            decodedKB: +(totalDecodedBytes / 1024).toFixed(1),
+                        },
+                    );
+
                     setIdolPredictions(idolPredictionsMap);
                 }
             } catch (error) {
