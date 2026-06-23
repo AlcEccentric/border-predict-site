@@ -46,19 +46,39 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
     });
     const chartSectionRef = useRef<HTMLDivElement>(null);
     const summaryStatsRef = useRef<HTMLDivElement>(null);
+    // Tracks an idol the user has selected and is waiting to scroll to.
+    // The scroll is deferred until that idol's data finishes loading (or
+    // we know it's unavailable), so layout shifts from the lazy fetch
+    // don't strand the viewport mid-scroll.
+    const pendingScrollIdolRef = useRef<number | null>(null);
 
     const handleIdolSelect = (idolId: number) => {
         setSelectedIdol(idolId);
         localStorage.setItem('selectedIdol', idolId.toString());
+        pendingScrollIdolRef.current = idolId;
+    };
 
-        // Scroll to summary stats section after a short delay to allow for state update
-        setTimeout(() => {
+    // Resolve the pending scroll once the chart will render with stable
+    // height — either because the idol's data is in cache, or because we
+    // know the idol has no data for this event.
+    React.useEffect(() => {
+        const target = pendingScrollIdolRef.current;
+        if (target == null) return;
+        if (target !== selectedIdol) {
+            // User clicked another idol while waiting; abandon this scroll.
+            pendingScrollIdolRef.current = null;
+            return;
+        }
+        const dataReady = idolPredictions.has(target);
+        const known = availableIdols.size > 0 && !availableIdols.has(target);
+        if (dataReady || known) {
             summaryStatsRef.current?.scrollIntoView({
                 behavior: 'smooth',
-                block: 'start'
+                block: 'start',
             });
-        }, 100);
-    };
+            pendingScrollIdolRef.current = null;
+        }
+    }, [selectedIdol, idolPredictions, availableIdols]);
 
     const getScoreForIdol = (idolId: number, border: '100' | '1000') => {
         const idolData = idolPredictions.get(idolId);
