@@ -6,6 +6,11 @@ import { IdolPredictionData, PredictionData } from '../types';
  * The loader treats prediction JSON as an opaque blob — it never inspects
  * fields inside the response. That keeps it compatible with future schema
  * changes; only the URL pattern below needs updating.
+ *
+ * Freshness gating: callers can pass an optional `freshAfter` cutoff. Any
+ * file whose R2 `Last-Modified` is older than that timestamp is treated as
+ * leftover data from a previous event and ignored. Passing `null`/`undefined`
+ * disables the check (used by demo mode where stale data is the point).
  */
 
 const BORDERS = ['100.0', '1000.0'] as const;
@@ -16,14 +21,28 @@ function predictionUrl(baseUrl: string, idolId: number, border: string, debugSuf
 }
 
 /**
+ * Decide whether a probe response represents fresh-enough data. Cutoff is
+ * compared against the response's `Last-Modified` header. A missing header
+ * is treated as fresh (we have no way to know otherwise).
+ */
+function isFresh(response: Response, freshAfter: Date | null | undefined): boolean {
+    if (!freshAfter) return true;
+    const lastModifiedHeader = response.headers.get('Last-Modified');
+    if (!lastModifiedHeader) return true;
+    const lastModifiedMs = new Date(lastModifiedHeader).getTime();
+    return Number.isFinite(lastModifiedMs) && lastModifiedMs >= freshAfter.getTime();
+}
+
+/**
  * Fan out HEAD requests to discover which idols have any prediction data.
- * An idol counts as "available" if at least one of its border files responds
- * with 2xx. HEAD requests are body-less, so total bandwidth is tiny even
- * though we issue 104 of them (52 idols x 2 borders).
+ * An idol counts as "available" if at least one of its border files exists
+ * AND is newer than `freshAfter` (when provided). HEAD requests are
+ * body-less, so total bandwidth is tiny even with 104 of them.
  */
 export async function discoverAvailableIdols(
     baseUrl: string,
     debugSuffix: string,
+    freshAfter?: Date | null,
 ): Promise<Set<number>> {
     const probes: Array<Promise<{ idolId: number; ok: boolean }>> = [];
     for (let idolId = 1; idolId <= TOTAL_IDOLS; idolId++) {
@@ -31,7 +50,7 @@ export async function discoverAvailableIdols(
             const url = predictionUrl(baseUrl, idolId, border, debugSuffix);
             probes.push(
                 fetch(url, { method: 'HEAD' })
-                    .then(r => ({ idolId, ok: r.ok }))
+                    .then(r => ({ idolId, ok: r.ok && isFresh(r, freshAfter) }))
                     .catch(() => ({ idolId, ok: false })),
             );
         }
@@ -47,18 +66,21 @@ export async function discoverAvailableIdols(
 
 /**
  * Fetch the full prediction data for a single idol (both borders in
- * parallel). Returns null if neither border returned data — the caller
- * should treat that idol as effectively unavailable.
+ * parallel). Each border is independently checked against `freshAfter`;
+ * stale borders come back as null. Returns null for the whole idol only
+ * if neither border is both present and fresh.
  */
 export async function loadIdolPrediction(
     idolId: number,
     baseUrl: string,
     debugSuffix: string,
+    freshAfter?: Date | null,
 ): Promise<IdolPredictionData | null> {
     const fetchOne = async (border: string): Promise<PredictionData | null> => {
         try {
             const res = await fetch(predictionUrl(baseUrl, idolId, border, debugSuffix));
             if (!res.ok) return null;
+            if (!isFresh(res, freshAfter)) return null;
             return (await res.json()) as PredictionData;
         } catch {
             return null;

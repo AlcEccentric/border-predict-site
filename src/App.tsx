@@ -59,6 +59,10 @@ const App: React.FC = () => {
     const forceType5Demo = params.get('type5Demo') === 'true' || params.get('type5Demo') === '1';
     const demoEventId = Number(params.get('eventId') ?? 388);
     const demoEventName = params.get('eventName') ?? 'デモイベント (Type 5)';
+    // Demo-mode opt-in for the freshness check. Default `skip` so existing
+    // demo URLs continue to render last year's data; `enforce` activates
+    // the same Last-Modified vs StartAt filter used in production.
+    const demoFreshness = params.get('freshness') === 'enforce' ? 'enforce' : 'skip';
     
     // Maintenance mode configuration
     const isMaintenanceMode = false; // Set to true to enable maintenance mode
@@ -81,13 +85,17 @@ const App: React.FC = () => {
     // the callback identity to change every fetch and re-trigger effects).
     const idolDataRef = useRef<Map<number, IdolPredictionData>>(new Map());
     const inFlightRef = useRef<Set<number>>(new Set());
+    // Files older than this are treated as leftovers from a previous event.
+    // Set when the active event is loaded; null in demo mode (where we want
+    // to render the historical data on R2).
+    const freshAfterRef = useRef<Date | null>(null);
 
     const requestIdolData = useCallback(async (idolId: number) => {
         if (idolDataRef.current.has(idolId) || inFlightRef.current.has(idolId)) return;
         inFlightRef.current.add(idolId);
         setLoadingIdols(prev => new Set(prev).add(idolId));
         try {
-            const data = await loadIdolPrediction(idolId, baseUrl, debugSuffix);
+            const data = await loadIdolPrediction(idolId, baseUrl, debugSuffix, freshAfterRef.current);
             if (data) {
                 const next = new Map(idolDataRef.current);
                 next.set(idolId, data);
@@ -209,7 +217,13 @@ const App: React.FC = () => {
                     // Lazy load: discover availability via HEAD probes, then
                     // let the page fetch each idol's full data on demand
                     // when selected. See `src/utils/type5Loader.ts`.
-                    const availableIdols = await discoverAvailableIdols(baseUrl, debugSuffix);
+                    // Skip the freshness cutoff in demo mode so we can
+                    // browse last year's data on R2, unless the demo
+                    // explicitly opts back in via `?freshness=enforce`.
+                    const skipFreshness = forceType5Demo && demoFreshness === 'skip';
+                    const freshAfter = skipFreshness ? null : new Date(eventInfoData.StartAt);
+                    freshAfterRef.current = freshAfter;
+                    const availableIdols = await discoverAvailableIdols(baseUrl, debugSuffix, freshAfter);
                     setAvailableIdols(availableIdols);
                 }
             } catch (error) {
