@@ -7,7 +7,8 @@
         "dev": "vite",
         "dev:debug": "VITE_DEBUG=1 vite",
         "build": "tsc && vite build",
-        "preview": "vite preview"
+        "preview": "vite preview",
+        "gen:og": "node scripts/gen-og-image.cjs"
     },
     "dependencies": {
         "@vitejs/plugin-react": "^4.0.0",
@@ -28,6 +29,7 @@
         "vite": "^4.0.0"
     },
     "devDependencies": {
+        "@resvg/resvg-js": "^2.6.2",
         "@types/culori": "^4.0.1",
         "@types/node": "^24.0.3",
         "@types/react": "^18.2.0",
