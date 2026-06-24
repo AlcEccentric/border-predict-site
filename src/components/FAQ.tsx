@@ -1,22 +1,45 @@
 import React from 'react';
 import { Info, TrendingUp, Users, RefreshCw, Sliders, Heart, type LucideIcon } from 'lucide-react';
 
-/**
- * Each entry renders one collapse panel. Keeping the metadata in a list
- * makes the ordering and visual treatment easy to change without touching
- * the markup below.
- */
-const sections: Array<{
+interface FAQProps {
+    /** Event type of the page this FAQ is rendered on. 5 = anniversary (周年). */
+    eventType?: number;
+}
+
+type Section = {
     id?: string;
     title: string;
     icon: LucideIcon;
     defaultOpen?: boolean;
     content: React.ReactNode;
-}> = [
+};
+
+/**
+ * Build the FAQ sections for the given event kind. Anniversary (type 5)
+ * events differ from normal events in several ways (per-idol predictions,
+ * popularity-tiered confidence intervals, borders 100/1000 instead of
+ * 100/2500), so the affected sections branch on `isAnniversary`.
+ */
+const getSections = (isAnniversary: boolean): Section[] => [
     {
         title: '予測について',
         icon: Info,
-        content: (
+        content: isAnniversary ? (
+            <>
+                <p>
+                    予測値は過去の類似イベントデータをもとに算出していますが、実際の結果とは異なる場合があります。参考情報としてご利用ください。
+                </p>
+                <p className="mt-2">
+                    周年イベントでは、52人のアイドルそれぞれについて、<strong>100位・1000位</strong>のボーダーを個別に予測します。
+                </p>
+                <p className="mt-2">
+                    <strong>予測の流れ:</strong><br />
+                    1. 各アイドルの現在のスコアを正規化し、過去の周年イベントのスコア推移と比較して近傍を選定<br />
+                    2. 近傍のスコア推移を現在の傾向に合わせて調整<br />
+                    3. 類似度に応じて重み付けし、予測値を算出
+                </p>
+            </>
+        ) : (
             <>
                 <p>
                     予測値は過去の類似イベントデータをもとに算出していますが、実際の結果とは異なる場合があります。参考情報としてご利用ください。
@@ -53,6 +76,21 @@ const sections: Array<{
                         → 信頼度が高いほど当たりやすいですが、その分、範囲は広くなります。
                     </p>
                 </div>
+                {isAnniversary && (
+                    <div className="mt-4">
+                        <h4 className="text-lg font-semibold mb-2">人気帯に応じた信頼区間</h4>
+                        <p className="text-sm">
+                            周年イベントでは、アイドルが「イベント内でどのくらいの順位帯（人気帯）にいるか」に応じて信頼区間の幅が変わります。
+                        </p>
+                        <ul className="ml-4 mt-2 list-disc text-sm">
+                            <li>人気が高いアイドルほど予測が安定しやすく、範囲は<strong>狭く</strong>なります。</li>
+                            <li>人気が低いアイドルは予測が難しく、範囲は<strong>広く</strong>なります。</li>
+                        </ul>
+                        <p className="mt-2 text-sm text-base-content/70">
+                            → 同じイベントでも、表示されるアイドルによって信頼区間の幅が異なるのはこのためです。
+                        </p>
+                    </div>
+                )}
                 <div className="mt-4">
                     <h4 className="text-lg font-semibold mb-2">算出の流れ</h4>
                     <ol className="ml-4 list-decimal text-sm space-y-1">
@@ -65,6 +103,11 @@ const sections: Array<{
                                 <li>75%信頼区間 → 12.5～87.5パーセンタイル</li>
                                 <li>90%信頼区間 → 5～95パーセンタイル</li>
                             </ul>
+                            {isAnniversary && (
+                                <span className="block mt-1 text-base-content/70">
+                                    ※周年イベントでは、アイドルの人気帯（順位帯）ごとに誤差の分布を分けて計算しています。
+                                </span>
+                            )}
                         </li>
                         <li>
                             <strong>補間:</strong> 誤差データは一定間隔でしか計算していないため、その間の値は前後のデータをもとに滑らかに補っています
@@ -84,11 +127,25 @@ const sections: Array<{
     {
         title: '近傍イベントとは',
         icon: Users,
-        content: (
+        content: isAnniversary ? (
+            <p>
+                近傍イベントとは、現在進行中の周年イベントと「スコアの伸び方（特に現在の進行度付近）」が類似している過去の周年イベントのことです。<br />
+                周年イベントでは<strong>アイドルごと</strong>に近傍を選定し、それぞれのスコア推移を参照して予測します。<br />
+                同じ形式・同じ開催期間のイベントであれば、ボーダーライン（100位や1000位など）の伸び方も似てくる傾向があるため、より正確な予測に繋がります。<br />
+                <br />
+                <span className="text-base-content/70">
+                    ※以前は選ばれた近傍イベントをグラフに表示していましたが、アルゴリズムの更新により、選ばれる近傍は「スコアの伸び方の形」を重視するようになりました。そのため、見た目の直感で「近い」と感じるイベントとは必ずしも一致しないことがあり、現在は表示していません。
+                </span>
+            </p>
+        ) : (
             <p>
                 近傍イベントとは、現在進行中のイベントと「イベント形式」や「スコアの伸び方（特に現在の進行度付近）」などが類似している過去のイベントのことです。<br />
                 これらのイベントのスコア推移を比較・参照することで、現在のイベントが今後どのように進行するかを予測する材料になります。<br />
-                特に同じ形式・同じ開催期間のイベントであれば、ボーダーライン（100位や2500位など）の伸び方も似てくる傾向があるため、より正確な予測に繋がります。
+                特に同じ形式・同じ開催期間のイベントであれば、ボーダーライン（100位や2500位など）の伸び方も似てくる傾向があるため、より正確な予測に繋がります。<br />
+                <br />
+                <span className="text-base-content/70">
+                    ※以前は選ばれた近傍イベントをグラフに表示していましたが、アルゴリズムの更新により、選ばれる近傍は「スコアの伸び方の形」を重視するようになりました。そのため、見た目の直感で「近い」と感じるイベントとは必ずしも一致しないことがあり、現在は表示していません。
+                </span>
             </p>
         ),
     },
@@ -117,7 +174,16 @@ const sections: Array<{
     {
         title: 'スコアの正規化方法について',
         icon: Sliders,
-        content: (
+        content: isAnniversary ? (
+            <p>
+                本サイトでは、<b>現在進行中のイベントの期間</b>を基準として、過去の類似イベント（近傍イベント）のスコアを調整しています。
+                周年イベントは通常<b>約13日間</b>で開催されますが、過去のイベントと開催期間がわずかに異なる場合は、現在のイベント期間に合わせてスコアを調整します。
+                これにより、開催期間が異なる過去のイベントでも、現在のイベントと比べやすくなります。
+                <br />
+                <br />
+                ※ブーストの開始タイミング（折り返し）もイベント期間に合わせて調整しています（詳細な計算方法についてはここでは触れません）。
+            </p>
+        ) : (
             <p>
                 本サイトでは、<b>現在進行中のイベントの期間</b>を基準として、過去の類似イベント（近傍イベント）のスコアを調整しています。
                 これにより、開催期間が異なる過去のイベントでも、現在のイベントと比べやすくなります。
@@ -150,7 +216,10 @@ const sections: Array<{
     },
 ];
 
-const FAQ: React.FC = () => {
+const FAQ: React.FC<FAQProps> = ({ eventType }) => {
+    const isAnniversary = eventType === 5;
+    const sections = getSections(isAnniversary);
+
     return (
         <div className="mt-4">
             <div className="space-y-3">

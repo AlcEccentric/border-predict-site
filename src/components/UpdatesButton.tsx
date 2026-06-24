@@ -4,7 +4,7 @@ import { Info, X } from 'lucide-react';
 const UpdatesButton: React.FC = () => {
     const [isExpanded, setIsExpanded] = useState(false);
 
-    const currentUpdateKey = "update-2026-05-19"; // Change this when there's a new update
+    const currentUpdateKey = "update-2026-06-24"; // Change this when there's a new update
     const [hasNewUpdate, setHasNewUpdate] = useState(() => {
         const lastSeen = localStorage.getItem('lastSeenUpdate');
         return lastSeen !== currentUpdateKey;
@@ -75,17 +75,10 @@ const UpdatesButton: React.FC = () => {
 
                         {/* Updates section */}
                         <div className="border-l-4 border-primary pl-4">
-                            <h4 className="font-bold text-primary mb-2">更新情報 (2026/05/19)</h4>
-                            <div className="pl-2 space-y-3">
-                                <div>
-                                    <h5 className="font-bold mb-1 text-sm">類似イベント表示の終了</h5>
-                                    <p className="text-sm text-base-content/80">
-                                        「類似イベント」の表示を、いったん非表示にしました。
-                                        アルゴリズム改善により、より「<strong>スコアの伸び方の形</strong>」を重視するようにしました。
-                                        ただし、選ばれた類似イベントは伸び方は似ていてもスコアの高さが離れていることが多く、グラフに重ねると「なぜこれが類似？」と混乱を招きやすいため、当面は非表示としました。スコアが近い過去イベントを見比べる用途には、別途専用ツールを準備中です。
-                                    </p>
-                                </div>
-                            </div>
+                            <h4 className="font-bold text-primary mb-2">更新情報 (2026/06/24)</h4>
+                            <p className="text-sm text-base-content/80">
+                                周年イベントの体験をより良くするため、UI周りを中心に細かなアップデートを行いました。
+                            </p>
                         </div>
                     </div>
                 </div>

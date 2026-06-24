@@ -16,9 +16,10 @@ import { IdolPredictionData, PredictionData } from '../types';
 const BORDERS = ['100.0', '1000.0'] as const;
 const TOTAL_IDOLS = 52;
 
-// Data is expected to refresh roughly hourly; older than this (but still
-// belonging to the current event) is considered stale.
-const STALE_AFTER_MS = 2 * 60 * 60 * 1000;
+// Data is expected to refresh roughly hourly; combined with up to ~1h of
+// browser/CDN caching, displayed data can legitimately be ~2h old. Use a 3h
+// threshold for the stale warning so normal caching doesn't trip it.
+const STALE_AFTER_MS = 3 * 60 * 60 * 1000;
 
 function predictionUrl(baseUrl: string, idolId: number, border: string, debugSuffix: string): string {
     return `${baseUrl}/prediction/${idolId}/${border}/predictions.json${debugSuffix}`;
