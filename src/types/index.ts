@@ -58,9 +58,15 @@ export interface PredictionData {
     data: {
         raw: {
             target: number[];
+            // CI bounds — `upper` / `lower` can be either:
+            //   - `number[]`: per-step series (normal events)
+            //   - `number`:   final-time scalar only (Type 5 idol predictions
+            //                 going forward — saves payload by 52x).
+            // Use `getFinalBoundValue()` to read either shape uniformly,
+            // and `getBoundSeries()` when you specifically need the array.
             bounds?: {
-                75: { upper: number[]; lower: number[]; };
-                90: { upper: number[]; lower: number[]; };
+                75: { upper: number | number[]; lower: number | number[] };
+                90: { upper: number | number[]; lower: number | number[] };
             };
         };
         normalized: {
@@ -70,4 +76,27 @@ export interface PredictionData {
             };
         };
     };
+}
+
+/**
+ * Returns the final-time value for one side of a CI bound, regardless of
+ * whether the underlying field is a per-step array (normal events) or a
+ * single scalar (Type 5 idol predictions).
+ */
+export function getFinalBoundValue(
+    field: number | number[] | undefined,
+): number | undefined {
+    if (typeof field === 'number') return field;
+    if (Array.isArray(field) && field.length > 0) return field[field.length - 1];
+    return undefined;
+}
+
+/**
+ * Returns the per-step CI series, or null if the bound is a scalar (no
+ * series). Use this for chart bands that need every time step.
+ */
+export function getBoundSeries(
+    field: number | number[] | undefined,
+): number[] | null {
+    return Array.isArray(field) ? field : null;
 }
