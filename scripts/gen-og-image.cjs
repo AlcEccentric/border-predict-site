@@ -25,6 +25,7 @@ function meta(attr, key, fallback) {
 
 const title = meta('property', 'og:title', 'ミリシタ ボーダー予想');
 const subtitle = meta('property', 'og:description', 'イベントボーダーをリアルタイムで予測');
+const cta = '今すぐ予測をチェック →';
 
 /** Escape text for safe embedding in SVG markup. */
 function esc(s) {
@@ -35,6 +36,21 @@ function esc(s) {
         .replace(/"/g, '&quot;');
 }
 
+// Split the title on whitespace and stack each part on its own line. This
+// keeps the text within the centered "square-safe" zone, since some
+// platforms (Discord, X) crop the 1200x630 card to a centered square and
+// clip the left/right edges of a long single line.
+const titleLines = title.split(/\s+/).filter(Boolean);
+const lineHeight = 84;
+const firstBaseline = titleLines.length <= 1 ? 270 : 215;
+const titleSvg = titleLines
+    .map((line, i) =>
+        `<text x="600" y="${firstBaseline + i * lineHeight}" text-anchor="middle" font-family="sans-serif" font-size="72" font-weight="bold" fill="#ffffff">${esc(line)}</text>`)
+    .join('\n  ');
+const subtitleY = firstBaseline + (titleLines.length - 1) * lineHeight + 70;
+const ctaRectY = subtitleY + 40;
+const ctaTextY = ctaRectY + 49;
+
 const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
   <defs>
     <linearGradient id="bg" x1="0%" y1="50%" x2="100%" y2="50%">
@@ -44,8 +60,11 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" v
     </linearGradient>
   </defs>
   <rect width="1200" height="630" fill="url(#bg)" />
-  <text x="600" y="290" text-anchor="middle" font-family="sans-serif" font-size="72" font-weight="bold" fill="#ffffff">${esc(title)}</text>
-  <text x="600" y="380" text-anchor="middle" font-family="sans-serif" font-size="32" fill="#ffffff" opacity="0.8">${esc(subtitle)}</text>
+  ${titleSvg}
+  <text x="600" y="${subtitleY}" text-anchor="middle" font-family="sans-serif" font-size="32" fill="#ffffff" opacity="0.9">${esc(subtitle)}</text>
+  <!-- Call-to-action pill -->
+  <rect x="390" y="${ctaRectY}" width="420" height="74" rx="37" fill="#ffffff" />
+  <text x="600" y="${ctaTextY}" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="bold" fill="#2A7B9B">${esc(cta)}</text>
 </svg>`;
 
 const outPath = path.join(root, 'public', 'og-image.png');
