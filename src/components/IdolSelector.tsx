@@ -41,20 +41,24 @@ const IdolSelector: React.FC<IdolSelectorProps> = ({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [selectedIdol]);
 
-    // Reveal the condensed sticky bar once the full selector has scrolled up
-    // past the banner. rootMargin top offset (-56px) matches the sticky
-    // banner height so the bar appears right as the selector tucks behind it.
+    // Reveal the condensed rail once the full selector has scrolled up past
+    // the banner. Driven by scroll position (not IntersectionObserver) so that
+    // reflows from unrelated UI — e.g. expanding the banner's mobile menu —
+    // don't spuriously toggle it.
     useEffect(() => {
-        const el = selectorRef.current;
-        if (!el || typeof IntersectionObserver === 'undefined') return;
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                setShowSticky(!entry.isIntersecting && entry.boundingClientRect.top < 0);
-            },
-            { rootMargin: '-56px 0px 0px 0px', threshold: 0 },
-        );
-        observer.observe(el);
-        return () => observer.disconnect();
+        const compute = () => {
+            const el = selectorRef.current;
+            if (!el) return;
+            // Show once the selector's bottom has scrolled above the banner.
+            setShowSticky(el.getBoundingClientRect().bottom < 56);
+        };
+        compute();
+        window.addEventListener('scroll', compute, { passive: true });
+        window.addEventListener('resize', compute);
+        return () => {
+            window.removeEventListener('scroll', compute);
+            window.removeEventListener('resize', compute);
+        };
     }, []);
 
     // Collapse the rail whenever it's not showing, so it reopens collapsed.
@@ -282,7 +286,7 @@ const IdolSelector: React.FC<IdolSelectorProps> = ({
                         type="button"
                         onClick={() => setRailExpanded(true)}
                         aria-label="アイドルを選択"
-                        className="sm:hidden fixed left-0 top-[62%] -translate-y-1/2 z-30 flex items-center gap-0.5 bg-base-200/95 backdrop-blur border border-l-0 border-base-300 rounded-r-xl shadow-[0_8px_30px_rgba(0,0,0,0.45)] p-1.5"
+                        className="fixed left-0 top-[62%] -translate-y-1/2 z-30 flex items-center gap-0.5 bg-base-200/95 backdrop-blur border border-l-0 border-base-300 rounded-r-xl shadow-[0_8px_30px_rgba(0,0,0,0.45)] p-1.5"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
@@ -315,7 +319,7 @@ const IdolSelector: React.FC<IdolSelectorProps> = ({
                 {showSticky && railExpanded && (
                     <motion.div
                         key="rail-overlay"
-                        className="sm:hidden fixed inset-0 z-40"
+                        className="fixed inset-0 z-40"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
