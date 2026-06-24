@@ -20,6 +20,7 @@ npm install
 | `npm run dev:debug`  | Same, with `VITE_DEBUG=1` so every fetch appends `?debug` (bypass). |
 | `npm run build`      | Type-check + production bundle to `dist/`.                          |
 | `npm run preview`    | Serve `dist/` locally.                                              |
+| `npm run gen:og`     | Regenerate the social share image at `public/og-image.png`.        |
 
 ## Preview screens during an active event
 
@@ -62,6 +63,37 @@ A seasonal daisyUI theme can temporarily replace the default light/dark palette 
 During the window `useTheme()` swaps the active theme automatically. When the window closes the app reverts to `cupcake` / `dim` without a reload (a `setTimeout` wakes at the boundary).
 
 To preview a seasonal theme outside its window, temporarily widen the `start`/`end` in `themes.ts`. Remember to revert before shipping.
+
+## Social share image (Open Graph)
+
+When the site URL is shared on X, LINE, Discord, etc., crawlers read the
+Open Graph / Twitter Card `<meta>` tags in `index.html` and show a preview
+card with `public/og-image.png`.
+
+To regenerate the image:
+
+```bash
+npm run gen:og
+```
+
+This runs `scripts/gen-og-image.cjs`, which renders a 1200×630 PNG (the
+standard OG size) using [`@resvg/resvg-js`](https://github.com/yisibl/resvg-js).
+
+- **Text** comes from `index.html`'s `og:title` (heading) and
+  `og:description` (subtitle), so those meta tags stay the single source of
+  truth. Edit them, then re-run `npm run gen:og`.
+- **Gradient colors** live in the SVG markup inside the script; edit there.
+
+Notes:
+
+- Previews never render from `localhost` — crawlers fetch the URL from their
+  own servers, which can't reach your machine. Test after deploying, or use a
+  tunnel (e.g. `ngrok`).
+- For maximum compatibility (notably LINE), `og:image` should be an absolute
+  `https://…` URL in production rather than the relative `/og-image.png`.
+- After deploying, prime the crawler cache via the
+  [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/) so
+  stale (no-image) metadata doesn't linger.
 
 ## Environment variables
 
