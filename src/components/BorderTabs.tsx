@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import MainChart from './MainChart';
-import { PredictionData, getFinalBoundValue } from '../types';
+import { PredictionData, getFinalCI } from '../types';
 import CardContainer from './CardContainer';
 import LastUpdated from './LastUpdated';
 import { Info } from 'lucide-react';
@@ -90,11 +90,9 @@ const BorderTabs: React.FC<BorderTabsProps> = ({
                                 <span>
                                     {(() => {
                                         const prediction = activeTab === '100' ? prediction100 : prediction2500;
-                                        const bounds = prediction.data.raw.bounds;
-                                        const lower = getFinalBoundValue(bounds?.[90]?.lower);
-                                        const upper = getFinalBoundValue(bounds?.[90]?.upper);
-                                        if (lower !== undefined && upper !== undefined) {
-                                            return `${Math.round(lower).toLocaleString()} ～ ${Math.round(upper).toLocaleString()}`;
+                                        const ci = getFinalCI(prediction.data.raw.bounds?.[90]);
+                                        if (ci) {
+                                            return `${Math.round(ci.lower).toLocaleString()} ～ ${Math.round(ci.upper).toLocaleString()}`;
                                         }
                                         return `${Math.round(finalScore * 0.95).toLocaleString()} ～ ${Math.round(finalScore * 1.05).toLocaleString()}`;
                                     })()}
@@ -105,11 +103,9 @@ const BorderTabs: React.FC<BorderTabsProps> = ({
                                 <span>
                                     {(() => {
                                         const prediction = activeTab === '100' ? prediction100 : prediction2500;
-                                        const bounds = prediction.data.raw.bounds;
-                                        const lower = getFinalBoundValue(bounds?.[75]?.lower);
-                                        const upper = getFinalBoundValue(bounds?.[75]?.upper);
-                                        if (lower !== undefined && upper !== undefined) {
-                                            return `${Math.round(lower).toLocaleString()} ～ ${Math.round(upper).toLocaleString()}`;
+                                        const ci = getFinalCI(prediction.data.raw.bounds?.[75]);
+                                        if (ci) {
+                                            return `${Math.round(ci.lower).toLocaleString()} ～ ${Math.round(ci.upper).toLocaleString()}`;
                                         }
                                         return `${Math.round(finalScore * 0.9).toLocaleString()} ～ ${Math.round(finalScore * 1.1).toLocaleString()}`;
                                     })()}

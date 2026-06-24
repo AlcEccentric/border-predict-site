@@ -10,7 +10,7 @@ import CardContainer from './components/CardContainer';
 import Banner from './components/Banner';
 import UpdatesButton from './components/UpdatesButton';
 import { useTheme } from './utils/themes';
-import { discoverAvailableIdols, injectFakeBounds, loadIdolPrediction } from './utils/type5Loader';
+import { discoverAvailableIdols, loadIdolPrediction } from './utils/type5Loader';
 import { log } from './utils/logger';
 import { getParam, setParam } from './utils/urlState';
 
@@ -100,14 +100,7 @@ const App: React.FC = () => {
         if (idolDataRef.current.has(idolId) || inFlightRef.current.has(idolId)) return;
         inFlightRef.current.add(idolId);
         try {
-            let data = await loadIdolPrediction(idolId, baseUrl, debugSuffix, freshAfterRef.current);
-            // In demo mode, the historical data on R2 has no `bounds`. Fake
-            // a CI envelope around the predicted final so the new 75% / 90%
-            // CI rows render. Production data ships real bounds and skips
-            // this branch.
-            if (data && forceType5Demo) {
-                data = injectFakeBounds(data);
-            }
+            const data = await loadIdolPrediction(idolId, baseUrl, debugSuffix, freshAfterRef.current);
             if (data) {
                 const next = new Map(idolDataRef.current);
                 next.set(idolId, data);
@@ -117,7 +110,7 @@ const App: React.FC = () => {
         } finally {
             inFlightRef.current.delete(idolId);
         }
-    }, [baseUrl, debugSuffix, forceType5Demo]);
+    }, [baseUrl, debugSuffix]);
 
     useEffect(() => {
         const loadData = async () => {
