@@ -152,6 +152,10 @@ const SharePopover: React.FC = () => {
 
 const Banner: React.FC<BannerProps> = ({ isDark, toggleDark }) => {
     const [open, setOpen] = useState(false);
+    // The panel must clip during the height animation, otherwise the
+    // collapsing/expanding content spills out. Once fully open we switch to
+    // visible so the share popover can extend past the panel's bounds.
+    const [panelClipped, setPanelClipped] = useState(true);
 
     return (
         <header className="sticky top-0 z-40 w-full bg-base-200/90 backdrop-blur border-b border-base-300 shadow-sm">
@@ -217,7 +221,9 @@ const Banner: React.FC<BannerProps> = ({ isDark, toggleDark }) => {
                             animate={{ opacity: 1, height: 'auto' }}
                             exit={{ height: 0, opacity: 0 }}
                             transition={{ duration: 0.2, ease: 'easeOut' }}
-                            className="overflow-hidden sm:hidden"
+                            onAnimationStart={() => setPanelClipped(true)}
+                            onAnimationComplete={() => { if (open) setPanelClipped(false); }}
+                            className={`${panelClipped ? 'overflow-hidden' : 'overflow-visible'} sm:hidden`}
                         >
                             <div className="py-3 flex items-center justify-end gap-3">
                                 <SharePopover />

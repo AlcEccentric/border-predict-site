@@ -92,3 +92,47 @@ export const getIdolShortName = (id: number): string => {
   const info = getIdolInfo(id);
   return info ? info.shortName : `idol${id}`;
 };
+
+// In-game unit groupings. Every idol (1-52) belongs to exactly one group;
+// each group has 13 members. Order within each array is the display order.
+export interface IdolGroup {
+  key: string;
+  name: string;
+  members: number[];
+}
+
+export const IDOL_GROUPS: IdolGroup[] = [
+  {
+    key: 'allstars',
+    name: 'AllStars',
+    members: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
+  },
+  {
+    key: 'princess',
+    name: 'Princess',
+    members: [14, 17, 19, 21, 26, 27, 28, 29, 30, 32, 36, 37, 43],
+  },
+  {
+    key: 'fairy',
+    name: 'Fairy',
+    members: [15, 20, 25, 31, 33, 34, 38, 44, 46, 47, 49, 50, 51],
+  },
+  {
+    key: 'angel',
+    name: 'Angel',
+    members: [16, 18, 22, 23, 24, 35, 39, 40, 41, 42, 45, 48, 52],
+  },
+];
+
+/** Map from idol id -> group key, built once from IDOL_GROUPS. */
+const IDOL_GROUP_BY_ID: Map<number, string> = (() => {
+  const m = new Map<number, string>();
+  IDOL_GROUPS.forEach(g => g.members.forEach(id => m.set(id, g.key)));
+  return m;
+})();
+
+/** Returns the group key for an idol, or undefined if unknown. */
+export const getIdolGroupKey = (id: number): string | undefined => {
+  return IDOL_GROUP_BY_ID.get(id);
+};
+

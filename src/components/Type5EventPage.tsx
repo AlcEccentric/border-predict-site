@@ -296,12 +296,12 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
             {selectedIdol && (
                 <>
                     {/* Summary Stats */}
-                    <CardContainer className="mb-8 relative" ref={summaryStatsRef}>
-                        <span className="absolute top-4 right-5 z-10">
+                    <CardContainer className="mb-8" ref={summaryStatsRef}>
+                        <div className="flex justify-end mb-1">
                             <LastUpdated
                                 timestamp={idolPredictions.get(selectedIdol)?.lastModified}
                             />
-                        </span>
+                        </div>
                         <div className="text-center mb-4">
                             <h3 className="text-xl font-bold flex items-center justify-center gap-2 flex-wrap">
                                 <span>{getIdolName(selectedIdol)}の予測スコア</span>

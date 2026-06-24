@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import CardContainer from './CardContainer';
-import { getIdolName, getIdolColor } from '../utils/idolData';
+import { getIdolName, getIdolColor, IDOL_GROUPS, getIdolGroupKey } from '../utils/idolData';
 
 interface IdolSelectorProps {
     selectedIdol: number;
@@ -15,23 +15,22 @@ const IdolSelector: React.FC<IdolSelectorProps> = ({
     availableIdols
 }) => {
     const [imageErrors, setImageErrors] = useState<Set<number>>(new Set());
-    const [isExpanded, setIsExpanded] = useState(false);
-    const [isMobile, setIsMobile] = useState(false);
 
-    // Check if we're on mobile
+    // Active unit tab. Defaults to the group of the currently selected idol
+    // so the selection is visible on first render.
+    const [activeGroup, setActiveGroup] = useState<string>(
+        () => getIdolGroupKey(selectedIdol) ?? IDOL_GROUPS[0].key,
+    );
+
+    // Keep the active tab in sync when the selected idol changes from outside
+    // (e.g. auto-switch to the first available idol, or a deep-linked ?idol=).
     React.useEffect(() => {
-        const checkMobile = () => {
-            setIsMobile(window.innerWidth < 640);
-        };
-        
-        checkMobile();
-        window.addEventListener('resize', checkMobile);
-        
-        return () => window.removeEventListener('resize', checkMobile);
-    }, []);
-
-    // Generate idol list for 52 idols (assuming IDs 1-52)
-    const allIdols = Array.from({ length: 52 }, (_, i) => i + 1);
+        const groupKey = getIdolGroupKey(selectedIdol);
+        if (groupKey && groupKey !== activeGroup) {
+            setActiveGroup(groupKey);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [selectedIdol]);
 
     const handleImageError = (idolId: number) => {
         setImageErrors(prev => new Set(prev).add(idolId));
@@ -48,6 +47,15 @@ const IdolSelector: React.FC<IdolSelectorProps> = ({
         onIdolSelect(idolId);
     };
 
+    const allIdolCount = IDOL_GROUPS.reduce((n, g) => n + g.members.length, 0);
+    const currentGroup = IDOL_GROUPS.find(g => g.key === activeGroup) ?? IDOL_GROUPS[0];
+
+    // Count how many idols in the active group actually have data, so we can
+    // show a hint if a whole group is unavailable.
+    const availableInGroup = availableIdols
+        ? currentGroup.members.filter(id => availableIdols.has(id)).length
+        : currentGroup.members.length;
+
     return (
         <CardContainer className="mb-8">
             <div className="space-y-4">
@@ -57,33 +65,45 @@ const IdolSelector: React.FC<IdolSelectorProps> = ({
                         選択中: {getIdolName(selectedIdol)}
                     </div>
                 </div>
-                
+
+                {/* Unit (group) tabs */}
+                <div className="tabs tabs-boxed">
+                    {IDOL_GROUPS.map(group => (
+                        <a
+                            key={group.key}
+                            className={`tab flex-1 ${
+                                activeGroup === group.key
+                                    ? 'tab-active font-bold'
+                                    : ''
+                            }`}
+                            onClick={() => setActiveGroup(group.key)}
+                        >
+                            {group.name}
+                        </a>
+                    ))}
+                </div>
+
                 <div className="text-sm text-base-content/70">
                     表示したいアイドルを選択してください
-                    {availableIdols && availableIdols.size < allIdols.length && (
+                    {availableIdols && availableIdols.size < allIdolCount && availableInGroup === 0 && (
                         <div className="mt-2 p-2 bg-warning/10 border border-warning/20 rounded text-warning text-xs">
-                            一部のアイドルは予測データ不足のため、選択できません。
+                            このユニットには予測データのあるアイドルがいません。
                         </div>
                     )}
                 </div>
 
-                <div className="relative">
-                    <div className={`relative grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 2xl:grid-cols-13 gap-2 ${
-                        !isExpanded && isMobile ? 'overflow-hidden' : ''
-                    }`} style={{
-                        maxHeight: !isExpanded && isMobile ? '12rem' : 'none'
-                    }}>
-                        {allIdols.map(idolId => (
+                <div className="grid grid-cols-4 sm:grid-cols-7 lg:grid-cols-[repeat(13,minmax(0,1fr))] gap-2">
+                    {currentGroup.members.map(idolId => (
                         <motion.div
                             key={idolId}
                             whileHover={{ scale: hasData(idolId) ? 1.05 : 1.02 }}
                             whileTap={{ scale: hasData(idolId) ? 0.95 : 1.0 }}
                             className={`
                                 relative rounded-lg overflow-hidden border-2 transition-all duration-200
-                                ${!hasData(idolId) 
-                                    ? 'cursor-not-allowed opacity-50 border-base-300 bg-base-200' 
-                                    : `cursor-pointer ${isSelected(idolId) 
-                                        ? 'border-primary shadow-lg ring-2 ring-primary/30' 
+                                ${!hasData(idolId)
+                                    ? 'cursor-not-allowed opacity-50 border-base-300 bg-base-200'
+                                    : `cursor-pointer ${isSelected(idolId)
+                                        ? 'border-primary shadow-lg ring-2 ring-primary/30'
                                         : 'border-base-300 hover:border-primary/50'
                                     }`
                                 }
@@ -120,32 +140,32 @@ const IdolSelector: React.FC<IdolSelectorProps> = ({
                                         </span>
                                     </div>
                                 )}
-                                
+
                                 {isSelected(idolId) && hasData(idolId) && (
                                     <div
                                         className="absolute inset-0 flex items-center justify-center"
                                         // 8-digit hex: idol color + B3 (~70% alpha) for parity with bg-primary/70.
                                         style={{ backgroundColor: `${getIdolColor(idolId)}B3` }}
                                     >
-                                        <div 
+                                        <div
                                             className="rounded-full p-1"
                                             style={{ backgroundColor: getIdolColor(idolId) }}
                                         >
-                                            <svg 
-                                                className="w-4 h-4 text-white" 
-                                                fill="currentColor" 
+                                            <svg
+                                                className="w-4 h-4 text-white"
+                                                fill="currentColor"
                                                 viewBox="0 0 20 20"
                                             >
-                                                <path 
-                                                    fillRule="evenodd" 
-                                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" 
-                                                    clipRule="evenodd" 
+                                                <path
+                                                    fillRule="evenodd"
+                                                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                                    clipRule="evenodd"
                                                 />
                                             </svg>
                                         </div>
                                     </div>
                                 )}
-                                
+
                                 {!hasData(idolId) && (
                                     <div className="absolute inset-0 bg-base-300/80 flex items-center justify-center">
                                         <div className="text-center">
@@ -156,7 +176,7 @@ const IdolSelector: React.FC<IdolSelectorProps> = ({
                                     </div>
                                 )}
                             </div>
-                            
+
                             <div className="text-xs text-center p-1 bg-base-100/90">
                                 <div className="truncate">
                                     {getIdolName(idolId)}
@@ -164,42 +184,10 @@ const IdolSelector: React.FC<IdolSelectorProps> = ({
                             </div>
                         </motion.div>
                     ))}
-                        
-                        {/* Gradient overlay when collapsed - positioned inside the grid container */}
-                        {!isExpanded && isMobile && (
-                            <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-base-100 to-transparent pointer-events-none z-10"></div>
-                        )}
-                    </div>
-                    
-                    {/* Mobile expand/collapse button - positioned outside the grid but inside the relative container */}
-                    {isMobile && (
-                        <div className="mt-4 text-center relative z-20">
-                            <button
-                                onClick={() => setIsExpanded(!isExpanded)}
-                                className="btn btn-sm btn-outline"
-                            >
-                                {isExpanded ? (
-                                    <>
-                                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                                        </svg>
-                                        アイドルを折りたたむ
-                                    </>
-                                ) : (
-                                    <>
-                                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                        </svg>
-                                        すべてのアイドルを表示
-                                    </>
-                                )}
-                            </button>
-                        </div>
-                    )}
                 </div>
-        </div>
-    </CardContainer>
-);
+            </div>
+        </CardContainer>
+    );
 };
 
 export default IdolSelector;
