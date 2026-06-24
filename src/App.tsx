@@ -56,13 +56,18 @@ const App: React.FC = () => {
     // The actual prediction data still comes from `baseUrl`, so any
     // historical data left at the unversioned paths will be used.
     //
-    // Examples:
+    // These dev-only params are gated behind `import.meta.env.DEV` so they
+    // do nothing in a production build — curious users can't stumble into
+    // demo / preview states on the live site.
+    //
+    // Examples (dev only):
     //   ?type5Demo=true        → Type 5 page (event id 388 by default)
     //   ?type5Demo=true&eventId=388&eventName=テスト → custom labels
+    const isDev = import.meta.env.DEV;
     const params = typeof window !== 'undefined'
         ? new URLSearchParams(window.location.search)
         : new URLSearchParams();
-    const forceType5Demo = params.get('type5Demo') === 'true' || params.get('type5Demo') === '1';
+    const forceType5Demo = isDev && (params.get('type5Demo') === 'true' || params.get('type5Demo') === '1');
     const demoEventId = Number(params.get('eventId') ?? 388);
     const demoEventName = params.get('eventName') ?? 'デモイベント (Type 5)';
     // Demo-mode opt-in for the freshness check. Default `skip` so existing
@@ -265,8 +270,11 @@ const App: React.FC = () => {
     // Preview mode: `?preview=modal` forces the no-event / data-invalid
     // screen, `?preview=pre-event` forces the 36-hour pre-event screen.
     // Useful for styling these pages during an active event where we can't
-    // otherwise hit them. Remove the query param from the URL to go back.
-    const previewScreen = new URLSearchParams(window.location.search).get('preview');
+    // otherwise hit them. Dev-only so they don't work on the live site.
+    // Remove the query param from the URL to go back.
+    const previewScreen = isDev
+        ? new URLSearchParams(window.location.search).get('preview')
+        : null;
     if (previewScreen === 'modal') {
         return <EventModal />;
     }

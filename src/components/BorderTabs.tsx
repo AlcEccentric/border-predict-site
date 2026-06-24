@@ -4,7 +4,6 @@ import MainChart from './MainChart';
 import { PredictionData, getFinalCI } from '../types';
 import CardContainer from './CardContainer';
 import LastUpdated from './LastUpdated';
-import { Info } from 'lucide-react';
 
 interface BorderTabsProps {
     prediction100: PredictionData;
