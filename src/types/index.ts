@@ -60,15 +60,17 @@ export interface PredictionData {
     data: {
         raw: {
             target: number[];
-            // CI bounds — `upper` / `lower` can be either:
-            //   - `number[]`: per-step series (normal events)
-            //   - `number`:   final-time scalar only (Type 5 idol predictions
-            //                 going forward — saves payload by 52x).
-            // Use `getFinalBoundValue()` to read either shape uniformly,
+            // CI bounds. Two shapes are supported:
+            //   - Normal events: `upper` / `lower` are per-step `number[]`
+            //     series (used for the shaded chart bands).
+            //   - Type 5 idol predictions: only the final-time scalar is
+            //     shipped, as `upper_final` / `lower_final` (saves ~52x
+            //     payload since there's no per-step series).
+            // Use `getFinalCI()` to read the final-time interval uniformly,
             // and `getBoundSeries()` when you specifically need the array.
             bounds?: {
-                75: { upper: number | number[]; lower: number | number[] };
-                90: { upper: number | number[]; lower: number | number[] };
+                75: BoundEntry;
+                90: BoundEntry;
             };
         };
         normalized: {
@@ -78,6 +80,33 @@ export interface PredictionData {
             };
         };
     };
+}
+
+/** One confidence-interval bound, in either the series or final-scalar shape. */
+export interface BoundEntry {
+    /** Per-step upper series (normal events). */
+    upper?: number | number[];
+    /** Per-step lower series (normal events). */
+    lower?: number | number[];
+    /** Final-time upper scalar (Type 5 idol predictions). */
+    upper_final?: number;
+    /** Final-time lower scalar (Type 5 idol predictions). */
+    lower_final?: number;
+}
+
+/**
+ * Returns the final-time {lower, upper} for a CI bound, reading either the
+ * `*_final` scalars (Type 5) or the last element of the `upper`/`lower`
+ * series (normal events). Returns null if neither is present.
+ */
+export function getFinalCI(
+    entry: BoundEntry | undefined,
+): { lower: number; upper: number } | null {
+    if (!entry) return null;
+    const upper = entry.upper_final ?? getFinalBoundValue(entry.upper);
+    const lower = entry.lower_final ?? getFinalBoundValue(entry.lower);
+    if (upper === undefined || lower === undefined) return null;
+    return { lower, upper };
 }
 
 /**

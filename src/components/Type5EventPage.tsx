@@ -7,7 +7,7 @@ import Banner from './Banner';
 import UpdatesButton from './UpdatesButton';
 import FAQ from './FAQ';
 import LastUpdated from './LastUpdated';
-import { IdolPredictionData, EventInfo, getFinalBoundValue } from '../types';
+import { IdolPredictionData, EventInfo, getFinalCI } from '../types';
 import { getIdolName } from '../utils/idolData';
 import { getIntParam, setParam } from '../utils/urlState';
 import { Info } from 'lucide-react';
@@ -225,11 +225,7 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
         if (!idolData) return null;
         const prediction = border === '100' ? idolData.prediction100 : idolData.prediction1000;
         const bounds = prediction?.data.raw.bounds?.[level];
-        if (!bounds) return null;
-        const lower = getFinalBoundValue(bounds.lower);
-        const upper = getFinalBoundValue(bounds.upper);
-        if (lower === undefined || upper === undefined) return null;
-        return { lower, upper };
+        return getFinalCI(bounds);
     };
 
     const hasDataForBorder = (idolId: number, border: '100' | '1000') => {

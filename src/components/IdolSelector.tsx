@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronRight, ChevronLeft } from 'lucide-react';
 import CardContainer from './CardContainer';
 import { getIdolName, getIdolColor, IDOL_GROUPS, getIdolGroupKey } from '../utils/idolData';
 
@@ -26,6 +27,9 @@ const IdolSelector: React.FC<IdolSelectorProps> = ({
     // bar once it scrolls up out of view (mobile only).
     const selectorRef = useRef<HTMLDivElement>(null);
     const [showSticky, setShowSticky] = useState(false);
+    // The condensed rail starts collapsed (a small handle) so it never
+    // blocks the chart; the user expands it to pick an idol.
+    const [railExpanded, setRailExpanded] = useState(false);
 
     // Keep the active tab in sync when the selected idol changes from outside
     // (e.g. auto-switch to the first available idol, or a deep-linked ?idol=).
@@ -52,6 +56,11 @@ const IdolSelector: React.FC<IdolSelectorProps> = ({
         observer.observe(el);
         return () => observer.disconnect();
     }, []);
+
+    // Collapse the rail whenever it's not showing, so it reopens collapsed.
+    useEffect(() => {
+        if (!showSticky) setRailExpanded(false);
+    }, [showSticky]);
 
     const handleImageError = (idolId: number) => {
         setImageErrors(prev => new Set(prev).add(idolId));
@@ -168,7 +177,7 @@ const IdolSelector: React.FC<IdolSelectorProps> = ({
 
     // Compact circular avatar used in the condensed sticky strip. Selecting
     // here never auto-scrolls — the user is already viewing the scores.
-    const renderCompactIdol = (idolId: number) => {
+    const renderCompactIdol = (idolId: number, onAfterSelect?: () => void) => {
         const selected = isSelected(idolId);
         const enabled = hasData(idolId);
         return (
@@ -176,7 +185,11 @@ const IdolSelector: React.FC<IdolSelectorProps> = ({
                 key={idolId}
                 type="button"
                 disabled={!enabled}
-                onClick={() => enabled && onIdolSelect(idolId, { allowScroll: false })}
+                onClick={() => {
+                    if (!enabled) return;
+                    onIdolSelect(idolId, { allowScroll: false });
+                    onAfterSelect?.();
+                }}
                 className={`relative shrink-0 rounded-full overflow-hidden border-2 transition-all ${
                     enabled ? 'cursor-pointer' : 'opacity-40 cursor-not-allowed'
                 }`}
@@ -205,7 +218,8 @@ const IdolSelector: React.FC<IdolSelectorProps> = ({
                 {selected && (
                     <span
                         className="absolute inset-0"
-                        style={{ backgroundColor: `${getIdolColor(idolId)}33` }}
+                        // Match the main grid's selected overlay alpha (B3 ≈ 70%).
+                        style={{ backgroundColor: `${getIdolColor(idolId)}B3` }}
                     />
                 )}
             </button>
@@ -257,41 +271,102 @@ const IdolSelector: React.FC<IdolSelectorProps> = ({
                 </div>
             </CardContainer>
 
-            {/* Condensed floating selector: appears on mobile once the full
-                selector scrolls behind the banner. A vertical rail on the
-                left edge keeps it clear of the top banner and the score
-                heading, and lets users switch idols in place. */}
+            {/* Condensed floating selector (mobile). Appears once the full
+                selector scrolls behind the banner. Stays collapsed as a small
+                left-edge handle so it never blocks the chart; tap to expand
+                the vertical rail, pick an idol, and it collapses again. */}
             <AnimatePresence>
-                {showSticky && (
-                    <motion.div
-                        className="sm:hidden fixed left-2 top-84 bottom-4 z-30 w-20 flex flex-col bg-base-200/95 backdrop-blur border border-base-300 rounded-xl shadow-lg overflow-hidden"
-                        initial={{ x: -24, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        exit={{ x: -24, opacity: 0 }}
-                        transition={{ duration: 0.18, ease: 'easeOut' }}
+                {showSticky && !railExpanded && (
+                    <motion.button
+                        key="rail-handle"
+                        type="button"
+                        onClick={() => setRailExpanded(true)}
+                        aria-label="アイドルを選択"
+                        className="sm:hidden fixed left-0 top-[62%] -translate-y-1/2 z-30 flex items-center gap-0.5 bg-base-200/95 backdrop-blur border border-l-0 border-base-300 rounded-r-xl shadow-[0_8px_30px_rgba(0,0,0,0.45)] p-1.5"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.18 }}
                     >
-                        {/* Vertical unit tabs */}
-                        <div className="flex flex-col gap-1 p-1.5 border-b border-base-300">
-                            {IDOL_GROUPS.map(group => (
-                                <button
-                                    key={group.key}
-                                    type="button"
-                                    onClick={() => setActiveGroup(group.key)}
-                                    className={`w-full text-center text-[10px] leading-tight rounded-md px-1 py-1 transition-colors ${
-                                        activeGroup === group.key
-                                            ? 'bg-primary text-primary-content font-bold'
-                                            : 'hover:bg-base-300 text-base-content/70'
-                                    }`}
-                                >
-                                    {group.name}
-                                </button>
-                            ))}
-                        </div>
+                        <span
+                            className="relative block rounded-full overflow-hidden border-2"
+                            style={{ width: 40, height: 40, borderColor: getIdolColor(selectedIdol) }}
+                        >
+                            {!imageErrors.has(selectedIdol) ? (
+                                <img
+                                    src={getIdolImageUrl(selectedIdol)}
+                                    alt={getIdolName(selectedIdol)}
+                                    className="w-full h-full object-cover"
+                                    onError={() => handleImageError(selectedIdol)}
+                                />
+                            ) : (
+                                <span className="w-full h-full flex items-center justify-center bg-base-300 text-[9px]">
+                                    {getIdolName(selectedIdol).slice(0, 2)}
+                                </span>
+                            )}
+                        </span>
+                        <ChevronRight size={16} className="text-base-content/60" />
+                    </motion.button>
+                )}
+            </AnimatePresence>
 
-                        {/* Scrollable avatar column for the active unit */}
-                        <div className="flex-1 overflow-y-auto min-h-0 p-1.5 flex flex-col items-center gap-2">
-                            {currentGroup.members.map(idolId => renderCompactIdol(idolId))}
-                        </div>
+            {/* Expanded rail + tap-outside backdrop. */}
+            <AnimatePresence>
+                {showSticky && railExpanded && (
+                    <motion.div
+                        key="rail-overlay"
+                        className="sm:hidden fixed inset-0 z-40"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15 }}
+                    >
+                        {/* Backdrop: tap to collapse. */}
+                        <div
+                            className="absolute inset-0 bg-black/20"
+                            onClick={() => setRailExpanded(false)}
+                        />
+
+                        <motion.div
+                            className="absolute left-2 top-32 bottom-4 w-20 flex flex-col bg-base-200/95 backdrop-blur border border-base-300 rounded-xl shadow-[0_8px_30px_rgba(0,0,0,0.45)] overflow-hidden"
+                            initial={{ x: -24, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            exit={{ x: -24, opacity: 0 }}
+                            transition={{ duration: 0.18, ease: 'easeOut' }}
+                        >
+                            {/* Vertical unit tabs + collapse handle */}
+                            <div className="flex flex-col gap-1 p-1.5 border-b border-base-300">
+                                {IDOL_GROUPS.map(group => (
+                                    <button
+                                        key={group.key}
+                                        type="button"
+                                        onClick={() => setActiveGroup(group.key)}
+                                        className={`w-full text-center text-[10px] leading-tight rounded-md px-1 py-1 transition-colors ${
+                                            activeGroup === group.key
+                                                ? 'bg-primary text-primary-content font-bold'
+                                                : 'hover:bg-base-300 text-base-content/70'
+                                        }`}
+                                    >
+                                        {group.name}
+                                    </button>
+                                ))}
+                                <button
+                                    type="button"
+                                    onClick={() => setRailExpanded(false)}
+                                    aria-label="閉じる"
+                                    className="mt-1 flex items-center justify-center rounded-md py-1 hover:bg-base-300 text-base-content/60"
+                                >
+                                    <ChevronLeft size={16} />
+                                </button>
+                            </div>
+
+                            {/* Scrollable avatar column for the active unit */}
+                            <div className="flex-1 overflow-y-auto min-h-0 p-1.5 flex flex-col items-center gap-2">
+                                {currentGroup.members.map(idolId =>
+                                    renderCompactIdol(idolId, () => setRailExpanded(false)),
+                                )}
+                            </div>
+                        </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>
