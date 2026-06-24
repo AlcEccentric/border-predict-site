@@ -33,6 +33,7 @@ ChartJS.register(
 );
 
 import { PredictionData, getBoundSeries } from '../types';
+import { makeSeriesLegendIcon } from '../utils/legendIcon';
 
 interface MainChartProps {
   data: PredictionData;
@@ -460,15 +461,30 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
         legend: {
           display: true,
           position: 'bottom',
+          // Click a label to toggle that series (the CI items map to a
+          // lower+upper dataset pair). 予測範囲 is an annotation, not a
+          // dataset, so it isn't toggleable.
+          onClick: (_e: any, legendItem: any, legend: any) => {
+            const indices = legendItem.datasetIndices as number[] | undefined;
+            if (!indices || indices.length === 0) return;
+            const chart = legend.chart;
+            const makeHidden = chart.isDatasetVisible(indices[0]);
+            indices.forEach((i) => chart.setDatasetVisibility(i, !makeHidden));
+            chart.update();
+          },
           labels: {
             color: textColor,
-            generateLabels: () => [
+            usePointStyle: true,
+            generateLabels: (chart: any) => [
               {
                 text: 'スコア',
                 fillStyle: getColorWithAlpha(primaryColor, 1),
                 strokeStyle: getColorWithAlpha(primaryColor, 1),
                 fontColor: textColor,
                 lineWidth: 2,
+                pointStyle: makeSeriesLegendIcon(getColorWithAlpha(primaryColor, 1)),
+                hidden: !chart.isDatasetVisible(0),
+                datasetIndices: [0],
               },
               {
                 text: '75% 信頼区間',
@@ -476,6 +492,9 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
                 strokeStyle: getColorWithAlpha(secondaryColor, 1),
                 fontColor: textColor,
                 lineWidth: 2,
+                pointStyle: makeSeriesLegendIcon(getColorWithAlpha(secondaryColor, 1)),
+                hidden: !chart.isDatasetVisible(3),
+                datasetIndices: [3, 4],
               },
               {
                 text: '90% 信頼区間',
@@ -483,6 +502,9 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
                 strokeStyle: getColorWithAlpha(secondaryColor, 1),
                 fontColor: textColor,
                 lineWidth: 2,
+                pointStyle: makeSeriesLegendIcon(getColorWithAlpha(secondaryColor, 1)),
+                hidden: !chart.isDatasetVisible(1),
+                datasetIndices: [1, 2],
               },
               {
                 text: '予測範囲',
@@ -494,6 +516,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
                 pointStyleWidth: 15,
                 pointStyleHeight: 15,
                 lineDash: [5, 3],
+                datasetIndices: [],
               }
             ]
           }
@@ -741,6 +764,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
               
               // Add dots for confidence interval lines (if they have data at this index)
               for (let i = 1; i < chart.data.datasets.length; i++) {
+                if (!chart.isDatasetVisible(i)) continue; // skip toggled-off series
                 const meta = chart.getDatasetMeta(i);
                 if (meta && meta.data[closestIndex] && chart.data.datasets[i].data[closestIndex] !== null) {
                   const point = meta.data[closestIndex];

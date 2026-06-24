@@ -18,6 +18,7 @@ import { getRelativePosition } from 'chart.js/helpers';
 import { IdolPredictionData } from '../types';
 import { getIdolName } from '../utils/idolData';
 import { log } from '../utils/logger';
+import { makeSeriesLegendIcon } from '../utils/legendIcon';
 
 ChartJS.register(
   CategoryScale,
@@ -699,7 +700,9 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
             confidenceInterval?: { min: number; max: number };
           }> = [];
           
-          chartData.datasets.forEach((dataset) => {
+          chartData.datasets.forEach((dataset, dsIndex) => {
+            // Skip datasets the user toggled off via the legend.
+            if (!chart.isDatasetVisible(dsIndex)) return;
             if (dataset.data[dataIndex] !== undefined && dataset.idolId && dataset.borderType) {
               // Check if this data point is in the prediction range
               const prediction = dataset.borderType === '100' ? idolData.prediction100 : idolData.prediction1000;
@@ -730,6 +733,14 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
         legend: {
           display: true,
           position: 'bottom',
+          // Click a trajectory label to toggle its line on/off.
+          onClick: (_e: any, legendItem: any, legend: any) => {
+            const idx = legendItem.datasetIndex;
+            if (idx === undefined || idx === null || idx < 0) return; // 予測範囲 isn't a dataset
+            const chart = legend.chart;
+            chart.setDatasetVisibility(idx, !chart.isDatasetVisible(idx));
+            chart.update();
+          },
           labels: {
             usePointStyle: true,
             pointStyle: 'line',
@@ -737,39 +748,49 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
             font: {
               size: isMobile ? 11 : 12
             },
-            generateLabels: (_chart) => {
+            generateLabels: (chart: any) => {
+              const datasets = chart.data.datasets as any[];
               const labels = [];
-              
-              if (idolData.prediction100) {
+
+              const idx100 = datasets.findIndex(d => d.borderType === '100');
+              if (idx100 >= 0) {
                 labels.push({
-                  text: `${idolName} - 100位`,
+                  text: '100位',
                   fillStyle: BORDER_COLORS['100'],
                   strokeStyle: BORDER_COLORS['100'],
                   lineWidth: 2,
-                  fontColor: getTextColor()
+                  fontColor: getTextColor(),
+                  pointStyle: makeSeriesLegendIcon(BORDER_COLORS['100']),
+                  hidden: !chart.isDatasetVisible(idx100),
+                  datasetIndex: idx100,
                 });
               }
-              
-              if (idolData.prediction1000) {
+
+              const idx1000 = datasets.findIndex(d => d.borderType === '1000');
+              if (idx1000 >= 0) {
                 labels.push({
-                  text: `${idolName} - 1000位`,
+                  text: '1000位',
                   fillStyle: BORDER_COLORS['1000'],
                   strokeStyle: BORDER_COLORS['1000'],
                   lineWidth: 2,
-                  fontColor: getTextColor()
+                  fontColor: getTextColor(),
+                  pointStyle: makeSeriesLegendIcon(BORDER_COLORS['1000']),
+                  hidden: !chart.isDatasetVisible(idx1000),
+                  datasetIndex: idx1000,
                 });
               }
-              
-              // Add prediction range legend
+
+              // Add prediction range legend (annotation, not a dataset).
               labels.push({
                 text: '予測範囲',
                 fillStyle: 'rgba(103, 220, 209, 0.1)',
                 strokeStyle: 'rgba(103, 220, 209, 0.6)',
                 lineWidth: 2,
                 pointStyle: 'rect' as const,
-                fontColor: getTextColor()
+                fontColor: getTextColor(),
+                datasetIndex: -1,
               });
-              
+
               return labels;
             }
           }
