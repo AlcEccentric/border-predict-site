@@ -9,6 +9,7 @@ import FAQ from './FAQ';
 import LastUpdated from './LastUpdated';
 import { IdolPredictionData, EventInfo, getFinalBoundValue } from '../types';
 import { getIdolName } from '../utils/idolData';
+import { getIntParam, setParam } from '../utils/urlState';
 import { Info } from 'lucide-react';
 
 /**
@@ -144,8 +145,11 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
     isDark,
     toggleDark
 }) => {
-    // Initialize selectedIdol from localStorage or default to 1
+    // Initialize selectedIdol from URL (?idol=N) first so shared links open
+    // the right idol, then fall back to localStorage, then default to 1.
     const [selectedIdol, setSelectedIdol] = useState<number>(() => {
+        const urlIdol = getIntParam('idol', 1, 52);
+        if (urlIdol !== null) return urlIdol;
         const savedIdol = localStorage.getItem('selectedIdol');
         if (savedIdol) {
             const idolId = parseInt(savedIdol, 10);
@@ -166,6 +170,7 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
     const handleIdolSelect = (idolId: number) => {
         setSelectedIdol(idolId);
         localStorage.setItem('selectedIdol', idolId.toString());
+        setParam('idol', idolId.toString());
         pendingScrollIdolRef.current = idolId;
     };
 
@@ -233,6 +238,7 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
             if (firstAvailable !== undefined) {
                 setSelectedIdol(firstAvailable);
                 localStorage.setItem('selectedIdol', firstAvailable.toString());
+                setParam('idol', firstAvailable.toString());
             }
         }
     }, [availableIdols, selectedIdol]);
