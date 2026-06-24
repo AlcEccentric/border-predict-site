@@ -12,6 +12,7 @@ import UpdatesButton from './components/UpdatesButton';
 import { useTheme } from './utils/themes';
 import { discoverAvailableIdols, injectFakeBounds, loadIdolPrediction } from './utils/type5Loader';
 import { log } from './utils/logger';
+import { getParam, setParam } from './utils/urlState';
 
 const App: React.FC = () => {
     const releaseDate = new Date('2025-06-01T00:00:00+09:00');
@@ -28,6 +29,10 @@ const App: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [predictionDataValid, setPredictionDataValid] = useState(true);
     const [activeTab, setActiveTab] = useState(() => {
+        // URL param wins so shared links open the right border tab;
+        // localStorage is the fallback for returning visitors.
+        const urlTab = getParam('tab');
+        if (urlTab === '100' || urlTab === '2500') return urlTab;
         const savedActiveTab = localStorage.getItem('activeTab');
         return savedActiveTab || '100';
     });
@@ -256,6 +261,7 @@ const App: React.FC = () => {
     const handleActiveTabChange = (tab: string) => {
         setActiveTab(tab);
         localStorage.setItem('activeTab', tab);
+        setParam('tab', tab);
     };
 
     // Check maintenance mode first
