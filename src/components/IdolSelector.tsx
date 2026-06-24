@@ -71,7 +71,9 @@ const IdolSelector: React.FC<IdolSelectorProps> = ({
     };
 
     const getIdolImageUrl = (idolId: number) => {
-        return `https://storage.matsurihi.me/mltd/idol_icon/${idolId}.png`;
+        // Served from our own CDN (mirrored into R2) for low, consistent
+        // latency and long-lived caching. See scripts/upload-idol-icons.sh.
+        return `https://cdn.yuenimillion.live/data/idol_icons/${idolId}.png`;
     };
 
     const isSelected = (idolId: number) => selectedIdol === idolId;
