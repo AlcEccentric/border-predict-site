@@ -10,7 +10,6 @@ import LastUpdated from './LastUpdated';
 import { IdolPredictionData, EventInfo, getFinalCI } from '../types';
 import { getIdolName } from '../utils/idolData';
 import { getIntParam, setParam } from '../utils/urlState';
-import { Info } from 'lucide-react';
 
 /**
  * Renders one border's stats column (100位 or 1000位). Three visual states
