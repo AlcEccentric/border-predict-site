@@ -38,16 +38,18 @@ const BorderStatsColumn: React.FC<{
     return (
         <div className="text-center space-y-3">
             <h3 className={`text-xl font-bold ${colorClass}`}>{heading}</h3>
-            <AnimatePresence mode="wait" initial={false}>
-                {isLoading ? (
-                    <motion.div
-                        key="loading"
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2 }}
-                        className="stats stats-vertical shadow w-full max-w-xs mx-auto"
-                    >
+            {/* Reserved min-height so swapping states doesn't jump the layout. */}
+            <div className="min-h-[12rem]">
+                <AnimatePresence mode="wait" initial={false}>
+                    {isLoading ? (
+                        <motion.div
+                            key="loading"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.25, ease: 'easeInOut' }}
+                            className="stats stats-vertical shadow w-full max-w-xs mx-auto"
+                        >
                         <div className="stat">
                             <div className={`stat-title font-bold ${colorClass}`}>予測スコア</div>
                             <div className={`stat-value ${colorClass} min-h-[3rem] flex items-center justify-center`}>
@@ -62,7 +64,7 @@ const BorderStatsColumn: React.FC<{
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        transition={{ duration: 0.25 }}
+                        transition={{ duration: 0.3, ease: 'easeInOut' }}
                         className="stats stats-vertical shadow w-full max-w-xs mx-auto"
                     >
                         <div className="stat">
@@ -109,7 +111,7 @@ const BorderStatsColumn: React.FC<{
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        transition={{ duration: 0.2 }}
+                        transition={{ duration: 0.25, ease: 'easeInOut' }}
                         className="stats stats-vertical shadow w-full max-w-xs mx-auto"
                     >
                         <div className="stat">
@@ -119,7 +121,8 @@ const BorderStatsColumn: React.FC<{
                         </div>
                     </motion.div>
                 )}
-            </AnimatePresence>
+                </AnimatePresence>
+            </div>
         </div>
     );
 };
@@ -167,11 +170,17 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
     // don't strand the viewport mid-scroll.
     const pendingScrollIdolRef = useRef<number | null>(null);
 
-    const handleIdolSelect = (idolId: number) => {
+    const handleIdolSelect = (idolId: number, opts?: { allowScroll?: boolean }) => {
         setSelectedIdol(idolId);
         localStorage.setItem('selectedIdol', idolId.toString());
         setParam('idol', idolId.toString());
-        pendingScrollIdolRef.current = idolId;
+        // Auto-scroll to the score card only on the narrow (mobile) layout,
+        // where the selector and the scores don't fit on screen together.
+        // On wider screens everything is already visible, so scrolling is
+        // unnecessary (and jarring). The floating picker passes
+        // allowScroll:false since the user is already viewing the scores.
+        const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+        pendingScrollIdolRef.current = isMobile && (opts?.allowScroll ?? true) ? idolId : null;
     };
 
     // Resolve the pending scroll once the chart will render with stable
@@ -296,7 +305,7 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
             {selectedIdol && (
                 <>
                     {/* Summary Stats */}
-                    <CardContainer className="mb-8" ref={summaryStatsRef}>
+                    <CardContainer className="mb-8 scroll-mt-20" ref={summaryStatsRef}>
                         <div className="flex justify-end mb-1">
                             <LastUpdated
                                 timestamp={idolPredictions.get(selectedIdol)?.lastModified}
@@ -349,14 +358,14 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                         <CardContainer className="mb-4">
                             <div className="space-y-4">
                                 <div className="relative w-full min-h-[360px]">
-                                    <AnimatePresence mode="wait">
+                                    <AnimatePresence mode="wait" initial={false}>
                                         {isSelectedIdolLoading ? (
                                             <motion.div
                                                 key="chart-loading"
                                                 initial={{ opacity: 0 }}
                                                 animate={{ opacity: 1 }}
                                                 exit={{ opacity: 0 }}
-                                                transition={{ duration: 0.2 }}
+                                                transition={{ duration: 0.25, ease: 'easeInOut' }}
                                                 className="flex flex-col items-center justify-center min-h-[360px]"
                                             >
                                                 <div className="loading loading-spinner loading-md"></div>
@@ -370,7 +379,7 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                                                 initial={{ opacity: 0 }}
                                                 animate={{ opacity: 1 }}
                                                 exit={{ opacity: 0 }}
-                                                transition={{ duration: 0.25 }}
+                                                transition={{ duration: 0.3, ease: 'easeInOut' }}
                                                 className="w-full"
                                             >
                                                 <Type5MainChart
