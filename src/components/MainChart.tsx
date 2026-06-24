@@ -32,7 +32,7 @@ ChartJS.register(
   zoomPlugin
 );
 
-import { PredictionData } from '../types';
+import { PredictionData, getBoundSeries } from '../types';
 
 interface MainChartProps {
   data: PredictionData;
@@ -136,14 +136,23 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
         return prev;
       });
       setHoveredData(prev => {
+        // Bounds may be either per-step arrays (normal events — what
+        // MainChart actually receives) or scalars (Type 5). Use
+        // getBoundSeries to narrow to the array shape; if it's missing
+        // or scalar, the per-step bounds object is undefined.
+        const upper75 = getBoundSeries(data.data.raw.bounds?.[75]?.upper);
+        const lower75 = getBoundSeries(data.data.raw.bounds?.[75]?.lower);
+        const upper90 = getBoundSeries(data.data.raw.bounds?.[90]?.upper);
+        const lower90 = getBoundSeries(data.data.raw.bounds?.[90]?.lower);
+        const hasArrayBounds = upper75 && lower75 && upper90 && lower90;
         const newHovered = {
         timePoint: timePoints[closestIndex],
         value: data.data.raw.target[closestIndex],
-        bounds: closestIndex > data.metadata.raw.last_known_step_index && data.data.raw.bounds ? {
-          upper75: data.data.raw.bounds[75].upper[closestIndex],
-          lower75: data.data.raw.bounds[75].lower[closestIndex],
-          upper90: data.data.raw.bounds[90].upper[closestIndex],
-          lower90: data.data.raw.bounds[90].lower[closestIndex],
+        bounds: closestIndex > data.metadata.raw.last_known_step_index && hasArrayBounds ? {
+          upper75: upper75![closestIndex],
+          lower75: lower75![closestIndex],
+          upper90: upper90![closestIndex],
+          lower90: lower90![closestIndex],
         } : undefined,
         };
         if (!prev || prev.timePoint !== newHovered.timePoint || prev.value !== newHovered.value) {
@@ -357,7 +366,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
       // 90% confidence interval
       {
         label: '90% 信頼区間下限',
-        data: data.data.raw.bounds?.[90]?.lower.map((val, idx) => 
+        data: getBoundSeries(data.data.raw.bounds?.[90]?.lower)?.map((val, idx) =>
           idx <= data.metadata.raw.last_known_step_index ? null : val
         ) || [],
         borderColor: 'transparent',
@@ -372,7 +381,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
       },
       {
         label: '90% 信頼区間上限',
-        data: data.data.raw.bounds?.[90]?.upper.map((val, idx) => 
+        data: getBoundSeries(data.data.raw.bounds?.[90]?.upper)?.map((val, idx) =>
           idx <= data.metadata.raw.last_known_step_index ? null : val
         ) || [],
         borderColor: 'transparent',
@@ -389,7 +398,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
       // 75% confidence interval
       {
         label: '75% 信頼区間下限',
-        data: data.data.raw.bounds?.[75]?.lower.map((val, idx) => 
+        data: getBoundSeries(data.data.raw.bounds?.[75]?.lower)?.map((val, idx) =>
           idx <= data.metadata.raw.last_known_step_index ? null : val
         ) || [],
         borderColor: 'transparent',
@@ -404,7 +413,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
       },
       {
         label: '75% 信頼区間上限',
-        data: data.data.raw.bounds?.[75]?.upper.map((val, idx) => 
+        data: getBoundSeries(data.data.raw.bounds?.[75]?.upper)?.map((val, idx) =>
           idx <= data.metadata.raw.last_known_step_index ? null : val
         ) || [],
         borderColor: 'transparent',

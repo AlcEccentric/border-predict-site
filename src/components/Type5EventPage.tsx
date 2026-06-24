@@ -6,7 +6,7 @@ import Type5MainChart from './Type5MainChart';
 import Banner from './Banner';
 import UpdatesButton from './UpdatesButton';
 import FAQ from './FAQ';
-import { IdolPredictionData, EventInfo } from '../types';
+import { IdolPredictionData, EventInfo, getFinalBoundValue } from '../types';
 import { getIdolName } from '../utils/idolData';
 import { Info } from 'lucide-react';
 
@@ -15,8 +15,12 @@ import { Info } from 'lucide-react';
  * driven by the same shape so the column transitions smoothly between them
  * via CSS opacity:
  *   - loading: spinner where the score would be
- *   - has data: real predicted score + error ranges
+ *   - has data: real predicted score + CI rows
  *   - no data: 「予測不可」 fallback
+ *
+ * If real `ci75` / `ci90` final-time bounds are provided, they're shown as
+ * proper 75% / 90% confidence intervals. Otherwise we fall back to the
+ * legacy ±5% / ±10% multiplier rows so older data still renders.
  */
 const BorderStatsColumn: React.FC<{
     heading: string;
@@ -24,8 +28,11 @@ const BorderStatsColumn: React.FC<{
     score: number | null;
     isLoading: boolean;
     hasData: boolean;
-}> = ({ heading, colorClass, score, isLoading, hasData }) => {
+    ci75?: { lower: number; upper: number } | null;
+    ci90?: { lower: number; upper: number } | null;
+}> = ({ heading, colorClass, score, isLoading, hasData, ci75, ci90 }) => {
     const showRealStats = !isLoading && hasData && score !== null;
+    const useRealCI = ci75 != null && ci90 != null;
     return (
         <div className="text-center space-y-3">
             <h3 className={`text-xl font-bold ${colorClass}`}>{heading}</h3>
@@ -62,18 +69,37 @@ const BorderStatsColumn: React.FC<{
                                 {Math.round(score!).toLocaleString()}
                             </div>
                         </div>
-                        <div className="stat">
-                            <div className={`stat-title font-bold ${colorClass}`}>±5% 誤差区間</div>
-                            <div className={`stat-desc font-bold ${colorClass}`}>
-                                {Math.round(score! * 0.95).toLocaleString()} ～ {Math.round(score! * 1.05).toLocaleString()}
-                            </div>
-                        </div>
-                        <div className="stat">
-                            <div className={`stat-title font-bold ${colorClass}`}>±10% 誤差区間</div>
-                            <div className={`stat-desc font-bold ${colorClass}`}>
-                                {Math.round(score! * 0.9).toLocaleString()} ～ {Math.round(score! * 1.1).toLocaleString()}
-                            </div>
-                        </div>
+                        {useRealCI ? (
+                            <>
+                                <div className="stat">
+                                    <div className={`stat-title font-bold ${colorClass}`}>75% 信頼区間</div>
+                                    <div className={`stat-desc font-bold ${colorClass}`}>
+                                        {Math.round(ci75!.lower).toLocaleString()} ～ {Math.round(ci75!.upper).toLocaleString()}
+                                    </div>
+                                </div>
+                                <div className="stat">
+                                    <div className={`stat-title font-bold ${colorClass}`}>90% 信頼区間</div>
+                                    <div className={`stat-desc font-bold ${colorClass}`}>
+                                        {Math.round(ci90!.lower).toLocaleString()} ～ {Math.round(ci90!.upper).toLocaleString()}
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <>
+                                <div className="stat">
+                                    <div className={`stat-title font-bold ${colorClass}`}>±5% 誤差区間</div>
+                                    <div className={`stat-desc font-bold ${colorClass}`}>
+                                        {Math.round(score! * 0.95).toLocaleString()} ～ {Math.round(score! * 1.05).toLocaleString()}
+                                    </div>
+                                </div>
+                                <div className="stat">
+                                    <div className={`stat-title font-bold ${colorClass}`}>±10% 誤差区間</div>
+                                    <div className={`stat-desc font-bold ${colorClass}`}>
+                                        {Math.round(score! * 0.9).toLocaleString()} ～ {Math.round(score! * 1.1).toLocaleString()}
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </motion.div>
                 ) : (
                     <motion.div
@@ -177,6 +203,22 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
         return scores[scores.length - 1];
     };
 
+    const getCIForIdol = (
+        idolId: number,
+        border: '100' | '1000',
+        level: 75 | 90,
+    ): { lower: number; upper: number } | null => {
+        const idolData = idolPredictions.get(idolId);
+        if (!idolData) return null;
+        const prediction = border === '100' ? idolData.prediction100 : idolData.prediction1000;
+        const bounds = prediction?.data.raw.bounds?.[level];
+        if (!bounds) return null;
+        const lower = getFinalBoundValue(bounds.lower);
+        const upper = getFinalBoundValue(bounds.upper);
+        if (lower === undefined || upper === undefined) return null;
+        return { lower, upper };
+    };
+
     const hasDataForBorder = (idolId: number, border: '100' | '1000') => {
         const idolData = idolPredictions.get(idolId);
         if (!idolData) return false;
@@ -220,6 +262,10 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
 
     const score100 = getScoreForIdol(selectedIdol, '100');
     const score1000 = getScoreForIdol(selectedIdol, '1000');
+    const ci100_75 = getCIForIdol(selectedIdol, '100', 75);
+    const ci100_90 = getCIForIdol(selectedIdol, '100', 90);
+    const ci1000_75 = getCIForIdol(selectedIdol, '1000', 75);
+    const ci1000_90 = getCIForIdol(selectedIdol, '1000', 90);
 
     return (
         <div className="min-h-screen">
@@ -273,6 +319,8 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                                 score={score100}
                                 isLoading={isSelectedIdolLoading}
                                 hasData={hasDataForBorder(selectedIdol, '100')}
+                                ci75={ci100_75}
+                                ci90={ci100_90}
                             />
                             <BorderStatsColumn
                                 heading="1000位ボーダー"
@@ -280,6 +328,8 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                                 score={score1000}
                                 isLoading={isSelectedIdolLoading}
                                 hasData={hasDataForBorder(selectedIdol, '1000')}
+                                ci75={ci1000_75}
+                                ci90={ci1000_90}
                             />
                         </div>
                     </CardContainer>

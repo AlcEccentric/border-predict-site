@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import MainChart from './MainChart';
-import { PredictionData } from '../types';
+import { PredictionData, getFinalBoundValue } from '../types';
 import CardContainer from './CardContainer';
 import { Info } from 'lucide-react';
 
@@ -85,8 +85,10 @@ const BorderTabs: React.FC<BorderTabsProps> = ({
                                     {(() => {
                                         const prediction = activeTab === '100' ? prediction100 : prediction2500;
                                         const bounds = prediction.data.raw.bounds;
-                                        if (bounds && bounds[90]) {
-                                            return `${Math.round(bounds[90].lower.slice(-1)[0]).toLocaleString()} ～ ${Math.round(bounds[90].upper.slice(-1)[0]).toLocaleString()}`;
+                                        const lower = getFinalBoundValue(bounds?.[90]?.lower);
+                                        const upper = getFinalBoundValue(bounds?.[90]?.upper);
+                                        if (lower !== undefined && upper !== undefined) {
+                                            return `${Math.round(lower).toLocaleString()} ～ ${Math.round(upper).toLocaleString()}`;
                                         }
                                         return `${Math.round(finalScore * 0.95).toLocaleString()} ～ ${Math.round(finalScore * 1.05).toLocaleString()}`;
                                     })()}
@@ -98,8 +100,10 @@ const BorderTabs: React.FC<BorderTabsProps> = ({
                                     {(() => {
                                         const prediction = activeTab === '100' ? prediction100 : prediction2500;
                                         const bounds = prediction.data.raw.bounds;
-                                        if (bounds && bounds[75]) {
-                                            return `${Math.round(bounds[75].lower.slice(-1)[0]).toLocaleString()} ～ ${Math.round(bounds[75].upper.slice(-1)[0]).toLocaleString()}`;
+                                        const lower = getFinalBoundValue(bounds?.[75]?.lower);
+                                        const upper = getFinalBoundValue(bounds?.[75]?.upper);
+                                        if (lower !== undefined && upper !== undefined) {
+                                            return `${Math.round(lower).toLocaleString()} ～ ${Math.round(upper).toLocaleString()}`;
                                         }
                                         return `${Math.round(finalScore * 0.9).toLocaleString()} ～ ${Math.round(finalScore * 1.1).toLocaleString()}`;
                                     })()}
