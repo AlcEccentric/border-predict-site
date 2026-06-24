@@ -69,7 +69,23 @@ const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" v
 
 const outPath = path.join(root, 'public', 'og-image.png');
 const resvg = new Resvg(svg, { fitTo: { mode: 'width', value: 1200 } });
-fs.writeFileSync(outPath, resvg.render().asPng());
-console.log(`Wrote ${outPath} (${fs.statSync(outPath).size} bytes)`);
+const png = resvg.render().asPng();
+fs.writeFileSync(outPath, png);
+
+// Cache-bust automatically: derive a short hash from the image bytes and
+// write it into index.html's og:image / twitter:image URLs as ?v=<hash>.
+// The hash only changes when the image changes, so crawlers (and the CDN)
+// refetch exactly when they should — no manual version bumping.
+const hash = require('crypto').createHash('sha256').update(png).digest('hex').slice(0, 8);
+const indexPath = path.join(root, 'index.html');
+let indexHtml = fs.readFileSync(indexPath, 'utf8');
+const before = indexHtml;
+indexHtml = indexHtml.replace(/og-image\.png(?:\?v=[a-z0-9]+)?/g, `og-image.png?v=${hash}`);
+if (indexHtml !== before) {
+    fs.writeFileSync(indexPath, indexHtml);
+}
+
+console.log(`Wrote ${outPath} (${png.length} bytes)`);
 console.log(`  title:    ${title}`);
 console.log(`  subtitle: ${subtitle}`);
+console.log(`  cache-bust: og-image.png?v=${hash} (index.html ${indexHtml !== before ? 'updated' : 'unchanged'})`);
