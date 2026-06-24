@@ -32,10 +32,10 @@ const BorderTabs: React.FC<BorderTabsProps> = ({
     const finalScore = getFinalScore(activeTab === '100' ? prediction100 : prediction2500);
 
     return (
-        <CardContainer className="mb-4 relative">
-            <span className="absolute top-4 right-5 z-10">
+        <CardContainer className="mb-4">
+            <div className="flex justify-end mb-1">
                 <LastUpdated timestamp={lastUpdated} />
-            </span>
+            </div>
             <div className="flex flex-col gap-4">
                 {/* Tabs */}
                 <div className="tabs tabs-boxed w-full">

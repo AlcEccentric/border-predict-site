@@ -1,7 +1,7 @@
 /**
  * Format a past timestamp as a short Japanese relative-time string.
  *
- *   < 1 min ago    → "たった今"
+ *   < 5 min ago    → "たった今"
  *   < 60 min ago   → "X分前"
  *   < 24 hr ago    → "X時間前"
  *   < 7 days ago   → "X日前"
@@ -16,7 +16,7 @@ export function formatRelativeTimeJa(date: Date | null | undefined, now: Date = 
     if (diffMs < 0) return 'たった今'; // future timestamp, treat as fresh
 
     const minutes = Math.floor(diffMs / 60_000);
-    if (minutes < 1) return 'たった今';
+    if (minutes < 5) return 'たった今';
     if (minutes < 60) return `${minutes}分前`;
 
     const hours = Math.floor(diffMs / 3_600_000);

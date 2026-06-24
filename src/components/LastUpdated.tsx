@@ -37,7 +37,7 @@ const LastUpdated: React.FC<LastUpdatedProps> = ({ timestamp, className = '' }) 
             className={`text-xs text-base-content/60 ${className}`}
             title={tooltip}
         >
-            最終更新日時: {label}
+            最終更新: {label}
         </span>
     );
 };
