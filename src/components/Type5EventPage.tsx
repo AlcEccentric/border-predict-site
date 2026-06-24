@@ -5,6 +5,7 @@ import IdolSelector from './IdolSelector';
 import Type5MainChart from './Type5MainChart';
 import Banner from './Banner';
 import UpdatesButton from './UpdatesButton';
+import Footer from './Footer';
 import FAQ from './FAQ';
 import LastUpdated from './LastUpdated';
 import { IdolPredictionData, EventInfo, getFinalCI } from '../types';
@@ -396,10 +397,11 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
 
             {/* FAQ Section - Independent component at the bottom */}
             <CardContainer>
-                <FAQ />
+                <FAQ eventType={eventInfo.EventType} />
             </CardContainer>
             </div>
             <UpdatesButton />
+            <Footer />
         </div>
     );
 };

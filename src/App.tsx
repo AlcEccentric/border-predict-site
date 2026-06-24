@@ -9,6 +9,7 @@ import FAQ from './components/FAQ';
 import CardContainer from './components/CardContainer';
 import Banner from './components/Banner';
 import UpdatesButton from './components/UpdatesButton';
+import Footer from './components/Footer';
 import { useTheme } from './utils/themes';
 import { discoverAvailableIdols, loadIdolPrediction } from './utils/type5Loader';
 import { log } from './utils/logger';
@@ -370,11 +371,12 @@ const App: React.FC = () => {
                 )}
 
                 <CardContainer>
-                    <FAQ />
+                    <FAQ eventType={eventInfo.EventType} />
                 </CardContainer>
 
                 <UpdatesButton />
             </div>
+            <Footer />
         </div>
     );
 };
