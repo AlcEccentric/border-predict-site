@@ -106,12 +106,15 @@ const App: React.FC = () => {
         inFlightRef.current.add(idolId);
         try {
             const data = await loadIdolPrediction(idolId, baseUrl, debugSuffix, freshAfterRef.current);
-            if (data) {
-                const next = new Map(idolDataRef.current);
-                next.set(idolId, data);
-                idolDataRef.current = next;
-                setIdolPredictions(next);
-            }
+            const next = new Map(idolDataRef.current);
+            next.set(idolId, data);
+            idolDataRef.current = next;
+            setIdolPredictions(next);
+        } catch (err) {
+            // loadIdolPrediction throws on network failure, non-OK status, or
+            // stale/unverifiable data. Surface it (debug-only) and leave the
+            // idol unloaded rather than rendering anything we couldn't verify.
+            log.error(`Failed to load prediction for idol ${idolId}:`, err);
         } finally {
             inFlightRef.current.delete(idolId);
         }

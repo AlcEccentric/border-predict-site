@@ -16,21 +16,65 @@ import { IdolPredictionData, PredictionData } from '../types';
 const BORDERS = ['100.0', '1000.0'] as const;
 const TOTAL_IDOLS = 52;
 
+// Data is expected to refresh roughly hourly; older than this (but still
+// belonging to the current event) is considered stale.
+const STALE_AFTER_MS = 2 * 60 * 60 * 1000;
+
 function predictionUrl(baseUrl: string, idolId: number, border: string, debugSuffix: string): string {
     return `${baseUrl}/prediction/${idolId}/${border}/predictions.json${debugSuffix}`;
 }
 
+type BorderFreshness = 'insufficient' | 'stale' | 'fresh';
+
 /**
- * Decide whether a probe response represents fresh-enough data. Cutoff is
- * compared against the response's `Last-Modified` header. A missing header
- * is treated as fresh (we have no way to know otherwise).
+ * Availability predicate used by discovery: a file counts as belonging to
+ * the current event when its `Last-Modified` is at or after `eventStart`.
+ * Missing/unparseable header or an older timestamp → false. `eventStart`
+ * null/undefined disables the check (demo mode) → always true.
  */
-function isFresh(response: Response, freshAfter: Date | null | undefined): boolean {
-    if (!freshAfter) return true;
+function isFresh(response: Response, eventStart: Date | null | undefined): boolean {
+    if (!eventStart) return true;
     const lastModifiedHeader = response.headers.get('Last-Modified');
-    if (!lastModifiedHeader) return true;
+    if (!lastModifiedHeader) return false;
     const lastModifiedMs = new Date(lastModifiedHeader).getTime();
-    return Number.isFinite(lastModifiedMs) && lastModifiedMs >= freshAfter.getTime();
+    if (!Number.isFinite(lastModifiedMs)) return false;
+    return lastModifiedMs >= eventStart.getTime();
+}
+
+/**
+ * Classify a 200 response into one of three states relative to the event
+ * start and the staleness window:
+ *
+ *   - `insufficient`: `Last-Modified` is older than `eventStart` — leftover
+ *     data from a previous event, treated as "no data for this event".
+ *   - `stale`: belongs to this event but hasn't refreshed within ~2h.
+ *   - `fresh`: belongs to this event and recently updated.
+ *
+ * Throws when `Last-Modified` is missing or unparseable — that's a
+ * retrieval-integrity failure (case 3), not a data-availability state.
+ * When `eventStart` is null/undefined the check is disabled (demo) → fresh.
+ */
+function classifyFreshness(
+    response: Response,
+    eventStart: Date | null | undefined,
+    now: number,
+): BorderFreshness {
+    if (!eventStart) return 'fresh';
+    const lastModifiedHeader = response.headers.get('Last-Modified');
+    if (!lastModifiedHeader) {
+        throw new Error(
+            `Freshness check failed: no readable Last-Modified header on ${response.url}.`,
+        );
+    }
+    const lastModifiedMs = new Date(lastModifiedHeader).getTime();
+    if (!Number.isFinite(lastModifiedMs)) {
+        throw new Error(
+            `Freshness check failed: unparseable Last-Modified "${lastModifiedHeader}" on ${response.url}.`,
+        );
+    }
+    if (lastModifiedMs < eventStart.getTime()) return 'insufficient';
+    if (lastModifiedMs < now - STALE_AFTER_MS) return 'stale';
+    return 'fresh';
 }
 
 /**
@@ -66,34 +110,53 @@ export async function discoverAvailableIdols(
 
 /**
  * Fetch the full prediction data for a single idol (both borders in
- * parallel). Each border is independently checked against `freshAfter`;
- * stale borders come back as null. Returns null for the whole idol only
- * if neither border is both present and fresh.
+ * parallel). Per border:
+ *   - 404 or `Last-Modified` older than the event start → that border comes
+ *     back null (insufficient data — not an error).
+ *   - belongs to the event → data is returned; flagged stale if older than
+ *     the staleness window.
+ * Throws on retrieval failures: network error, non-OK (non-404) status, or
+ * a missing/unparseable `Last-Modified` on an otherwise OK response.
+ *
+ * Always returns an IdolPredictionData (borders may be null); never null.
  */
 export async function loadIdolPrediction(
     idolId: number,
     baseUrl: string,
     debugSuffix: string,
     freshAfter?: Date | null,
-): Promise<IdolPredictionData | null> {
+): Promise<IdolPredictionData> {
     const fetchOne = async (
         border: string,
-    ): Promise<{ data: PredictionData | null; lastModified: Date | null }> => {
-        try {
-            const res = await fetch(predictionUrl(baseUrl, idolId, border, debugSuffix));
-            if (!res.ok) return { data: null, lastModified: null };
-            if (!isFresh(res, freshAfter)) return { data: null, lastModified: null };
-            const lastModifiedHeader = res.headers.get('Last-Modified');
-            const lastModified = lastModifiedHeader ? new Date(lastModifiedHeader) : null;
-            const data = (await res.json()) as PredictionData;
-            return { data, lastModified };
-        } catch {
-            return { data: null, lastModified: null };
+    ): Promise<{ data: PredictionData | null; lastModified: Date | null; stale: boolean }> => {
+        // Network-level failures propagate (no catch) — case 3.
+        const res = await fetch(predictionUrl(baseUrl, idolId, border, debugSuffix));
+
+        // Missing file → insufficient data for this event (case 1, not an error).
+        if (res.status === 404) {
+            return { data: null, lastModified: null, stale: false };
         }
+        // Any other non-OK status is a retrieval failure — case 3.
+        if (!res.ok) {
+            throw new Error(
+                `Failed to load prediction (idol=${idolId}, border=${border}): HTTP ${res.status}`,
+            );
+        }
+
+        // classifyFreshness throws on missing/unparseable Last-Modified (case 3).
+        const freshness = classifyFreshness(res, freshAfter, Date.now());
+        if (freshness === 'insufficient') {
+            // Leftover data from a previous event — treat as no data (case 1).
+            return { data: null, lastModified: null, stale: false };
+        }
+
+        const lastModifiedHeader = res.headers.get('Last-Modified');
+        const lastModified = lastModifiedHeader ? new Date(lastModifiedHeader) : null;
+        const data = (await res.json()) as PredictionData;
+        return { data, lastModified, stale: freshness === 'stale' };
     };
 
     const [r100, r1000] = await Promise.all(BORDERS.map(fetchOne));
-    if (!r100.data && !r1000.data) return null;
 
     // Newest of the two timestamps (skipping nulls and invalid dates).
     const candidates = [r100.lastModified, r1000.lastModified].filter(
@@ -103,11 +166,15 @@ export async function loadIdolPrediction(
         ? new Date(Math.max(...candidates.map(d => d.getTime())))
         : undefined;
 
+    // Idol is stale if any border we're actually showing is stale.
+    const stale = (r100.data != null && r100.stale) || (r1000.data != null && r1000.stale);
+
     return {
         idolId,
         prediction100: r100.data,
         prediction1000: r1000.data,
         lastModified,
+        stale,
     };
 }
 

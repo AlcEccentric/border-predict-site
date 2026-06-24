@@ -306,6 +306,11 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
                                 timestamp={idolPredictions.get(selectedIdol)?.lastModified}
                             />
                         </div>
+                        {idolPredictions.get(selectedIdol)?.stale && (
+                            <div className="mb-3 p-2 rounded bg-warning/10 border border-warning/20 text-warning text-sm text-center">
+                                データがしばらく更新されていません。最新の状況とは異なる可能性があります。
+                            </div>
+                        )}
                         <div className="text-center mb-4">
                             <h3 className="text-xl font-bold flex items-center justify-center gap-2 flex-wrap">
                                 <span>{getIdolName(selectedIdol)}</span>

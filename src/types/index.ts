@@ -32,6 +32,12 @@ export interface IdolPredictionData {
     prediction1000: PredictionData | null;
     /** Newest `Last-Modified` from the two border responses, if available. */
     lastModified?: Date;
+    /**
+     * True when the shown data is for the current event but hasn't been
+     * refreshed within the staleness window (~2h). The data is still
+     * rendered; this just flags that it may be out of date.
+     */
+    stale?: boolean;
 }
 
 export interface Type5EventData {

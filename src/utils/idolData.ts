@@ -47,7 +47,7 @@ const parseIdolData = (): Map<number, IdolInfo> => {
     { name: '舞浜歩', id: 34, shortName: 'ayu', color: '#e25a9b' },
     { name: '木下ひなた', id: 35, shortName: 'hin', color: '#d1342c' },
     { name: '矢吹可奈', id: 36, shortName: 'kan', color: '#f5ad3b' },
-    { name: '横山奈緒', id: 37, shortName: 'nao', color: '#5abfb7' },
+    { name: '横山奈緒', id: 37, shortName: 'nao', color: '#788bc5' },
     { name: '二階堂千鶴', id: 38, shortName: 'chz', color: '#f19557' },
     { name: '馬場このみ', id: 39, shortName: 'kon', color: '#f1becb' },
     { name: '大神環', id: 40, shortName: 'tam', color: '#ee762e' },
