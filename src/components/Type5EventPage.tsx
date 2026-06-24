@@ -6,6 +6,7 @@ import Type5MainChart from './Type5MainChart';
 import Banner from './Banner';
 import UpdatesButton from './UpdatesButton';
 import FAQ from './FAQ';
+import LastUpdated from './LastUpdated';
 import { IdolPredictionData, EventInfo, getFinalBoundValue } from '../types';
 import { getIdolName } from '../utils/idolData';
 import { Info } from 'lucide-react';
@@ -126,7 +127,6 @@ interface Type5EventPageProps {
     eventInfo: EventInfo;
     idolPredictions: Map<number, IdolPredictionData>;
     availableIdols: Set<number>;
-    loadingIdols: Set<number>;
     requestIdolData: (idolId: number) => void;
     loading: boolean;
     theme: string;
@@ -138,7 +138,6 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
     eventInfo,
     idolPredictions,
     availableIdols,
-    loadingIdols,
     requestIdolData,
     loading,
     theme,
@@ -291,7 +290,12 @@ const Type5EventPage: React.FC<Type5EventPageProps> = ({
             {selectedIdol && (
                 <>
                     {/* Summary Stats */}
-                    <CardContainer className="mb-8" ref={summaryStatsRef}>
+                    <CardContainer className="mb-8 relative" ref={summaryStatsRef}>
+                        <span className="absolute top-4 right-5 z-10">
+                            <LastUpdated
+                                timestamp={idolPredictions.get(selectedIdol)?.lastModified}
+                            />
+                        </span>
                         <div className="text-center mb-4">
                             <h3 className="text-xl font-bold flex items-center justify-center gap-2 flex-wrap">
                                 <span>{getIdolName(selectedIdol)}の予測スコア</span>

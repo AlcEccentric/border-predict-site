@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import MainChart from './MainChart';
 import { PredictionData, getFinalBoundValue } from '../types';
 import CardContainer from './CardContainer';
+import LastUpdated from './LastUpdated';
 import { Info } from 'lucide-react';
 
 interface BorderTabsProps {
@@ -12,6 +13,7 @@ interface BorderTabsProps {
     activeTab: string;
     setActiveTab: (tab: string) => void;
     theme: string;
+    lastUpdated: Date | null;
 }
 
 const BorderTabs: React.FC<BorderTabsProps> = ({
@@ -20,7 +22,8 @@ const BorderTabs: React.FC<BorderTabsProps> = ({
     startAt,
     activeTab,
     setActiveTab,
-    theme
+    theme,
+    lastUpdated,
 }) => {
     const getFinalScore = (prediction: PredictionData) => {
         const scores = prediction.data.raw.target;
@@ -29,7 +32,10 @@ const BorderTabs: React.FC<BorderTabsProps> = ({
     const finalScore = getFinalScore(activeTab === '100' ? prediction100 : prediction2500);
 
     return (
-        <CardContainer className="mb-4">
+        <CardContainer className="mb-4 relative">
+            <span className="absolute top-4 right-5 z-10">
+                <LastUpdated timestamp={lastUpdated} />
+            </span>
             <div className="flex flex-col gap-4">
                 {/* Tabs */}
                 <div className="tabs tabs-boxed w-full">

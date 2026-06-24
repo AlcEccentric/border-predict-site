@@ -22,9 +22,9 @@ const App: React.FC = () => {
     const [eventInfo, setEventInfo] = useState<EventInfo | null>(null);
     const [prediction100, setPrediction100] = useState<PredictionData | null>(null);
     const [prediction2500, setPrediction2500] = useState<PredictionData | null>(null);
+    const [normalLastModified, setNormalLastModified] = useState<Date | null>(null);
     const [idolPredictions, setIdolPredictions] = useState<Map<number, IdolPredictionData>>(new Map());
     const [availableIdols, setAvailableIdols] = useState<Set<number>>(new Set());
-    const [loadingIdols, setLoadingIdols] = useState<Set<number>>(new Set());
     const [loading, setLoading] = useState(true);
     const [predictionDataValid, setPredictionDataValid] = useState(true);
     const [activeTab, setActiveTab] = useState(() => {
@@ -82,7 +82,7 @@ const App: React.FC = () => {
 
     // Lazy-load cache for Type 5 idol predictions. Refs let the
     // `requestIdolData` callback dedupe in-flight and cached fetches without
-    // taking `idolPredictions` / `loadingIdols` as deps (which would cause
+    // taking `idolPredictions` as a dep (which would cause
     // the callback identity to change every fetch and re-trigger effects).
     const idolDataRef = useRef<Map<number, IdolPredictionData>>(new Map());
     const inFlightRef = useRef<Set<number>>(new Set());
@@ -94,7 +94,6 @@ const App: React.FC = () => {
     const requestIdolData = useCallback(async (idolId: number) => {
         if (idolDataRef.current.has(idolId) || inFlightRef.current.has(idolId)) return;
         inFlightRef.current.add(idolId);
-        setLoadingIdols(prev => new Set(prev).add(idolId));
         try {
             let data = await loadIdolPrediction(idolId, baseUrl, debugSuffix, freshAfterRef.current);
             // In demo mode, the historical data on R2 has no `bounds`. Fake
@@ -112,11 +111,6 @@ const App: React.FC = () => {
             }
         } finally {
             inFlightRef.current.delete(idolId);
-            setLoadingIdols(prev => {
-                const next = new Set(prev);
-                next.delete(idolId);
-                return next;
-            });
         }
     }, [baseUrl, debugSuffix, forceType5Demo]);
 
@@ -199,10 +193,23 @@ const App: React.FC = () => {
                     // Load normal event predictions (idol 0) - CDN will cache for 1 hour
                     const pred100Response = await fetch(pred100Url);
                     const pred2500Response = await fetch(pred2500Url);
-                    
+
                     if (pred100Response.ok && pred2500Response.ok) {
                         setPrediction100(await pred100Response.json());
                         setPrediction2500(await pred2500Response.json());
+                        // Pick the newest Last-Modified across the two
+                        // response files; that's the moment the page
+                        // reflects.
+                        const candidates = [pred100Response, pred2500Response]
+                            .map(r => r.headers.get('Last-Modified'))
+                            .filter((h): h is string => h !== null)
+                            .map(h => new Date(h))
+                            .filter(d => !Number.isNaN(d.getTime()));
+                        if (candidates.length > 0) {
+                            setNormalLastModified(
+                                new Date(Math.max(...candidates.map(d => d.getTime()))),
+                            );
+                        }
                     } else {
                         log.warn('Failed to load normal event predictions');
                     }
@@ -312,7 +319,6 @@ const App: React.FC = () => {
                     eventInfo={eventInfo}
                     idolPredictions={idolPredictions}
                     availableIdols={availableIdols}
-                    loadingIdols={loadingIdols}
                     requestIdolData={requestIdolData}
                     loading={loading}
                     theme={theme}
@@ -345,6 +351,7 @@ const App: React.FC = () => {
                         activeTab={activeTab}
                         setActiveTab={handleActiveTabChange}
                         theme={theme}
+                        lastUpdated={normalLastModified}
                     />
                 )}
 

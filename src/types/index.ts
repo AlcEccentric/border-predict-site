@@ -30,6 +30,8 @@ export interface IdolPredictionData {
     idolId: number;
     prediction100: PredictionData | null;
     prediction1000: PredictionData | null;
+    /** Newest `Last-Modified` from the two border responses, if available. */
+    lastModified?: Date;
 }
 
 export interface Type5EventData {

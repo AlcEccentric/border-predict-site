@@ -76,20 +76,39 @@ export async function loadIdolPrediction(
     debugSuffix: string,
     freshAfter?: Date | null,
 ): Promise<IdolPredictionData | null> {
-    const fetchOne = async (border: string): Promise<PredictionData | null> => {
+    const fetchOne = async (
+        border: string,
+    ): Promise<{ data: PredictionData | null; lastModified: Date | null }> => {
         try {
             const res = await fetch(predictionUrl(baseUrl, idolId, border, debugSuffix));
-            if (!res.ok) return null;
-            if (!isFresh(res, freshAfter)) return null;
-            return (await res.json()) as PredictionData;
+            if (!res.ok) return { data: null, lastModified: null };
+            if (!isFresh(res, freshAfter)) return { data: null, lastModified: null };
+            const lastModifiedHeader = res.headers.get('Last-Modified');
+            const lastModified = lastModifiedHeader ? new Date(lastModifiedHeader) : null;
+            const data = (await res.json()) as PredictionData;
+            return { data, lastModified };
         } catch {
-            return null;
+            return { data: null, lastModified: null };
         }
     };
 
-    const [pred100, pred1000] = await Promise.all(BORDERS.map(fetchOne));
-    if (!pred100 && !pred1000) return null;
-    return { idolId, prediction100: pred100, prediction1000: pred1000 };
+    const [r100, r1000] = await Promise.all(BORDERS.map(fetchOne));
+    if (!r100.data && !r1000.data) return null;
+
+    // Newest of the two timestamps (skipping nulls and invalid dates).
+    const candidates = [r100.lastModified, r1000.lastModified].filter(
+        (d): d is Date => d != null && !Number.isNaN(d.getTime()),
+    );
+    const lastModified = candidates.length > 0
+        ? new Date(Math.max(...candidates.map(d => d.getTime())))
+        : undefined;
+
+    return {
+        idolId,
+        prediction100: r100.data,
+        prediction1000: r1000.data,
+        lastModified,
+    };
 }
 
 
