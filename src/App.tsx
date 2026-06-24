@@ -301,17 +301,21 @@ const App: React.FC = () => {
         return <EventModal />;
     }
 
-    // Show a page in the first 36 hours of an event
+    // Show a "data preparing" page during the initial window of an event,
+    // before there's enough data to predict. Type 5 events need a longer
+    // warm-up (72h) than normal events (36h).
     const eventStart = new Date(eventInfo.StartAt);
     const nowTime = new Date();
     const hoursSinceStart = (nowTime.getTime() - eventStart.getTime()) / (1000 * 60 * 60);
-    if (!isDebug && hoursSinceStart < 36) {
+    const requiredHours = isType5Event(eventInfo.EventType) ? 72 : 36;
+    const eventLabel = isType5Event(eventInfo.EventType) ? '周年イベント' : 'イベント';
+    if (!isDebug && hoursSinceStart < requiredHours) {
         return (
             <div className="min-h-screen bg-base-100 flex flex-col items-center justify-center">
                 <div className="bg-base-200 rounded-lg shadow-lg p-8 max-w-md text-center">
                     <h2 className="text-xl font-bold mb-4">予測データ準備中</h2>
-                    <p className="mb-2">イベント開始から36時間分のデータが必要です。</p>
-                    <p className="text-base-content/70">恐れ入りますが、イベント開始から36時間経過後にご利用ください。</p>
+                    <p className="mb-2">{eventLabel}開始から{requiredHours}時間分のデータが必要です。</p>
+                    <p className="text-base-content/70">恐れ入りますが、{eventLabel}開始から{requiredHours}時間経過後にご利用ください。</p>
                 </div>
             </div>
         );
