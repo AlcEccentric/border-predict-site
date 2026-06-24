@@ -9,7 +9,7 @@ const Footer: React.FC = () => {
     return (
         <footer className="mt-8 border-t border-base-300 py-6 px-4">
             <div className="container mx-auto max-w-3xl text-center text-xs leading-relaxed text-base-content/60 space-y-2">
-                <p>© 2025–2026 Yueni　非公式ファンサイト</p>
+                <p>© 2025–2026 Yueni</p>
                 <p>
                     「アイドルマスター」関連コンテンツの著作権は、窪岡俊之氏および株式会社バンダイナムコエンターテインメントに帰属します。
                     本サイトはファンが運営する非公式ツールであり、権利者および関連企業とは一切関係ありません。
