@@ -1,5 +1,5 @@
 import React from 'react';
-import { Info, TrendingUp, Users, RefreshCw, Sliders, Heart, type LucideIcon } from 'lucide-react';
+import { Info, TrendingUp, Users, RefreshCw, Sliders, Heart, FlaskConical, type LucideIcon } from 'lucide-react';
 
 interface FAQProps {
     /** Event type of the page this FAQ is rendered on. 5 = anniversary (周年). */
@@ -11,6 +11,9 @@ type Section = {
     title: string;
     icon: LucideIcon;
     defaultOpen?: boolean;
+    /** Warning-styled instead of the default primary style; used to call
+     * out experimental/in-progress changes so they're hard to miss. */
+    highlight?: boolean;
     content: React.ReactNode;
 };
 
@@ -149,6 +152,52 @@ const getSections = (isAnniversary: boolean): Section[] => [
             </p>
         ),
     },
+    // Experimental change specific to Type 5 border-100. Kept as its own
+    // highlighted section (rather than a footnote) because it's the main
+    // behavioral difference vs. previous anniversary events, and it's an
+    // ongoing experiment the developer is actively monitoring.
+    ...(isAnniversary ? [{
+        title: 'イベントボーダー予測機能の調整について',
+        icon: FlaskConical,
+        highlight: true,
+        defaultOpen: true,
+        content: (
+            <>
+                <div>
+                    <h4 className="text-lg font-semibold mb-1">今回の問題</h4>
+                    <p className="text-sm">
+                        今回のイベントで導入された期間限定スキップパスの影響により、イベント序盤から全体のスコアがいつもより高めに推移しています。
+                        この影響で、本来のボーダーの勢い（人気度）が判定しづらくなり、予測システムが「普段のイベントでの上位アイドル」と
+                        「今回スコアが伸びている中位のアイドル」を混同してしまい、誤った予測データを引っ張ってくる問題が発生していました。
+                    </p>
+                </div>
+                <div className="mt-4">
+                    <h4 className="text-lg font-semibold mb-1">影響の予測</h4>
+                    <p className="text-sm">
+                        累積スコア推移を分析したところ、一定のポイントを超えたあたりからスコアの伸びが落ち着く傾向が見られています。
+                        このことから、スキップパスによる極端なスコアの底上げは、<strong>現時点ではイベント序盤の一時的なもの</strong>であると判断しています。
+                    </p>
+                </div>
+                <div className="mt-4">
+                    <h4 className="text-lg font-semibold mb-1">実施した対策</h4>
+                    <p className="text-sm">
+                        このズレを解消するため、予測システムが参照する基準を、単純な「現在のスコアの高さ」ではなく、<strong>「イベント内での相対的な順位・立ち位置」</strong>で比較するようにアルゴリズムを改良しました。
+                        これにより、スキップパスによる一時的なスコアの浮き沈みに左右されず、本来の勢いに応じた精度の高い予測が可能になります。
+                    </p>
+                </div>
+                <div className="mt-4">
+                    <h4 className="text-lg font-semibold mb-1">ご注意ください</h4>
+                    <p className="text-sm text-base-content/70">
+                        今回の変更は、スキップパスの影響を抑えるための試験的なものです。イベント期間中も推移を継続的に監視していますが、もし予測が実数値から大きく乖離する場合は、再度アルゴリズムを微調整する可能性があります。あらかじめご了承ください。
+                    </p>
+                    <p className="text-sm text-warning mt-2">
+                        <strong>※1000位ボーダーも同様にスコアが上昇していますが、100位とは推移のパターンが異なるため、修正は適用しておりません。
+                        ここ数日の動向を確認しつつ、1000位に合わせた別個の調整が必要かどうかを判断する予定です。</strong>
+                    </p>
+                </div>
+            </>
+        ),
+    }] : []),
     {
         title: 'データ更新頻度と古いデータについて',
         icon: RefreshCw,
@@ -223,11 +272,21 @@ const FAQ: React.FC<FAQProps> = ({ eventType }) => {
     return (
         <div className="mt-4">
             <div className="space-y-3">
-                {sections.map(({ id, title, icon: Icon, defaultOpen, content }) => (
-                    <div key={title} id={id} className="collapse collapse-plus bg-base-200">
+                {sections.map(({ id, title, icon: Icon, defaultOpen, highlight, content }) => (
+                    <div
+                        key={title}
+                        id={id}
+                        className={`collapse collapse-plus ${highlight ? 'bg-warning/10 border border-warning/30' : 'bg-base-200'}`}
+                    >
                         <input type="checkbox" defaultChecked={defaultOpen} />
-                        <div className="collapse-title text-lg font-bold bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 border-l-4 border-primary flex items-center gap-3">
-                            <Icon size={20} className="text-primary shrink-0" />
+                        <div
+                            className={`collapse-title text-lg font-bold px-4 py-3 border-l-4 flex items-center gap-3 ${
+                                highlight
+                                    ? 'bg-gradient-to-r from-warning/20 to-transparent border-warning'
+                                    : 'bg-gradient-to-r from-primary/10 to-transparent border-primary'
+                            }`}
+                        >
+                            <Icon size={20} className={`shrink-0 ${highlight ? 'text-warning' : 'text-primary'}`} />
                             <span>{title}</span>
                         </div>
                         <div className="collapse-content">
