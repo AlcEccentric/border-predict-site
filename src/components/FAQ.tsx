@@ -157,14 +157,14 @@ const getSections = (isAnniversary: boolean): Section[] => [
     // behavioral difference vs. previous anniversary events, and it's an
     // ongoing experiment the developer is actively monitoring.
     ...(isAnniversary ? [{
-        title: 'イベントボーダー予測機能の調整について',
+        title: '期間限定スキップパスへの対応について',
         icon: FlaskConical,
         highlight: true,
         defaultOpen: true,
         content: (
             <>
                 <div>
-                    <h4 className="text-lg font-semibold mb-1">今回の問題</h4>
+                    <h4 className="text-lg font-semibold mb-1">今回の問題点</h4>
                     <p className="text-sm">
                         今回のイベントで導入された期間限定スキップパスの影響により、イベント序盤から全体のスコアがいつもより高めに推移しています。
                         この影響で、本来のボーダーの勢い（人気度）が判定しづらくなり、予測システムが「普段のイベントでの上位アイドル」と
