@@ -152,49 +152,22 @@ const getSections = (isAnniversary: boolean): Section[] => [
             </p>
         ),
     },
-    // Experimental change specific to Type 5 border-100. Kept as its own
-    // highlighted section (rather than a footnote) because it's the main
-    // behavioral difference vs. previous anniversary events, and it's an
-    // ongoing experiment the developer is actively monitoring.
+    // Experimental change specific to Type 5 border-100. Kept brief on
+    // purpose — only the observation and "we're working on it" — since the
+    // actual fix/solution isn't finalized yet. Expand with details once
+    // it's settled.
     ...(isAnniversary ? [{
-        title: '期間限定スキップパスへの対応について',
+        title: '今回の仕様変更による影響について',
         icon: FlaskConical,
         highlight: true,
-        defaultOpen: true,
         content: (
-            <>
-                <div>
-                    <h4 className="text-lg font-semibold mb-1">今回の問題点</h4>
-                    <p className="text-sm">
-                        今回のイベントで導入された期間限定スキップパスの影響により、イベント序盤では全体のスコアがいつもより高めに推移しています。
-                        この影響により、本来のボーダーの勢いを正しく判断しづらくなり、予測システムが「通常のイベントでは上位に位置するアイドル」と「今回、一時的にスコアが伸びている中位アイドル」を混同し、適切でないデータを参照してしまう可能性があることが分かりました。。
-                    </p>
-                </div>
-                <div className="mt-4">
-                    <h4 className="text-lg font-semibold mb-1">影響の予測</h4>
-                    <p className="text-sm">
-                        累積スコア推移を分析したところ、一定のポイントを超えたあたりからスコアの伸びが落ち着く傾向が見られています。
-                        このことから、スキップパスによる極端なスコアの底上げは、<strong>現時点ではイベント序盤の一時的なもの</strong>であると判断しています。
-                    </p>
-                </div>
-                <div className="mt-4">
-                    <h4 className="text-lg font-semibold mb-1">実施した対策</h4>
-                    <p className="text-sm">
-                        このズレを解消するため、スコアの伸びだけでなく、イベント内でどのあたりに位置しているかも考慮して過去データを検索するよう、予測アルゴリズムを改良しました。
-                        これにより、スキップパスによるイベント全体の一時的なスコア上昇の影響を受けにくくなり、本来の勢いに近いデータを参照することで、より安定した予測の実現を目指しています。
-                    </p>
-                </div>
-                <div className="mt-4">
-                    <h4 className="text-lg font-semibold mb-1">ご注意ください</h4>
-                    <p className="text-sm text-base-content/70">
-                        今回の変更は、スキップパスの影響を抑えるための試験的なものです。イベント期間中も予測精度を継続的に検証し、実際の数値との乖離が大きい場合は、必要に応じてアルゴリズムを調整する可能性があります。あらかじめご了承ください。
-                    </p>
-                    <p className="text-sm text-warning mt-2">
-                        <strong>※1000位ボーダーも同様にスコアが上昇していますが、100位とは推移のパターンが異なるため、100位向けの修正は適用しておりません。
-                        今後の推移を確認しながら、1000位向けに別途調整が必要かどうかを判断する予定です。</strong>
-                    </p>
-                </div>
-            </>
+            <p className="text-sm">
+                今回のイベントでは、スキップパスの導入に加え、DX+パス購入者がオートパスを無制限に追加購入できる仕様変更が行われています。
+                現時点では、スキップパスの影響により序盤のスコアがやや高く推移している可能性があり、
+                またDX+パスについてもプレイ回数の増加につながる可能性がありますが、現時点では明確な因果関係は確認されていません。
+                引き続きデータを観察しながら、必要に応じて予測モデルの調整を行います。
+                今後数日間は予告なく予測結果が変わる場合がありますので、あらかじめご了承ください。
+            </p>
         ),
     }] : []),
     {

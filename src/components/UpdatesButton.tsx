@@ -4,7 +4,7 @@ import { Info, X } from 'lucide-react';
 const UpdatesButton: React.FC = () => {
     const [isExpanded, setIsExpanded] = useState(false);
 
-    const currentUpdateKey = "update-2026-06-30"; // Change this when there's a new update
+    const currentUpdateKey = "update-2026-07-02"; // Change this when there's a new update
     const [hasNewUpdate, setHasNewUpdate] = useState(() => {
         const lastSeen = localStorage.getItem('lastSeenUpdate');
         return lastSeen !== currentUpdateKey;
@@ -75,10 +75,12 @@ const UpdatesButton: React.FC = () => {
 
                         {/* Updates section */}
                         <div className="border-l-4 border-secondary pl-4">
-                            <h4 className="font-bold text-secondary mb-2">期間限定スキップパスへの対応について (2026/07/02)</h4>
+                            <h4 className="font-bold text-secondary mb-2">スキップパスとDX+パスの影響について (2026/07/02)</h4>
                             <p className="text-sm text-base-content/80">
-                                スキップパスの影響で序盤のスコアがいつもより高く推移しており、100位ボーダー予測がズレやすくなっています。
-                                現在は、実験的なロジックを導入中です。詳細はFAQをご確認ください。
+                                今回のイベントでは、スキップパス報酬の導入およびDX+パス購入者によるオートパス追加購入の無制限化という2つの仕様変更が行われています。
+                                これらの影響により、序盤のスコア推移が従来よりやや高めに推移している可能性があります。
+                                現在も状況を継続して観察しており、必要に応じて予測モデルの調整を行っています。
+                                今後数日間は予告なく予測結果が変わる場合がありますので、あらかじめご了承ください。
                             </p>
                         </div>
 
