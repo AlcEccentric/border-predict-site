@@ -121,6 +121,45 @@ const App: React.FC = () => {
         }
     }, [baseUrl, debugSuffix]);
 
+    // Background prefetch: after discovery, quietly warm each available
+    // idol's data during idle time so the first click on a never-opened
+    // idol is instant instead of paying a cold network round-trip. Runs
+    // after first paint (not blocking initial load), in small concurrent
+    // batches, and dedupes against already-loaded / in-flight fetches.
+    const prefetchStartedRef = useRef(false);
+    const prefetchIdols = useCallback((ids: number[]) => {
+        if (prefetchStartedRef.current) return;
+        prefetchStartedRef.current = true;
+
+        const scheduleIdle = (fn: () => void) => {
+            const ric = (window as any).requestIdleCallback as
+                | ((cb: () => void, opts?: { timeout: number }) => number)
+                | undefined;
+            if (ric) ric(fn, { timeout: 2000 });
+            else window.setTimeout(fn, 300);
+        };
+
+        const CONCURRENCY = 3;
+        const queue = [...ids];
+        const pump = () => {
+            const batch: number[] = [];
+            while (batch.length < CONCURRENCY && queue.length > 0) {
+                const id = queue.shift()!;
+                if (!idolDataRef.current.has(id) && !inFlightRef.current.has(id)) {
+                    batch.push(id);
+                }
+            }
+            if (batch.length === 0) {
+                if (queue.length > 0) scheduleIdle(pump);
+                return;
+            }
+            Promise.all(batch.map(id => requestIdolData(id))).finally(() => {
+                if (queue.length > 0) scheduleIdle(pump);
+            });
+        };
+        scheduleIdle(pump);
+    }, [requestIdolData]);
+
     useEffect(() => {
         const loadData = async () => {
             try {
@@ -247,6 +286,17 @@ const App: React.FC = () => {
                     freshAfterRef.current = freshAfter;
                     const availableIdols = await discoverAvailableIdols(baseUrl, debugSuffix, freshAfter);
                     setAvailableIdols(availableIdols);
+
+                    // Warm the rest in the background. Put the saved/selected
+                    // idol first so, if the user opens it immediately, it's
+                    // already prioritized (the page also requests it directly).
+                    const savedIdol = Number(localStorage.getItem('selectedIdol'));
+                    const order = Array.from(availableIdols).sort((a, b) => {
+                        if (a === savedIdol) return -1;
+                        if (b === savedIdol) return 1;
+                        return a - b;
+                    });
+                    prefetchIdols(order);
                 }
             } catch (error) {
                 log.error('Error loading data:', error);

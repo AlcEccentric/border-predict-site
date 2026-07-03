@@ -11,8 +11,7 @@ import {
   Title,
   Tooltip,
   Legend,
-  ChartOptions,
-  InteractionItem
+  ChartOptions
 } from 'chart.js';
 import { getRelativePosition } from 'chart.js/helpers';
 import { IdolPredictionData } from '../types';
@@ -287,6 +286,17 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
     }
   }, []);
 
+  // The chart can mount before the browser has laid out its container,
+  // caching a too-short chartArea. Since both the prediction-range box and
+  // the crosshair's in-plot hit-test rely on chartArea, a short value also
+  // makes touches get treated as "outside the plot" and dismissed. Resize on
+  // the next frame — after layout, before paint — so chartArea is correct
+  // essentially immediately (no visible grow, no ResizeObserver feedback loop).
+  React.useEffect(() => {
+    const raf = requestAnimationFrame(() => chartRef.current?.resize());
+    return () => cancelAnimationFrame(raf);
+  }, [selectedIdol]);
+
   // Core hover/crosshair computation, driven directly by client coordinates.
   // Both the chart's `onHover` (mouse) and the touch handler call this, so we
   // don't rely on dispatching synthetic mouse events — those aren't picked up
@@ -382,6 +392,12 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
     const onStart = (e: TouchEvent) => {
       const touch = e.touches[0];
       if (!touch) return;
+      // Suppress the browser's compatibility mouse events (mousedown/mousemove/
+      // click) that touch would otherwise synthesize. Those were triggering the
+      // desktop-only range-selection handler (setting isSelecting, which makes
+      // updateHoverAt bail) and the document-level dismiss listeners — freezing
+      // the drag and clearing the crosshair while holding.
+      if (e.cancelable) e.preventDefault();
       startX = touch.clientX;
       startY = touch.clientY;
       mode = 'undecided';
@@ -390,13 +406,14 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
     const onMove = (e: TouchEvent) => {
       const touch = e.touches[0];
       if (!touch) return;
+      // With touch-action:none the browser won't scroll the plot, so any
+      // drag past the slop threshold is a crosshair scrub.
       if (mode === 'undecided') {
         const dx = Math.abs(touch.clientX - startX);
         const dy = Math.abs(touch.clientY - startY);
         if (Math.max(dx, dy) < SLOP) return;
-        mode = dx > dy ? 'scrub' : 'scroll';
+        mode = 'scrub';
       }
-      if (mode === 'scroll') return;
       if (e.cancelable) e.preventDefault();
       updateHoverAtRef.current(touch.clientX, touch.clientY);
     };
@@ -719,15 +736,15 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
     return {
       responsive: true,
       maintainAspectRatio: false,
+      // Only let Chart.js handle 'click' (needed for the legend toggle). We
+      // drive the crosshair ourselves — touch listeners for touch, the
+      // container's onMouseMove/onMouseLeave for desktop — and we removed the
+      // Chart.js onHover, so its pointer handling can no longer wipe the
+      // crosshair when the finger stops moving.
+      events: ['click'],
       interaction: {
         mode: 'index',
         intersect: false
-      },
-      // Delegate to the shared hover computation so mouse and touch share one
-      // code path. (Touch calls updateHoverAt directly — see the touch effect.)
-      onHover: (event: any, _elements: InteractionItem[]) => {
-        if (!event.native) return;
-        updateHoverAtRef.current(event.native.clientX, event.native.clientY);
       },
       plugins: {
         legend: {
@@ -984,6 +1001,11 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
       <div 
         ref={chartContainerRef}
         className="relative w-full h-[60vh] min-h-[360px] sm:h-[400px] md:h-[600px]" 
+        // Take full control of touch gestures on the plot so the browser
+        // never hijacks a drag for scrolling (which stops delivering
+        // touchmove and breaks crosshair scrubbing). Page scrolling is done
+        // from outside the chart area.
+        style={{ touchAction: 'none' }}
         onMouseLeave={handleChartLeave}
         onMouseDown={(e) => {
           // console.log('📍 DIV Mouse Down Event:', { 
@@ -995,11 +1017,8 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
           handleMouseDown(e);
         }}
         onMouseMove={(e) => {
-          // Only log if selecting to avoid spam
-          // if (isSelecting) {
-          //   console.log('📍 DIV Mouse Move Event during selection');
-          // }
-          handleMouseMove(e);
+          handleMouseMove(e);       // range selection (desktop)
+          updateHoverAt(e.clientX, e.clientY); // crosshair (desktop)
         }}
         onMouseUp={() => {
           // console.log('📍 DIV Mouse Up Event');
