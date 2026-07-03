@@ -287,11 +287,89 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
     }
   }, []);
 
-  // Touch scrubbing: drag a finger to move the crosshair. We dispatch a
-  // synthetic MouseEvent on the canvas so Chart.js's own event pipeline
-  // runs `onHover` with the latest captured state, avoiding any duplication
-  // of hover logic. Direction detection means vertical drags still scroll
-  // the page; only horizontal drags claim the gesture.
+  // Core hover/crosshair computation, driven directly by client coordinates.
+  // Both the chart's `onHover` (mouse) and the touch handler call this, so we
+  // don't rely on dispatching synthetic mouse events — those aren't picked up
+  // by Chart.js's pointer-event pipeline on real touch devices (they only
+  // work under desktop mobile-emulation), which is why the crosshair was
+  // missing on actual phones.
+  const updateHoverAt = React.useCallback((clientX: number, clientY: number) => {
+    const chart = chartRef.current;
+    if (!chart || isPanning || isSelecting) return;
+
+    const rect = chart.canvas.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+
+    // Ignore events outside the plot rectangle so edges/margins don't
+    // snap to the first/last data point.
+    const area = chart.chartArea;
+    if (area && (x < area.left || x > area.right || y < area.top || y > area.bottom)) {
+      setCrosshairPosition(prev => (prev !== null ? null : prev));
+      setHoveredData(prev => (prev !== null ? null : prev));
+      if (chart.getActiveElements().length > 0) {
+        chart.setActiveElements([]);
+        chart.update('none');
+      }
+      return;
+    }
+
+    const rawDataIndex = chart.scales.x.getValueForPixel(x);
+    if (rawDataIndex === undefined) return;
+
+    const dataIndex = Math.round(rawDataIndex);
+
+    if (dataIndex >= 0 && dataIndex < timePoints.length) {
+      const snappedX = chart.scales.x.getPixelForValue(dataIndex);
+      const isNearRightEdge = snappedX > chart.chartArea.left + (chart.chartArea.width * 0.7);
+
+      setCrosshairPosition({ x: snappedX, dataIndex, isNearRightEdge } as any);
+
+      const values: Array<{
+        idol: number;
+        border: string;
+        value: number;
+        color: string;
+        predicted?: boolean;
+        confidenceInterval?: { min: number; max: number };
+      }> = [];
+
+      chartData.datasets.forEach((dataset, dsIndex) => {
+        if (!chart.isDatasetVisible(dsIndex)) return;
+        if (dataset.data[dataIndex] !== undefined && dataset.idolId && dataset.borderType) {
+          const prediction = dataset.borderType === '100' ? idolData.prediction100 : idolData.prediction1000;
+          if (!prediction) return;
+          const isPredicted = dataIndex >= prediction.metadata.raw.last_known_step_index;
+          values.push({
+            idol: dataset.idolId,
+            border: dataset.borderType,
+            value: dataset.data[dataIndex],
+            color: dataset.borderColor as string,
+            predicted: isPredicted,
+          });
+        }
+      });
+
+      setHoveredData({
+        timePoint: fullTimePoints[dataIndex],
+        values: values.sort((a, b) => b.value - a.value),
+      });
+    } else {
+      setCrosshairPosition(null);
+      setHoveredData(null);
+    }
+  }, [isPanning, isSelecting, timePoints, fullTimePoints, chartData, idolData]);
+
+  // Keep a ref to the latest updateHoverAt so the (empty-deps) touch effect
+  // always calls the current version without re-subscribing listeners.
+  const updateHoverAtRef = useRef(updateHoverAt);
+  updateHoverAtRef.current = updateHoverAt;
+
+  // Touch scrubbing: drag a finger to move the crosshair. Calls the hover
+  // logic directly (see updateHoverAt) rather than dispatching a synthetic
+  // mouse event, so it works on real touch devices. Direction detection
+  // means vertical drags still scroll the page; only horizontal drags claim
+  // the gesture.
   const chartContainerRef = useRef<HTMLDivElement>(null);
   React.useEffect(() => {
     const el = chartContainerRef.current;
@@ -301,20 +379,13 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
     let startY = 0;
     let mode: 'undecided' | 'scrub' | 'scroll' = 'undecided';
 
-    const dispatch = (clientX: number, clientY: number) => {
-      const canvas = chartRef.current?.canvas;
-      if (!canvas) return;
-      canvas.dispatchEvent(new MouseEvent('mousemove', {
-        clientX, clientY, bubbles: true, cancelable: true,
-      }));
-    };
     const onStart = (e: TouchEvent) => {
       const touch = e.touches[0];
       if (!touch) return;
       startX = touch.clientX;
       startY = touch.clientY;
       mode = 'undecided';
-      dispatch(touch.clientX, touch.clientY);
+      updateHoverAtRef.current(touch.clientX, touch.clientY);
     };
     const onMove = (e: TouchEvent) => {
       const touch = e.touches[0];
@@ -327,7 +398,7 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
       }
       if (mode === 'scroll') return;
       if (e.cancelable) e.preventDefault();
-      dispatch(touch.clientX, touch.clientY);
+      updateHoverAtRef.current(touch.clientX, touch.clientY);
     };
     el.addEventListener('touchstart', onStart, { passive: false });
     el.addEventListener('touchmove', onMove, { passive: false });
@@ -652,82 +723,11 @@ const Type5MainChart: React.FC<Type5MainChartProps> = ({
         mode: 'index',
         intersect: false
       },
-      // onHover handler inline to ensure it always has current state
+      // Delegate to the shared hover computation so mouse and touch share one
+      // code path. (Touch calls updateHoverAt directly — see the touch effect.)
       onHover: (event: any, _elements: InteractionItem[]) => {
-        const chart = chartRef.current;
-        if (!chart || !event.native || isPanning || isSelecting) return; // Hide crosshair during panning or selection
-
-        const rect = chart.canvas.getBoundingClientRect();
-        const x = event.native.clientX - rect.left;
-        const y = event.native.clientY - rect.top;
-
-        // Ignore events outside the plot rectangle so edges/margins don't
-        // snap to the first/last data point.
-        const area = chart.chartArea;
-        if (area && (x < area.left || x > area.right || y < area.top || y > area.bottom)) {
-          // Sync-clear React state and Chart.js's own hover state.
-          setCrosshairPosition(prev => (prev !== null ? null : prev));
-          setHoveredData(prev => (prev !== null ? null : prev));
-          if (chart.getActiveElements().length > 0) {
-            chart.setActiveElements([]);
-            chart.update('none');
-          }
-          return;
-        }
-
-        // Use Chart.js built-in methods to get the data index from pixel position
-        const rawDataIndex = chart.scales.x.getValueForPixel(x);
-        if (rawDataIndex === undefined) return;
-        
-        const dataIndex = Math.round(rawDataIndex);
-        
-        if (dataIndex >= 0 && dataIndex < timePoints.length) {
-          // Get the actual x pixel position for this data index using Chart.js scale
-          const snappedX = chart.scales.x.getPixelForValue(dataIndex);
-          
-          // Check if we're near the right edge of the chart area
-          const isNearRightEdge = snappedX > chart.chartArea.left + (chart.chartArea.width * 0.7);
-          
-          setCrosshairPosition({ x: snappedX, dataIndex, isNearRightEdge } as any);
-          
-          // Collect all values at this time point
-          const values: Array<{ 
-            idol: number; 
-            border: string; 
-            value: number; 
-            color: string;
-            predicted?: boolean;
-            confidenceInterval?: { min: number; max: number };
-          }> = [];
-          
-          chartData.datasets.forEach((dataset, dsIndex) => {
-            // Skip datasets the user toggled off via the legend.
-            if (!chart.isDatasetVisible(dsIndex)) return;
-            if (dataset.data[dataIndex] !== undefined && dataset.idolId && dataset.borderType) {
-              // Check if this data point is in the prediction range
-              const prediction = dataset.borderType === '100' ? idolData.prediction100 : idolData.prediction1000;
-              if (!prediction) return; // Skip if prediction data doesn't exist
-              
-              const isPredicted = dataIndex >= prediction.metadata.raw.last_known_step_index;
-
-              values.push({
-                idol: dataset.idolId,
-                border: dataset.borderType,
-                value: dataset.data[dataIndex],
-                color: dataset.borderColor as string,
-                predicted: isPredicted
-              });
-            }
-          });
-
-          setHoveredData({
-            timePoint: fullTimePoints[dataIndex],
-            values: values.sort((a, b) => b.value - a.value) // Sort by value descending
-          });
-        } else {
-          setCrosshairPosition(null);
-          setHoveredData(null);
-        }
+        if (!event.native) return;
+        updateHoverAtRef.current(event.native.clientX, event.native.clientY);
       },
       plugins: {
         legend: {
