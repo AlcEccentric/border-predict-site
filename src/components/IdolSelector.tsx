@@ -127,7 +127,12 @@ const IdolSelector: React.FC<IdolSelectorProps> = ({
                         alt={getIdolName(idolId)}
                         className="w-full h-full object-cover"
                         onError={() => handleImageError(idolId)}
-                        loading="lazy"
+                        // Main selection grid is the top card (above the fold) and
+                        // holds the LCP element. Eager-load so the browser fetches
+                        // it during the initial load instead of deprioritizing it —
+                        // lazy here was the p99 LCP tail driver on slow connections.
+                        loading="eager"
+                        fetchPriority="high"
                     />
                 ) : (
                     <div className="w-full h-full flex items-center justify-center text-xs text-center p-1">
