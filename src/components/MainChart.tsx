@@ -217,6 +217,15 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme, selectedLev
     // Get the chart canvas bounds
     const rect = chart.canvas.getBoundingClientRect();
     const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    // Ignore mousedowns outside the actual plot rectangle (axis labels,
+    // margins, etc.) so a stray click there doesn't start a range
+    // selection and draw a rectangle where the user never intended one.
+    const area = chart.chartArea;
+    if (area && (x < area.left || x > area.right || y < area.top || y > area.bottom)) {
+      return;
+    }
 
     // Convert pixel position to data index
     const canvasPosition = getRelativePosition(event.nativeEvent, chart);
@@ -559,8 +568,11 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme, selectedLev
                 fontColor: textColor,
                 lineWidth: 2,
                 pointStyle: makeSeriesLegendIcon(getColorWithAlpha(primaryColor, 1)),
-                hidden: !chart.isDatasetVisible(0),
-                datasetIndices: [0],
+                hidden: false,
+                // No datasetIndices -> the shared onClick handler treats a
+                // click as a no-op. The forecast line must always stay
+                // visible, so it isn't toggleable like the CI/safety items.
+                datasetIndices: [],
               };
               const areaItem = {
                 text: '予測範囲',
