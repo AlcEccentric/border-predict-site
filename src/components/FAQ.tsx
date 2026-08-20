@@ -1,5 +1,5 @@
 import React from 'react';
-import { Info, TrendingUp, Users, RefreshCw, Sliders, Heart, FlaskConical, type LucideIcon } from 'lucide-react';
+import { Info, TrendingUp, ShieldCheck, RefreshCw, Sliders, Heart, FlaskConical, type LucideIcon } from 'lucide-react';
 
 interface FAQProps {
     /** Event type of the page this FAQ is rendered on. 5 = anniversary (周年). */
@@ -53,10 +53,13 @@ const getSections = (isAnniversary: boolean): Section[] => [
                     2. 近傍イベントのスコア推移を現在の傾向に合わせて調整<br />
                     3. 類似度に応じて重み付けし、複数イベントから予測値を算出
                 </p>
+                <p className="mt-2 text-sm text-base-content/70">
+                    ※イベント種別によっては、上記とは異なる計算方法を用いる場合があります。
+                </p>
             </>
         ),
     },
-    {
+    ...(isAnniversary ? [{
         id: 'prediction-accuracy',
         title: '予測精度について',
         icon: TrendingUp,
@@ -79,21 +82,19 @@ const getSections = (isAnniversary: boolean): Section[] => [
                         → 信頼度が高いほど当たりやすいですが、その分、範囲は広くなります。
                     </p>
                 </div>
-                {isAnniversary && (
-                    <div className="mt-4">
-                        <h4 className="text-lg font-semibold mb-2">人気帯に応じた信頼区間</h4>
-                        <p className="text-sm">
-                            周年イベントでは、アイドルが「イベント内でどのくらいの順位帯（人気帯）にいるか」に応じて信頼区間の幅が変わります。
-                        </p>
-                        <ul className="ml-4 mt-2 list-disc text-sm">
-                            <li>人気が高いアイドルほど予測が安定しやすく、範囲は<strong>狭く</strong>なります。</li>
-                            <li>人気が低いアイドルは予測が難しく、範囲は<strong>広く</strong>なります。</li>
-                        </ul>
-                        <p className="mt-2 text-sm text-base-content/70">
-                            → 同じイベントでも、表示されるアイドルによって信頼区間の幅が異なるのはこのためです。
-                        </p>
-                    </div>
-                )}
+                <div className="mt-4">
+                    <h4 className="text-lg font-semibold mb-2">人気帯に応じた信頼区間</h4>
+                    <p className="text-sm">
+                        周年イベントでは、アイドルが「イベント内でどのくらいの順位帯（人気帯）にいるか」に応じて信頼区間の幅が変わります。
+                    </p>
+                    <ul className="ml-4 mt-2 list-disc text-sm">
+                        <li>人気が高いアイドルほど予測が安定しやすく、範囲は<strong>狭く</strong>なります。</li>
+                        <li>人気が低いアイドルは予測が難しく、範囲は<strong>広く</strong>なります。</li>
+                    </ul>
+                    <p className="mt-2 text-sm text-base-content/70">
+                        → 同じイベントでも、表示されるアイドルによって信頼区間の幅が異なるのはこのためです。
+                    </p>
+                </div>
                 <div className="mt-4">
                     <h4 className="text-lg font-semibold mb-2">算出の流れ</h4>
                     <ol className="ml-4 list-decimal text-sm space-y-1">
@@ -106,11 +107,9 @@ const getSections = (isAnniversary: boolean): Section[] => [
                                 <li>75%信頼区間 → 12.5～87.5パーセンタイル</li>
                                 <li>90%信頼区間 → 5～95パーセンタイル</li>
                             </ul>
-                            {isAnniversary && (
-                                <span className="block mt-1 text-base-content/70">
-                                    ※周年イベントでは、アイドルの人気帯（順位帯）ごとに誤差の分布を分けて計算しています。
-                                </span>
-                            )}
+                            <span className="block mt-1 text-base-content/70">
+                                ※周年イベントでは、アイドルの人気帯（順位帯）ごとに誤差の分布を分けて計算しています。
+                            </span>
                         </li>
                         <li>
                             <strong>補間:</strong> 誤差データは一定間隔でしか計算していないため、その間の値は前後のデータをもとに滑らかに補っています
@@ -126,32 +125,51 @@ const getSections = (isAnniversary: boolean): Section[] => [
                 </p>
             </>
         ),
-    },
-    {
-        title: '近傍イベントとは',
-        icon: Users,
-        content: isAnniversary ? (
-            <p>
-                近傍イベントとは、現在進行中の周年イベントと「スコアの伸び方（特に現在の進行度付近）」が類似している過去の周年イベントのことです。<br />
-                周年イベントでは<strong>アイドルごと</strong>に近傍を選定し、それぞれのスコア推移を参照して予測します。<br />
-                同じ形式・同じ開催期間のイベントであれば、ボーダーライン（100位や1000位など）の伸び方も似てくる傾向があるため、より正確な予測に繋がります。<br />
-                <br />
-                <span className="text-base-content/70">
-                    ※以前は選ばれた近傍イベントをグラフに表示していましたが、アルゴリズムの更新により、選ばれる近傍は「スコアの伸び方の形」を重視するようになりました。そのため、見た目の直感で「近い」と感じるイベントとは必ずしも一致しないことがあり、現在は表示していません。
-                </span>
-            </p>
-        ) : (
-            <p>
-                近傍イベントとは、現在進行中のイベントと「イベント形式」や「スコアの伸び方（特に現在の進行度付近）」などが類似している過去のイベントのことです。<br />
-                これらのイベントのスコア推移を比較・参照することで、現在のイベントが今後どのように進行するかを予測する材料になります。<br />
-                特に同じ形式・同じ開催期間のイベントであれば、ボーダーライン（100位や2500位など）の伸び方も似てくる傾向があるため、より正確な予測に繋がります。<br />
-                <br />
-                <span className="text-base-content/70">
-                    ※以前は選ばれた近傍イベントをグラフに表示していましたが、アルゴリズムの更新により、選ばれる近傍は「スコアの伸び方の形」を重視するようになりました。そのため、見た目の直感で「近い」と感じるイベントとは必ずしも一致しないことがあり、現在は表示していません。
-                </span>
-            </p>
+    }] : [{
+        id: 'safety-line',
+        title: '安全ラインについて',
+        icon: ShieldCheck,
+        content: (
+            <>
+                <p>
+                    上のグラフとスコア表示にある「安全ライン」は、そのスコアまで到達すると、最終的に安全圏に入る可能性が一定以上になると見込まれる目標ラインです。
+                </p>
+                <p className="mt-2">
+                    過去の類似イベントにおいて、その時点の予測値と実際の最終スコアがどの程度ずれたかをもとに算出しています。
+                </p>
+                <div className="mt-4">
+                    <h4 className="text-lg font-semibold mb-2">安全ラインの選び方</h4>
+                    <p className="text-sm mb-2">
+                        70%・80%・90%の3段階から選択できます。数字が大きいほど安全圏に入る可能性が高くなりますが、その分、目標となるスコアも高くなります。
+                    </p>
+                    <p className="mt-2 text-sm text-base-content/70">
+                        → イベント序盤は今後の変動が大きいため、安全ラインも広めに設定されます。イベントが進むにつれて予測の不確実性が小さくなり、安全ラインも狭くなっていきます。
+                    </p>
+                </div>
+                <div className="mt-4">
+                    <h4 className="text-lg font-semibold mb-2">算出の流れ</h4>
+                    <ol className="ml-4 list-decimal text-sm space-y-1">
+                        <li>
+                            <strong>実績を比較:</strong> 過去イベントの各時点における予測値と、そのイベントの最終スコアを比較
+                        </li>
+                        <li>
+                            <strong>分布を分析:</strong> 「最終スコア ÷ その時点の予測値」の分布から、選択した確率に対応するラインを算出
+                        </li>
+                        <li>
+                            <strong>補間:</strong> 誤差データは一定間隔で算出しているため、その間の値を前後のデータから滑らかに補間
+                        </li>
+                        <li>
+                            <strong>適用:</strong> 現在の予測値にこのラインを適用し、安全ラインを算出
+                        </li>
+                    </ol>
+                </div>
+                <p className="mt-4 text-sm">
+                    <strong>注意:</strong> 安全ラインは、あくまで過去のデータに基づく推定値であり、結果を保証するものではありません。
+                    参加者の行動やイベント固有の要因などによって、実際の結果が安全ラインを下回る場合もあれば、大きく上回る場合もあります。
+                </p>
+            </>
         ),
-    },
+    }]),
     // Experimental change specific to Type 5 border-100. Kept brief on
     // purpose — only the observation and "we're working on it" — since the
     // actual fix/solution isn't finalized yet. Expand with details once

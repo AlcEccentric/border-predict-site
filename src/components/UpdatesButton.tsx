@@ -4,7 +4,7 @@ import { Info, X } from 'lucide-react';
 const UpdatesButton: React.FC = () => {
     const [isExpanded, setIsExpanded] = useState(false);
 
-    const currentUpdateKey = "update-2026-07-02"; // Change this when there's a new update
+    const currentUpdateKey = "update-2026-08-20"; // Change this when there's a new update
     const [hasNewUpdate, setHasNewUpdate] = useState(() => {
         const lastSeen = localStorage.getItem('lastSeenUpdate');
         return lastSeen !== currentUpdateKey;
@@ -75,18 +75,9 @@ const UpdatesButton: React.FC = () => {
 
                         {/* Updates section */}
                         <div className="border-l-4 border-secondary pl-4">
-                            <h4 className="font-bold text-secondary mb-2">スキップパスとDX+パスの影響について (2026/07/02)</h4>
+                            <h4 className="font-bold text-secondary mb-2">安全ラインの導入 (2026/08/20)</h4>
                             <p className="text-sm text-base-content/80">
-                                今回のイベントの仕様変更の影響で、100位ボーダーは今のところ例年より3割ほど高いペースで推移しています。
-
-                                しばらく様子を見ながら予測モデルを調整していく予定です。そのため、数日間は予測結果が大きく変わることがあります。
-                            </p>
-                        </div>
-
-                        <div className="border-l-4 border-primary pl-4">
-                            <h4 className="font-bold text-primary mb-2">更新情報 (2026/06/24)</h4>
-                            <p className="text-sm text-base-content/80">
-                                周年イベントの体験をより良くするため、細かなアップデートを行いました。
+                                信頼区間に代わり、「安全ライン」を新しく導入しました。70%・80%・90%の3段階から選び、そのスコアまで到達すれば安全圏に入る可能性が一定以上になる目標ラインとして表示されます。詳しくはFAQの「安全ラインについて」をご覧ください。
                             </p>
                         </div>
                     </div>

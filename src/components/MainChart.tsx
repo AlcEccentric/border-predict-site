@@ -32,16 +32,21 @@ ChartJS.register(
   zoomPlugin
 );
 
-import { PredictionData, getBoundSeries } from '../types';
+import { PredictionData, getBoundSeries, getSafetySeries } from '../types';
 import { makeSeriesLegendIcon } from '../utils/legendIcon';
+import { safetyColor } from '../utils/safety';
 
 interface MainChartProps {
   data: PredictionData;
   startAt: string;
   theme?: string;
+  /** Selected safety level (P70..P90), owned by the parent so the chart and
+   * the summary readout stay in sync as one control. Defaults to 80 when
+   * omitted (e.g. Type 5 usage that doesn't have a selector). */
+  selectedLevel?: number;
 }
 
-const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
+const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme, selectedLevel: selectedLevelProp }) => {
   // Zoom state to persist across re-renders
   const [zoomState, setZoomState] = useState<{ min: string; max: string } | null>(null);
   const isZoomed = !!zoomState;
@@ -49,7 +54,9 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
   const chartRef = useRef<ChartJS<'line'>>(null);
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const [crosshairPosition, setCrosshairPosition] = useState<{ x: number; y: number } | null>(null);
-  const [hoveredData, setHoveredData] = useState<{ timePoint: string; value: number; bounds?: { upper75: number; lower75: number; upper90: number; lower90: number; } } | null>(null);
+  const [hoveredData, setHoveredData] = useState<{ timePoint: string; value: number; bounds?: { upper75: number; lower75: number; upper90: number; lower90: number; }; safety?: { level: number; value: number }[] } | null>(null);
+
+  const selectedLevel = selectedLevelProp ?? 80;
   
   // Range selection state
   const [isSelecting, setIsSelecting] = useState(false);
@@ -59,6 +66,17 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
 
   const primaryColor = React.useMemo(() => getDaisyUIColor('bg-primary'), [theme]);
   const secondaryColor = React.useMemo(() => getDaisyUIColor('bg-secondary'), [theme]);
+  // Re-resolve safety colors from the active DaisyUI theme so the ramp
+  // matches the theme's palette (light/dark/seasonal) instead of fixed RGB.
+  const safetyColorMap = React.useMemo(() => {
+    const map: Record<number, string> = {};
+    for (const lvl of [70, 75, 80, 85, 90]) map[lvl] = safetyColor(lvl, theme);
+    return map;
+  }, [theme]);
+  const getSafetyColor = React.useCallback(
+    (lvl: number) => safetyColorMap[lvl] ?? safetyColor(lvl, theme),
+    [safetyColorMap, theme],
+  );
 
   const timePoints = React.useMemo(() => {
     return Array.from(
@@ -146,15 +164,28 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
         const upper90 = getBoundSeries(data.data.raw.bounds?.[90]?.upper);
         const lower90 = getBoundSeries(data.data.raw.bounds?.[90]?.lower);
         const hasArrayBounds = upper75 && lower75 && upper90 && lower90;
+        const inForecast = closestIndex > data.metadata.raw.last_known_step_index;
+        // Per-level safety values at this step (forecast region only).
+        const safetyRaw = data.data.raw.safety;
+        let safety: { level: number; value: number }[] | undefined;
+        if (safetyRaw && Array.isArray(safetyRaw.levels) && inForecast) {
+          const items: { level: number; value: number }[] = [];
+          for (const lvl of safetyRaw.levels) {
+            const arr = getSafetySeries(safetyRaw[String(lvl)]);
+            if (arr && arr[closestIndex] != null) items.push({ level: lvl, value: arr[closestIndex] });
+          }
+          if (items.length) safety = items;
+        }
         const newHovered = {
         timePoint: timePoints[closestIndex],
         value: data.data.raw.target[closestIndex],
-        bounds: closestIndex > data.metadata.raw.last_known_step_index && hasArrayBounds ? {
+        bounds: inForecast && hasArrayBounds ? {
           upper75: upper75![closestIndex],
           lower75: lower75![closestIndex],
           upper90: upper90![closestIndex],
           lower90: lower90![closestIndex],
         } : undefined,
+        safety,
         };
         if (!prev || prev.timePoint !== newHovered.timePoint || prev.value !== newHovered.value) {
           return newHovered;
@@ -348,93 +379,138 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
   const ci75Alpha = 0.3;
   const ci90Alpha = 0.25;
   const ciColor = secondaryColor;
-  
+
+  // Safety ladder: per-step upper lines P70..P90. Present only when the
+  // prediction JSON carries data.raw.safety with array series (normal events;
+  // Type 5 ships scalars). Falls back to the CI bands when absent.
+  const safetyLadder = React.useMemo(() => {
+    const s = data.data.raw.safety;
+    if (!s || !Array.isArray(s.levels) || s.levels.length === 0) return null;
+    const series: Record<number, number[]> = {};
+    for (const lvl of s.levels) {
+      const arr = getSafetySeries(s[String(lvl)]);
+      if (arr) series[lvl] = arr;
+    }
+    const levels = Object.keys(series).map(Number).sort((a, b) => a - b);
+    return levels.length ? { levels, series } : null;
+  }, [data]);
+
   const chartData: ChartData<'line'> = React.useMemo(() => {
-    const datasets = [
-      {
-        label: 'スコア',
-        data: data.data.raw.target,
-        borderColor: getColorWithAlpha(primaryColor, 1),
-        tension: 0.1,
-        borderWidth: 3.5,
-        borderDash: [5, 2],
-        pointStyle: 'circle',
-        pointRadius: 0,
-        pointBorderColor: getColorWithAlpha(primaryColor, 1),
-        pointBackgroundColor: getColorWithAlpha(primaryColor, 1),
-        pointHoverRadius: 5,
-      },
-      // 90% confidence interval
-      {
-        label: '90% 信頼区間下限',
-        data: getBoundSeries(data.data.raw.bounds?.[90]?.lower)?.map((val, idx) =>
-          idx <= data.metadata.raw.last_known_step_index ? null : val
-        ) || [],
-        borderColor: 'transparent',
-        backgroundColor: getColorWithAlpha(ciColor, ci90Alpha),
-        tension: 0.1,
-        borderWidth: 0,
-        pointStyle: 'circle',
-        pointRadius: 0,
-        pointBorderColor: getColorWithAlpha(ciColor, 0.5),
-        pointBackgroundColor: getColorWithAlpha(ciColor, 0.5),
-        pointHoverRadius: 4,
-      },
-      {
-        label: '90% 信頼区間上限',
-        data: getBoundSeries(data.data.raw.bounds?.[90]?.upper)?.map((val, idx) =>
-          idx <= data.metadata.raw.last_known_step_index ? null : val
-        ) || [],
-        borderColor: 'transparent',
-        backgroundColor: getColorWithAlpha(ciColor, ci90Alpha),
-        tension: 0.1,
-        borderWidth: 0,
-        fill: '-1',
-        pointStyle: 'circle',
-        pointRadius: 0,
-        pointBorderColor: getColorWithAlpha(ciColor, 0.5),
-        pointBackgroundColor: getColorWithAlpha(ciColor, 0.5),
-        pointHoverRadius: 4,
-      },
-      // 75% confidence interval
-      {
-        label: '75% 信頼区間下限',
-        data: getBoundSeries(data.data.raw.bounds?.[75]?.lower)?.map((val, idx) =>
-          idx <= data.metadata.raw.last_known_step_index ? null : val
-        ) || [],
-        borderColor: 'transparent',
-        backgroundColor: getColorWithAlpha(ciColor, ci75Alpha),
-        tension: 0.1,
-        borderWidth: 0,
-        pointStyle: 'circle',
-        pointRadius: 0,
-        pointBorderColor: getColorWithAlpha(ciColor, 0.8),
-        pointBackgroundColor: getColorWithAlpha(ciColor, 0.8),
-        pointHoverRadius: 4,
-      },
-      {
-        label: '75% 信頼区間上限',
-        data: getBoundSeries(data.data.raw.bounds?.[75]?.upper)?.map((val, idx) =>
-          idx <= data.metadata.raw.last_known_step_index ? null : val
-        ) || [],
-        borderColor: 'transparent',
-        backgroundColor: getColorWithAlpha(ciColor, ci75Alpha),
-        tension: 0.1,
-        borderWidth: 0,
-        fill: '-1',
-        pointStyle: 'circle',
-        pointRadius: 0,
-        pointBorderColor: getColorWithAlpha(ciColor, 0.8),
-        pointBackgroundColor: getColorWithAlpha(ciColor, 0.8),
-        pointHoverRadius: 4,
-      },
-    ];
-    
+    const centerLine = {
+      label: 'スコア',
+      data: data.data.raw.target,
+      borderColor: getColorWithAlpha(primaryColor, 1),
+      tension: 0.1,
+      borderWidth: 3.5,
+      borderDash: [5, 2],
+      pointStyle: 'circle',
+      pointRadius: 0,
+      pointBorderColor: getColorWithAlpha(primaryColor, 1),
+      pointBackgroundColor: getColorWithAlpha(primaryColor, 1),
+      pointHoverRadius: 5,
+    };
+
+    // When the safety ladder is available, show P70..P90 one-sided lines
+    // (selected level emphasised) INSTEAD of the two-sided CI bands. Otherwise
+    // fall back to the legacy 75%/90% shaded bands.
+    let datasets: any[];
+    if (safetyLadder) {
+      const safetyDatasets = safetyLadder.levels.map((lvl) => {
+        const isSel = lvl === selectedLevel;
+        return {
+          label: `${lvl}% 安全ライン`,
+          data: safetyLadder.series[lvl].map((val, idx) =>
+            idx <= data.metadata.raw.last_known_step_index ? null : val
+          ),
+          borderColor: getColorWithAlpha(getSafetyColor(lvl), isSel ? 1 : 0.5),
+          backgroundColor: 'transparent',
+          tension: 0.1,
+          borderWidth: isSel ? 3 : 1.5,
+          fill: false,
+          pointStyle: 'circle',
+          pointRadius: 0,
+          pointBorderColor: getColorWithAlpha(getSafetyColor(lvl), 1),
+          pointBackgroundColor: getColorWithAlpha(getSafetyColor(lvl), 1),
+          pointHoverRadius: 4,
+          order: isSel ? 0 : 1,
+        };
+      });
+      datasets = [centerLine, ...safetyDatasets];
+    } else {
+      datasets = [
+        centerLine,
+        // 90% confidence interval
+        {
+          label: '90% 信頼区間下限',
+          data: getBoundSeries(data.data.raw.bounds?.[90]?.lower)?.map((val, idx) =>
+            idx <= data.metadata.raw.last_known_step_index ? null : val
+          ) || [],
+          borderColor: 'transparent',
+          backgroundColor: getColorWithAlpha(ciColor, ci90Alpha),
+          tension: 0.1,
+          borderWidth: 0,
+          pointStyle: 'circle',
+          pointRadius: 0,
+          pointBorderColor: getColorWithAlpha(ciColor, 0.5),
+          pointBackgroundColor: getColorWithAlpha(ciColor, 0.5),
+          pointHoverRadius: 4,
+        },
+        {
+          label: '90% 信頼区間上限',
+          data: getBoundSeries(data.data.raw.bounds?.[90]?.upper)?.map((val, idx) =>
+            idx <= data.metadata.raw.last_known_step_index ? null : val
+          ) || [],
+          borderColor: 'transparent',
+          backgroundColor: getColorWithAlpha(ciColor, ci90Alpha),
+          tension: 0.1,
+          borderWidth: 0,
+          fill: '-1',
+          pointStyle: 'circle',
+          pointRadius: 0,
+          pointBorderColor: getColorWithAlpha(ciColor, 0.5),
+          pointBackgroundColor: getColorWithAlpha(ciColor, 0.5),
+          pointHoverRadius: 4,
+        },
+        // 75% confidence interval
+        {
+          label: '75% 信頼区間下限',
+          data: getBoundSeries(data.data.raw.bounds?.[75]?.lower)?.map((val, idx) =>
+            idx <= data.metadata.raw.last_known_step_index ? null : val
+          ) || [],
+          borderColor: 'transparent',
+          backgroundColor: getColorWithAlpha(ciColor, ci75Alpha),
+          tension: 0.1,
+          borderWidth: 0,
+          pointStyle: 'circle',
+          pointRadius: 0,
+          pointBorderColor: getColorWithAlpha(ciColor, 0.8),
+          pointBackgroundColor: getColorWithAlpha(ciColor, 0.8),
+          pointHoverRadius: 4,
+        },
+        {
+          label: '75% 信頼区間上限',
+          data: getBoundSeries(data.data.raw.bounds?.[75]?.upper)?.map((val, idx) =>
+            idx <= data.metadata.raw.last_known_step_index ? null : val
+          ) || [],
+          borderColor: 'transparent',
+          backgroundColor: getColorWithAlpha(ciColor, ci75Alpha),
+          tension: 0.1,
+          borderWidth: 0,
+          fill: '-1',
+          pointStyle: 'circle',
+          pointRadius: 0,
+          pointBorderColor: getColorWithAlpha(ciColor, 0.8),
+          pointBackgroundColor: getColorWithAlpha(ciColor, 0.8),
+          pointHoverRadius: 4,
+        },
+      ];
+    }
+
     return {
       labels: timePoints,
       datasets
     };
-  }, [timePoints, data, primaryColor]);
+  }, [timePoints, data, primaryColor, safetyLadder, selectedLevel, ciColor, getSafetyColor]);
 
   const chartOptions = React.useMemo<ChartOptions<'line'>>(() => {
     const textColor = (() => {
@@ -475,8 +551,8 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
           labels: {
             color: textColor,
             usePointStyle: true,
-            generateLabels: (chart: any) => [
-              {
+            generateLabels: (chart: any) => {
+              const scoreItem = {
                 text: 'スコア',
                 fillStyle: getColorWithAlpha(primaryColor, 1),
                 strokeStyle: getColorWithAlpha(primaryColor, 1),
@@ -485,28 +561,8 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
                 pointStyle: makeSeriesLegendIcon(getColorWithAlpha(primaryColor, 1)),
                 hidden: !chart.isDatasetVisible(0),
                 datasetIndices: [0],
-              },
-              {
-                text: '75% 信頼区間',
-                fillStyle: getColorWithAlpha(ciColor, 0.5),
-                strokeStyle: getColorWithAlpha(secondaryColor, 1),
-                fontColor: textColor,
-                lineWidth: 2,
-                pointStyle: makeSeriesLegendIcon(getColorWithAlpha(secondaryColor, 1)),
-                hidden: !chart.isDatasetVisible(3),
-                datasetIndices: [3, 4],
-              },
-              {
-                text: '90% 信頼区間',
-                fillStyle: getColorWithAlpha(ciColor, 0.3),
-                strokeStyle: getColorWithAlpha(secondaryColor, 1),
-                fontColor: textColor,
-                lineWidth: 2,
-                pointStyle: makeSeriesLegendIcon(getColorWithAlpha(secondaryColor, 1)),
-                hidden: !chart.isDatasetVisible(1),
-                datasetIndices: [1, 2],
-              },
-              {
+              };
+              const areaItem = {
                 text: '予測範囲',
                 fillStyle: getColorWithAlpha(primaryColor, 0.2),
                 strokeStyle: 'rgb(255, 99, 132)',
@@ -517,8 +573,46 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
                 pointStyleHeight: 15,
                 lineDash: [5, 3],
                 datasetIndices: [],
+              };
+              if (safetyLadder) {
+                // Safety lines occupy dataset indices 1..N in ladder order.
+                const items = safetyLadder.levels.map((lvl, i) => ({
+                  text: `${lvl}% 安全ライン`,
+                  fillStyle: getSafetyColor(lvl),
+                  strokeStyle: getSafetyColor(lvl),
+                  fontColor: textColor,
+                  lineWidth: 2,
+                  pointStyle: makeSeriesLegendIcon(getSafetyColor(lvl)),
+                  hidden: !chart.isDatasetVisible(i + 1),
+                  datasetIndices: [i + 1],
+                }));
+                return [scoreItem, ...items, areaItem] as any[];
               }
-            ]
+              return [
+                scoreItem,
+                {
+                  text: '75% 信頼区間',
+                  fillStyle: getColorWithAlpha(ciColor, 0.5),
+                  strokeStyle: getColorWithAlpha(secondaryColor, 1),
+                  fontColor: textColor,
+                  lineWidth: 2,
+                  pointStyle: makeSeriesLegendIcon(getColorWithAlpha(secondaryColor, 1)),
+                  hidden: !chart.isDatasetVisible(3),
+                  datasetIndices: [3, 4],
+                },
+                {
+                  text: '90% 信頼区間',
+                  fillStyle: getColorWithAlpha(ciColor, 0.3),
+                  strokeStyle: getColorWithAlpha(secondaryColor, 1),
+                  fontColor: textColor,
+                  lineWidth: 2,
+                  pointStyle: makeSeriesLegendIcon(getColorWithAlpha(secondaryColor, 1)),
+                  hidden: !chart.isDatasetVisible(1),
+                  datasetIndices: [1, 2],
+                },
+                areaItem,
+              ] as any[];
+            }
           }
         },
         annotation: {
@@ -651,7 +745,7 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
     }
 
     return options;
-  }, [zoomState, startAt, data.data.raw.target.length, theme, timePoints, data.metadata.raw.last_known_step_index, data.metadata.raw.name, primaryColor]);
+  }, [zoomState, startAt, data.data.raw.target.length, theme, timePoints, data.metadata.raw.last_known_step_index, data.metadata.raw.name, primaryColor, safetyLadder, selectedLevel, getSafetyColor]);
 
   return (
     <div className="relative w-full">
@@ -822,7 +916,21 @@ const MainChart: React.FC<MainChartProps> = ({ data, startAt, theme }) => {
                 <span className="sm:hidden">スコア:</span>
                 <br className="sm:hidden" />
                 <span className="font-mono">{Math.round(hoveredData.value).toLocaleString()}</span>
-                {hoveredData.bounds && (
+                {hoveredData.safety ? (
+                  <div className="mt-2 text-xs">
+                    {hoveredData.safety.map((s) => (
+                      <div
+                        key={s.level}
+                        style={{
+                          color: s.level === selectedLevel ? getSafetyColor(s.level) : undefined,
+                          fontWeight: s.level === selectedLevel ? 700 : 400,
+                        }}
+                      >
+                        {s.level}% 安全ライン: <span className="font-mono">{Math.round(s.value).toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : hoveredData.bounds && (
                   <>
                     <div className="mt-2 text-xs">
                       <div>75%信頼区間: {Math.round(hoveredData.bounds.lower75).toLocaleString()} - {Math.round(hoveredData.bounds.upper75).toLocaleString()}</div>

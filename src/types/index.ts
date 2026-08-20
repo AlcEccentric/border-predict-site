@@ -78,6 +78,15 @@ export interface PredictionData {
                 75: BoundEntry;
                 90: BoundEntry;
             };
+            // One-sided safety-line ladder (P70..P90). Aim above level p to be
+            // historically ~p% safe. Per-step number[] for normal events;
+            // final-time scalar for Type 5 idol predictions. Absent on older
+            // predictions (predictor appends only when the CI CSV carries the
+            // safety_<p> columns) -> frontend falls back to the CI bands.
+            safety?: {
+                levels: number[];
+                [level: string]: number[] | number;
+            };
         };
         normalized: {
             target: number[];
@@ -134,6 +143,17 @@ export function getFinalBoundValue(
  */
 export function getBoundSeries(
     field: number | number[] | undefined,
+): number[] | null {
+    return Array.isArray(field) ? field : null;
+}
+
+/**
+ * Returns the per-step safety-line series for a level, or null when the
+ * safety field is absent or a scalar (Type 5). Use for chart lines that need
+ * every time step.
+ */
+export function getSafetySeries(
+    field: number[] | number | undefined,
 ): number[] | null {
     return Array.isArray(field) ? field : null;
 }
